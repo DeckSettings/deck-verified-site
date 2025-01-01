@@ -418,6 +418,30 @@ const fetchProject = async (searchTerm, authToken) => {
   }
 }
 
+const updateGameIndex = async () => {
+  try {
+    // Configure API auth token
+    let authToken = null
+    if (defaultGithubAuthToken) {
+      authToken = defaultGithubAuthToken
+    }
+
+    const projects = await fetchProject('', authToken)
+    if (projects) {
+      for (const project of projects) {
+        console.log(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
+        try {
+          await storeGameInRedis(project.gameName, project.appId)
+        } catch (error) {
+          console.error('Error storing game in Redis:', error)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating game index:', error)
+  }
+}
+
 
 // Routes
 app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
@@ -540,7 +564,6 @@ app.get('/deck-verified/api/v1/search_games_by_project', async (req, res) => {
 
 app.get('/deck-verified/api/v1/search_games', async (req, res) => {
   let searchString = req.query['search']
-  let noCache = req.query['no_cache']
 
   if (!searchString) {
     return res.status(400).json({ error: 'Missing search parameter' })
@@ -550,34 +573,6 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
     searchString = decodeURIComponent(searchString)
   } catch (error) {
     return res.status(400).json({ error: `Invalid game_name parameter: ${error}` })
-  }
-
-  // Do a lookup on GitHub
-  if (noCache === 'true') {
-    // Configure API auth token
-    let authToken = null
-    if (defaultGithubAuthToken) {
-      authToken = defaultGithubAuthToken
-    }
-
-    // Search by appid or name
-    let projectSearchTerm = `name="${searchString}`
-    if (searchString && Number.isNaN(searchString)) {
-      // Search by name
-      projectSearchTerm = `appid="${searchString}`
-    }
-
-    const projects = await fetchProject(projectSearchTerm, authToken)
-    if (projects) {
-      for (const project of projects) {
-        console.log(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
-        try {
-          await storeGameInRedis(project.gameName, project.appId)
-        } catch (error) {
-          console.error('Error storing game in Redis:', error)
-        }
-      }
-    }
   }
 
   try {
@@ -619,6 +614,12 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch labels' })
   }
 })
+
+// Run scheduled tasks
+// Call updateGameIndex on start
+updateGameIndex()
+// Schedule updateGameIndex to run every "cacheTime" minutes
+setInterval(updateGameIndex, cacheTime * 60 * 1000)
 
 // Server
 const port = 9022
