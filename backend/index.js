@@ -5,6 +5,9 @@ var logfmt = require('logfmt')
 
 const app = express()
 
+// Config
+const cacheTime = process.env.CACHE_TIME || 600 // 10 Minutes
+
 // Connection to Redis
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'
 const redisPort = process.env.REDIS_PORT || 6379
@@ -137,7 +140,7 @@ const parseReportBody = async (markdown) => {
       console.log('Schema not found in Redis cache, fetching from URL')
       const response = await fetch(schemaUrl)
       schema = await response.json()
-      await redisClient.set(redisKey, JSON.stringify(schema), { EX: 3600 }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(schema), { EX: cacheTime }) // Cache for 1 hour
     }
 
     const data = {}
@@ -435,7 +438,7 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: 3600 }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
       console.log('Data fetched from GitHub and cached in Redis')
 
       res.json(reports.items)
@@ -467,7 +470,7 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: 3600 }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
       console.log('Data fetched from GitHub and cached in Redis')
 
       res.json(reports.items)
@@ -511,7 +514,7 @@ app.get('/deck-verified/api/v1/search_games_by_project', async (req, res) => {
 
     const projects = await fetchProject(searchTerm, authToken)
     if (projects) {
-      await redisClient.set(redisKey, JSON.stringify(projects), { EX: 3600 }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(projects), { EX: cacheTime }) // Cache for 1 hour
       console.log('Data fetched from GitHub and cached in Redis')
 
       // Store any game results in our search cache
@@ -607,7 +610,7 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
     }
 
     const labels = await fetchIssueLabels(authToken)
-    await redisClient.set(redisKey, JSON.stringify(labels), { EX: 3600 }) // Cache for 1 hour
+    await redisClient.set(redisKey, JSON.stringify(labels), { EX: cacheTime }) // Cache for 1 hour
     console.log('Data fetched from GitHub and cached in Redis')
 
     res.json(labels)
