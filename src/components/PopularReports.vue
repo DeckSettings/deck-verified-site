@@ -8,11 +8,56 @@ export default defineComponent({
   setup() {
     const popularReports = ref([] as Report[])
 
+    const getReviewScoreIcon = (reviewScore: string) => {
+      switch (reviewScore) {
+        case 'positive':
+          return 'thumb_up'
+        case 'neutral':
+          return 'thumbs_up_down'
+        case 'negative':
+          return 'thumb_down'
+        default:
+          return ''
+      }
+    }
+
+    const getReviewScoreColor = (reviewScore: string) => {
+      switch (reviewScore) {
+        case 'positive':
+          return 'green'
+        case 'neutral':
+          return 'grey'
+        case 'negative':
+          return 'red'
+        default:
+          return 'grey'
+      }
+    }
+
+    const getReviewScoreTooltip = (reviewScore: string) => {
+      switch (reviewScore) {
+        case 'positive':
+          return 'Positively Reviewed'
+        case 'neutral':
+          return 'Neutrally Reviewed'
+        case 'negative':
+          return 'Negatively Reviewed'
+        default:
+          return ''
+      }
+    }
+
     onMounted(async () => {
       popularReports.value = await fetchPopularReports()
     })
 
-    return { popularReports }
+
+    return {
+      popularReports,
+      getReviewScoreIcon,
+      getReviewScoreColor,
+      getReviewScoreTooltip
+    }
   }
 })
 </script>
@@ -85,10 +130,10 @@ export default defineComponent({
                 </q-icon>
 
                 <q-icon v-if="report.reviewScore"
-                        :name="report.reviewScore === 'positive' ? 'thumb_up' : 'thumb_down'"
-                        :color="report.reviewScore === 'positive' ? 'green' : 'red'">
+                        :name="getReviewScoreIcon(report.reviewScore)"
+                        :color="getReviewScoreColor(report.reviewScore)">
                   <q-tooltip v-if="report.reviewScore" anchor="center left" self="center right" :offset="[10, 10]">
-                    {{ report.reviewScore === 'positive' ? 'Positively Reviewed' : 'Negatively Reviewed' }}
+                    {{ getReviewScoreTooltip(report.reviewScore) }}
                   </q-tooltip>
                 </q-icon>
               </q-item-label>
@@ -107,10 +152,10 @@ export default defineComponent({
               </q-icon>
 
               <q-icon v-if="report.reviewScore"
-                      :name="report.reviewScore === 'positive' ? 'thumb_up' : 'thumb_down'"
-                      :color="report.reviewScore === 'positive' ? 'green' : 'red'">
+                      :name="getReviewScoreIcon(report.reviewScore)"
+                      :color="getReviewScoreColor(report.reviewScore)">
                 <q-tooltip v-if="report.reviewScore" anchor="center left" self="center right" :offset="[10, 10]">
-                  {{ report.reviewScore === 'positive' ? 'Positively Reviewed' : 'Negatively Reviewed' }}
+                  {{ getReviewScoreTooltip(report.reviewScore) }}
                 </q-tooltip>
               </q-icon>
             </q-item-section>

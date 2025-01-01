@@ -10,7 +10,7 @@
   },
   "scripts": {
     "serve": "node index.js",
-    "dev": "env $(cat ../.env 2>/dev/null | xargs) nodemon index.js",
+    "dev": "env $(grep -v '^#' ../.env | xargs) nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Josh.5",

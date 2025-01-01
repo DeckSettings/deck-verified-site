@@ -175,6 +175,8 @@ const initGameData = async (params: RouteParamsGeneric) => {
       appId.value = String(gameData.value.appId)
       gameBackground.value = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId.value}/library_hero.jpg`
       gamePoster.value = `https://steamcdn-a.akamaihd.net/steam/apps/${appId.value}/library_600x900.jpg`
+      // TODO: Add header image in place of poster image on larger screens
+      //  - https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId.value}/header.jpg
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
     }
     // Parse the gameData issues
