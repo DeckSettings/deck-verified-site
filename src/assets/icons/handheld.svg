@@ -1,0 +1,21 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+    <rect x="5" y="25" width="90" height="50" rx="10" ry="10" fill="white"/>
+
+    <!-- Screen -->
+    <rect x="25" y="35" width="50" height="30" rx="3" ry="3" />
+
+    <!-- D-Pad -->
+    <circle cx="15" cy="45" r="5" fill="currentColor"/>
+    <rect x="13" y="40" width="4" height="10" fill="currentColor"/>
+    <rect x="10" y="43" width="10" height="4" fill="currentColor"/>
+
+    <!-- Action Buttons -->
+    <circle cx="85" cy="45" r="4" fill="currentColor"/>
+    <circle cx="90" cy="50" r="4" fill="currentColor"/>
+    <circle cx="80" cy="50" r="4" fill="currentColor"/>
+    <circle cx="85" cy="55" r="4" fill="currentColor"/>
+
+    <!-- Thumbsticks -->
+    <circle cx="30" cy="65" r="6" fill="currentColor"/>
+    <circle cx="70" cy="65" r="6" fill="currentColor"/>
+</svg>

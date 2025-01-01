@@ -1,0 +1,46 @@
+# Run a development environment
+---
+networks:
+  private-net:
+
+volumes:
+  redis-cache:
+    driver: local
+
+services:
+  # --- REDIS ---
+  redis:
+    image: redis/redis-stack:latest
+    networks:
+      - private-net
+    ports:
+      - '6379:6379/tcp'
+    environment:
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?Missing Redis Password} --protected-mode yes
+    volumes:
+      - redis-cache:/data
+
+  # --- BACKEND API ---
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: npm run dev
+    ports:
+      - '9022:9022'
+    depends_on:
+      - redis
+    networks:
+      - private-net
+    environment:
+      # -- GitHub token (required to increase rate limits on API calls).
+      GH_TOKEN: ${GH_TOKEN:?}
+      # -- Cache Config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Missing Redis Password}
+    volumes:
+      - ./backend:/app/
+
+  # --- FRONTEND ---
+  # TODO: Just add a nginx container for hosting the static assets
