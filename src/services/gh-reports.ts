@@ -120,6 +120,25 @@ export interface GameSearchResult {
   appId: string;
 }
 
+export const extractHeadingValue = (lines: string[], heading: string): string | null => {
+  const headingToFind = `### ${heading}`.toLowerCase()
+  const headingIndex = lines.findIndex(line => line.trim().toLowerCase() === headingToFind)
+  if (headingIndex === -1) return null
+
+  const sectionLines = []
+  for (let i = headingIndex + 1; i < lines.length; i++) {
+    const currentLine = lines[i]?.trim()
+    if (currentLine === undefined) {
+      continue
+    }
+    if (currentLine.toLowerCase().startsWith('### ')) break
+    sectionLines.push(currentLine)
+  }
+
+  const content = sectionLines.join('\n').trim()
+  return content.length > 0 ? content : null
+}
+
 export const parseMarkdown = (markdown: string): ReportData => {
   const headersToFetch: {
     [key: string]: { field: keyof ReportData; type: 'string' | 'number' }
@@ -172,49 +191,37 @@ export const parseMarkdown = (markdown: string): ReportData => {
     additionalNotes: ''
   }
 
-  const lines: string[] = markdown.split('\r\n')
+  const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
+  const lines: string[] = normalizedMarkdown.split('\n')
 
   for (const heading in headersToFetch) {
     const headerConfig = headersToFetch[heading]
     if (!headerConfig) continue
 
     const { field, type } = headerConfig
-    const headingToFind = `### ${heading}`.toLowerCase()
-    const headingIndex = lines.findIndex(line => line.trim().toLowerCase() === headingToFind)
-
-    if (headingIndex !== -1) {
-      let value = ''
-      for (let i = headingIndex + 1; i < lines.length; i++) {
-        const line = lines[i]?.trim()
-        if (line === undefined) {
-          continue
-        }
-        // Stop at the next heading but allow multi-line content
-        if (line.startsWith('### ')) break
-        // Append to value (preserve newlines between lines)
-        value += (value ? '\n' : '') + line
-      }
-      // Remove any trailing newline from the final value
-      value = value.trimEnd()
-      if (value === '_No response_') {
-        // Treat a field with _No response_ as if it were not even there
-        continue
-      }
-
-      if (type === 'number') {
-        const parsedValue = parseInt(value, 10)
-        if (field === 'appid') {
-          if (!isNaN(parsedValue)) {
-            data.appid = parsedValue
-          } else {
-            delete data.appid
-          }
+    let value = extractHeadingValue(lines, heading)
+    if (value === null) {
+      continue
+    }
+    // Remove any trailing newline from the final value
+    value = value.trimEnd()
+    if (value === '_No response_') {
+      // Treat a field with _No response_ as if it were not even there
+      continue
+    }
+    if (type === 'number') {
+      const parsedValue = parseInt(value, 10)
+      if (field === 'appid') {
+        if (!isNaN(parsedValue)) {
+          data.appid = parsedValue
         } else {
-          (data as Record<keyof ReportData, string | number>)[field] = isNaN(parsedValue) ? 0 : parsedValue
+          delete data.appid
         }
       } else {
-        (data as Record<keyof ReportData, string | number>)[field] = value || ''
+        (data as Record<keyof ReportData, string | number>)[field] = isNaN(parsedValue) ? 0 : parsedValue
       }
+    } else {
+      (data as Record<keyof ReportData, string | number>)[field] = value || ''
     }
   }
 
