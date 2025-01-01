@@ -1,0 +1,23 @@
+# Editor directories and files
+.idea
+.vscode
+.editorconfig
+
+# Git files
+.git
+.gitignore
+.github
+.gitattributes
+
+# Backend project
+backend
+
+# Build files
+dist
+
+# Dependencies
+node_modules
+
+# local .env files
+.env
+.env.local*

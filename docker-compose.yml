@@ -43,4 +43,15 @@ services:
       - ./backend:/app/
 
   # --- FRONTEND ---
-  # TODO: Just add a nginx container for hosting the static assets
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    ports:
+      - '9021:9021'
+    depends_on:
+      - api
+    networks:
+      - private-net
+    volumes:
+      - ./dist/spa:/usr/share/nginx/html/deck-verified
