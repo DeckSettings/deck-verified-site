@@ -22,6 +22,7 @@ services:
 
   # --- BACKEND API ---
   api:
+    image: ghcr.io/decksettings/deck-verified-api:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -44,6 +45,7 @@ services:
 
   # --- FRONTEND ---
   web:
+    image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
       dockerfile: ./docker/Dockerfile

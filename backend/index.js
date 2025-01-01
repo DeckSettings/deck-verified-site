@@ -221,7 +221,50 @@ const fetchReports = async (
   return await response.json()
 }
 
+const getOrgId = async (orgName, authToken) => {
+  const query = `
+    query GetOrganizationId($orgLogin: String!) {
+      organization(login: $orgLogin) {
+        id
+      }
+    }
+  `
+
+  try {
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (authToken) {
+      headers['Authorization'] = `bearer ${authToken}`
+    }
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        query: query,
+        variables: {
+          orgLogin: orgName
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
+      throw new Error('Failed to fetch organization ID')
+    }
+
+    const responseData = await response.json()
+    return responseData.data.organization.id
+  } catch (error) {
+    console.error('Error fetching organization ID:', error)
+    throw error
+  }
+}
+
 const fetchProject = async (searchTerm, authToken) => {
+  //const orgNodeId = await getOrgId('DeckSettings', authToken)
   const orgNodeId = 'O_kgDOC35waw'
   const query = `
     query fetchOrgProjects($orgId: ID!, $cursor: String, $searchTerm: String!) {
