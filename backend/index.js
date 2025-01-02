@@ -654,7 +654,7 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
 // Call updateGameIndex on start
 updateGameIndex()
 // Schedule updateGameIndex to run every "cacheTime" minutes
-setInterval(updateGameIndex, cacheTime * 60 * 1000)
+setInterval(updateGameIndex, cacheTime * 1000)
 
 // Server
 const port = 9022
