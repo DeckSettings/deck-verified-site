@@ -31,9 +31,9 @@ const createRedisSearchIndex = async () => {
       await redisClient.ft.create(
         'games_idx',
         {
-          appsearch: { type: 'TEXT', SORTABLE: true }, // Searchable index
-          appname: { type: 'TEXT', SORTABLE: true }, // Full game name
-          appid: { type: 'TEXT', SORTABLE: true },   // App ID
+          appsearch: { type: 'TEXT', SORTABLE: true },  // Searchable index
+          appname: { type: 'TEXT', SORTABLE: true },    // Full game name
+          appid: { type: 'TEXT', SORTABLE: true },      // App ID
           appposter: { type: 'TEXT', SORTABLE: true }   // App poster
         },
         {
@@ -47,34 +47,23 @@ const createRedisSearchIndex = async () => {
     console.error('Error creating RedisSearch index:', error)
   }
 }
-const connectRedis = async () => {
-  let retries = 5
-  while (retries) {
-    try {
-      await redisClient.connect()
-      console.log('Connected to Redis!')
-      await createRedisSearchIndex()
-      return
-    } catch (err) {
-      console.error('Redis connection error:', err)
-      retries -= 1
-      if (retries === 0) {
-        console.error('Max retries reached. Exiting...')
-        process.exit(1)
-      }
-      console.log(`Retrying... attempts left: ${retries}`)
-      await new Promise(resolve => setTimeout(resolve, 5000))
-    }
+const connectToRedis = async () => {
+  redisClient.on('connect', () => {
+    console.log('Connected to Redis!')
+  })
+  redisClient.on('error', (err) => {
+    console.error('Redis connection error:', err)
+  })
+  try {
+    // Connect to redis
+    await redisClient.connect()
+    // Create redis search index
+    await createRedisSearchIndex()
+  } catch (err) {
+    console.error('Error connecting to Redis:', err)
+    process.exit(1)
   }
 }
-
-redisClient.on('connect', () => {
-  console.log('Connected to Redis!')
-})
-redisClient.on('error', (err) => {
-  console.error('Redis connection error:', err)
-})
-connectRedis()
 
 // Configure default GitHub auth token
 const defaultGithubAuthToken = process.env.GH_TOKEN || null
@@ -654,14 +643,29 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
   }
 })
 
-// Run scheduled tasks
-// Call updateGameIndex on start
-updateGameIndex()
-// Schedule updateGameIndex to run every "cacheTime" minutes
-setInterval(updateGameIndex, cacheTime * 1000)
 
-// Server
-const port = 9022
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`)
-})
+const startServer = async () => {
+  try {
+    await connectToRedis()
+
+    // Continue with the rest of the script after Redis is connected
+    console.log('Redis connected. Proceeding with the rest of the script...')
+
+    // Run scheduled tasks
+    // Call updateGameIndex on start
+    await updateGameIndex()
+    // Schedule updateGameIndex to run every "cacheTime" minutes
+    setInterval(updateGameIndex, cacheTime * 1000)
+
+    // Server
+    const port = 9022
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`)
+    })
+  } catch (error) {
+    console.error('Error starting the server:', error)
+    process.exit(1)
+  }
+}
+
+startServer()
