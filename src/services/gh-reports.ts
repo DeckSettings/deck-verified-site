@@ -151,7 +151,7 @@ export const parseMarkdown = (markdown: string): ReportData => {
   const headersToFetch: {
     [key: string]: { field: keyof ReportData; type: 'string' | 'number' }
   } = {
-    'Title': { field: 'summary', type: 'string' },
+    'Summary': { field: 'summary', type: 'string' },
     'Game Name': { field: 'gameName', type: 'string' },
     'App ID': { field: 'appid', type: 'number' },
     'Launcher': { field: 'launcher', type: 'string' },
