@@ -121,7 +121,8 @@ const searchGamesInRedis = async (searchTerm) => {
 
     return results.documents.map(doc => ({
       name: doc.value.appname,
-      appId: doc.value.appid !== '-1' ? doc.value.appid : null
+      appId: doc.value.appid !== '' ? doc.value.appid : null,
+      poster: doc.value.appposter !== '' ? doc.value.appposter : null
     }))
   } catch (error) {
     console.error('Error during search:', error)

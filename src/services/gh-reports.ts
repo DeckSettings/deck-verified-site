@@ -125,6 +125,7 @@ export interface GithubProjectData {
 export interface GameSearchResult {
   name: string;
   appId: string;
+  poster: string;
 }
 
 export const extractHeadingValue = (lines: string[], heading: string): string | null => {
@@ -335,7 +336,8 @@ export const searchGames = async (searchString: string | null): Promise<GameSear
     const data = await response.json() as GameSearchResult[]
     const gameSearchResults: GameSearchResult[] = data.map(githubData => ({
       name: githubData.name,
-      appId: githubData.appId
+      appId: githubData.appId,
+      poster: githubData.poster
     }))
     return gameSearchResults
   } catch (error) {

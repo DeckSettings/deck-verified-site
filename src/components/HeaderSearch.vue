@@ -91,14 +91,14 @@ onUnmounted(() => {
           @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.name)}`)">
           <q-item-section avatar>
             <img
-              v-if="!result.appId"
+              v-if="!result.poster"
               src="~/assets/poster-placeholder.png"
               alt="Placeholder"
               class="game-image"
             >
             <img
               v-else
-              :src="`https://steamcdn-a.akamaihd.net/steam/apps/${result.appId}/library_600x900.jpg`"
+              :src="result.poster"
               alt="Game Image"
               class="game-image"
             >
