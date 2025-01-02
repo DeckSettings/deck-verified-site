@@ -82,13 +82,22 @@ export default defineComponent({
           >
             <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
               <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
-                <img
+                <q-img
                   v-if="report.data.appid"
                   class="game-poster"
                   :src="`https://steamcdn-a.akamaihd.net/steam/apps/${report.data.appid}/library_600x900.jpg`"
                   alt="Game Image"
-                  :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-                />
+                  :ratio="2/3"
+                  :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
+                >
+                  <template v-slot:error>
+                    <img
+                      src="~/assets/poster-placeholder.png"
+                      alt="Placeholder"
+                      :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
+                    />
+                  </template>
+                </q-img>
                 <img
                   v-else
                   class="game-poster"
