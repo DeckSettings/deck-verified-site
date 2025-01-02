@@ -7,7 +7,8 @@
     "express-rate-limit": "^7.5.0",
     "logfmt": "^1.4.0",
     "node-fetch": "^3.3.2",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "winston": "^3.17.0"
   },
   "scripts": {
     "serve": "node index.js",

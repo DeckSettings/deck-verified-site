@@ -1,6 +1,7 @@
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args))
 const logfmt = require('logfmt')
 const { storeGameInRedis, parseGameProjectBody, parseReportBody } = require('./helpers')
+const logger = require('./logger')
 
 // Configure default GitHub auth token
 const defaultGithubAuthToken = process.env.GH_TOKEN || null
@@ -21,7 +22,7 @@ const fetchReports = async (
   const response = await fetch(url)
   if (!response.ok) {
     const errorBody = await response.text()
-    console.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
+    logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
     return []
   }
   return await response.json()
@@ -38,16 +39,16 @@ const updateGameIndex = async () => {
     const projects = await fetchProject('', authToken)
     if (projects) {
       for (const project of projects) {
-        console.log(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
+        logger.info(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
         try {
           await storeGameInRedis(project.gameName, project.appId, project.metadata.poster)
         } catch (error) {
-          console.error('Error storing game in Redis:', error)
+          logger.error('Error storing game in Redis:', error)
         }
       }
     }
   } catch (error) {
-    console.error('Error updating game index:', error)
+    logger.error('Error updating game index:', error)
   }
 }
 
@@ -149,14 +150,14 @@ const fetchProject = async (searchTerm, authToken = null) => {
 
       if (!response.ok) {
         const errorBody = await response.text()
-        console.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
+        logger.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
         return null
       }
 
       const responseData = await response.json()
 
       if (!responseData.data?.node || !responseData.data?.node.projectsV2) {
-        console.log('No project data returned from org node.')
+        logger.info('No project data returned from org node.')
         return null // Return null to indicate no data
       }
       discoveredProjects = discoveredProjects.concat(responseData.data.node.projectsV2.nodes)
@@ -213,7 +214,7 @@ const fetchProject = async (searchTerm, authToken = null) => {
 
     return returnProjects
   } catch (error) {
-    console.error('Error fetching organization projects:', error)
+    logger.error('Error fetching organization projects:', error)
     return null
   }
 }
@@ -224,7 +225,7 @@ const fetchIssueLabels = async (authToken = null) => {
     authToken = defaultGithubAuthToken
   }
 
-  console.log('Fetching labels from GitHub API')
+  logger.info('Fetching labels from GitHub API')
   const headers = {
     'Content-Type': 'application/json'
   }
@@ -237,7 +238,7 @@ const fetchIssueLabels = async (authToken = null) => {
   })
   if (!response.ok) {
     const errorBody = await response.text()
-    console.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
+    logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
     throw new Error('Failed to fetch labels from GitHub API. Non-success response recieved from GitHub')
   }
   return await response.json()
@@ -273,14 +274,14 @@ const getOrgId = async (orgName, authToken) => {
 
     if (!response.ok) {
       const errorBody = await response.text()
-      console.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
+      logger.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
       throw new Error('Failed to fetch organization ID')
     }
 
     const responseData = await response.json()
     return responseData.data.organization.id
   } catch (error) {
-    console.error('Error fetching organization ID:', error)
+    logger.error('Error fetching organization ID:', error)
     throw error
   }
 }

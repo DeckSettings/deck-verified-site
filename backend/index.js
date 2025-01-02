@@ -3,6 +3,7 @@ const { connectToRedis, redisClient } = require('./redis')
 const { updateGameIndex, fetchReports, fetchProject, fetchIssueLabels } = require('./github')
 const { generalLimiter } = require('./rateLimiter')
 const { storeGameInRedis, searchGamesInRedis, cacheTime } = require('./helpers')
+const logger = require('./logger')
 
 const app = express()
 
@@ -16,7 +17,7 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
   try {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      console.log('Serving from Redis cache')
+      logger.info('Serving from Redis cache')
       return res.json(JSON.parse(cachedData))
     }
 
@@ -30,15 +31,15 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
     )
     if (reports && reports.items.length > 0) {
       await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
-      console.log('Data fetched from GitHub and cached in Redis')
+      logger.info('Data fetched from GitHub and cached in Redis')
 
       res.json(reports.items)
     } else {
-      console.log('No reports found.')
+      logger.info('No reports found.')
       res.status(204).json([]) // 204 No Content
     }
   } catch (error) {
-    console.error('Error fetching recent reports:', error)
+    logger.error('Error fetching recent reports:', error)
     res.status(500).json({ error: 'Failed to fetch recent reports' })
   }
 })
@@ -48,7 +49,7 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
   try {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      console.log('Serving from Redis cache')
+      logger.info('Serving from Redis cache')
       return res.json(JSON.parse(cachedData))
     }
 
@@ -62,15 +63,15 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
     )
     if (reports && reports.items.length > 0) {
       await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
-      console.log('Data fetched from GitHub and cached in Redis')
+      logger.info('Data fetched from GitHub and cached in Redis')
 
       res.json(reports.items)
     } else {
-      console.log('No reports found.')
+      logger.info('No reports found.')
       res.status(204).json([]) // 204 No Content
     }
   } catch (error) {
-    console.error('Error fetching popular reports:', error)
+    logger.error('Error fetching popular reports:', error)
     res.status(500).json({ error: 'Failed to fetch popular reports' })
   }
 })
@@ -93,32 +94,32 @@ app.get('/deck-verified/api/v1/search_games_by_project', async (req, res) => {
   try {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      console.log('Serving from Redis cache')
+      logger.info('Serving from Redis cache')
       return res.json(JSON.parse(cachedData))
     }
 
     const projects = await fetchProject(searchTerm, null)
     if (projects) {
       await redisClient.set(redisKey, JSON.stringify(projects), { EX: cacheTime }) // Cache for 1 hour
-      console.log('Data fetched from GitHub and cached in Redis')
+      logger.info('Data fetched from GitHub and cached in Redis')
 
       // Store any game results in our search cache
       for (const project of projects) {
-        console.log(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
+        logger.info(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
         try {
           await storeGameInRedis(project.gameName, project.appId)
         } catch (error) {
-          console.error('Error storing game in Redis:', error)
+          logger.error('Error storing game in Redis:', error)
         }
       }
 
       res.json(projects)
     } else {
-      console.log('No projects found.')
+      logger.info('No projects found.')
       res.status(204).json([])
     }
   } catch (error) {
-    console.error('Error:', error)
+    logger.error('Error:', error)
     res.status(500).json({ error: 'Failed to fetch projects' })
   }
 })
@@ -141,11 +142,11 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
     if (games.length > 0) {
       res.json(games)
     } else {
-      console.log('No games found.')
+      logger.info('No games found.')
       res.status(204).json([])
     }
   } catch (error) {
-    console.error('Error:', error)
+    logger.error('Error:', error)
     res.status(500).json({ error: 'Failed to search games' })
   }
 })
@@ -155,17 +156,17 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
   try {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      console.log('Serving from Redis cache')
+      logger.info('Serving from Redis cache')
       return res.json(JSON.parse(cachedData))
     }
 
     const labels = await fetchIssueLabels()
     await redisClient.set(redisKey, JSON.stringify(labels), { EX: cacheTime }) // Cache for 1 hour
-    console.log('Data fetched from GitHub and cached in Redis')
+    logger.info('Data fetched from GitHub and cached in Redis')
 
     res.json(labels)
   } catch (error) {
-    console.error('Error:', error)
+    logger.error('Error:', error)
     res.status(500).json({ error: 'Failed to fetch labels' })
   }
 })
@@ -176,7 +177,7 @@ const startServer = async () => {
     await connectToRedis()
 
     // Continue with the rest of the script after Redis is connected
-    console.log('Redis connected. Proceeding with the rest of the script...')
+    logger.info('Redis connected. Proceeding with the rest of the script...')
 
     // Run scheduled tasks
     // Call updateGameIndex on start
@@ -187,10 +188,10 @@ const startServer = async () => {
     // Server
     const port = 9022
     app.listen(port, () => {
-      console.log(`Server listening on port ${port}`)
+      logger.info(`Server listening on port ${port}`)
     })
   } catch (error) {
-    console.error('Error starting the server:', error)
+    logger.error('Error starting the server:', error)
     process.exit(1)
   }
 }

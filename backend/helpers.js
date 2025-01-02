@@ -1,4 +1,5 @@
 const { redisClient } = require('./redis')
+const logger = require('./logger')
 
 const cacheTime = process.env.CACHE_TIME || 600 // Default 10 Minutes
 
@@ -17,9 +18,9 @@ const storeGameInRedis = async (gameName, appId = null, appPoster = null) => {
       appid: appId ? String(appId) : '',   // Store appid, use empty string if null
       appposter: appPoster ? String(appPoster) : ''   // Store poster, use empty string if null
     })
-    console.log(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, poster: ${appPoster ?? 'null'})`)
+    logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, poster: ${appPoster ?? 'null'})`)
   } catch (error) {
-    console.error('Failed to store game in Redis:', error)
+    logger.error('Failed to store game in Redis:', error)
   }
 }
 
@@ -30,7 +31,7 @@ const searchGamesInRedis = async (searchTerm) => {
 
   try {
     // Construct the search query to match either appname or appid
-    console.log(`Searching cached games list for '${searchTerm}'`)
+    logger.info(`Searching cached games list for '${searchTerm}'`)
 
     const results = await redisClient.ft.search(
       'games_idx',
@@ -41,7 +42,7 @@ const searchGamesInRedis = async (searchTerm) => {
     )
 
     if (results.total === 0) {
-      console.log('No games found.')
+      logger.info('No games found.')
       return []
     }
 
@@ -51,7 +52,7 @@ const searchGamesInRedis = async (searchTerm) => {
       poster: doc.value.appposter !== '' ? doc.value.appposter : null
     }))
   } catch (error) {
-    console.error('Error during search:', error)
+    logger.error('Error during search:', error)
     return []
   }
 }
@@ -94,10 +95,10 @@ const parseReportBody = async (markdown) => {
   try {
     let schema = await redisClient.get(redisKey)
     if (schema) {
-      console.log('Schema found in Redis cache')
+      logger.info('Schema found in Redis cache')
       schema = JSON.parse(schema)
     } else {
-      console.log('Schema not found in Redis cache, fetching from URL')
+      logger.info('Schema not found in Redis cache, fetching from URL')
       const response = await fetch(schemaUrl)
       schema = await response.json()
       await redisClient.set(redisKey, JSON.stringify(schema), { EX: cacheTime }) // Cache for 1 hour
@@ -113,7 +114,7 @@ const parseReportBody = async (markdown) => {
 
     return data
   } catch (error) {
-    console.error('Error fetching or parsing schema:', error)
+    logger.error('Error fetching or parsing schema:', error)
     throw error // Re-throw the error to be handled by the caller
   }
 }
@@ -128,7 +129,7 @@ const parseGameProjectBody = async (markdown) => {
     }
     return data
   } catch (error) {
-    console.error('Error fetching or parsing schema:', error)
+    logger.error('Error fetching or parsing schema:', error)
     throw error // Re-throw the error to be handled by the caller
   }
 }

@@ -1,4 +1,5 @@
 const redis = require('redis')
+const logger = require('./logger')
 
 // Redis config
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'
@@ -20,7 +21,7 @@ const createRedisSearchIndex = async () => {
     const indexExists = await redisClient.ft.info('games_idx').catch(() => null)
 
     if (!indexExists) {
-      console.log('Creating RedisSearch index...')
+      logger.info('Creating RedisSearch index...')
 
       // Create the index with a game name (TEXT) and appid (NUMERIC)
       await redisClient.ft.create(
@@ -36,19 +37,19 @@ const createRedisSearchIndex = async () => {
           PREFIX: 'game:'
         }
       )
-      console.log('RedisSearch index created.')
+      logger.info('RedisSearch index created.')
     }
   } catch (error) {
-    console.error('Error creating RedisSearch index:', error)
+    logger.error('Error creating RedisSearch index:', error)
   }
 }
 
 const connectToRedis = async () => {
   redisClient.on('connect', () => {
-    console.log('Connected to Redis!')
+    logger.info('Connected to Redis!')
   })
   redisClient.on('error', (err) => {
-    console.error('Redis connection error:', err)
+    logger.error('Redis connection error:', err)
   })
   try {
     // Connect to redis
@@ -56,7 +57,7 @@ const connectToRedis = async () => {
     // Create redis search index
     await createRedisSearchIndex()
   } catch (err) {
-    console.error('Error connecting to Redis:', err)
+    logger.error('Error connecting to Redis:', err)
     process.exit(1)
   }
 }
