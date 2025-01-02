@@ -1,4 +1,5 @@
 const express = require('express')
+const rateLimit = require('express-rate-limit')
 const redis = require('redis')
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args))
 var logfmt = require('logfmt')
@@ -7,6 +8,15 @@ const app = express()
 
 // Config
 const cacheTime = process.env.CACHE_TIME || 600 // 10 Minutes
+
+// Apply a rate limiter to all routes
+const generalLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000,  // 2 minutes
+  max: 120,                 // Limit each IP to 120 requests per window
+  standardHeaders: true,    // Return rate limit info in headers
+  legacyHeaders: false      // Disable X-RateLimit headers
+})
+app.use(generalLimiter)
 
 // Connection to Redis
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'

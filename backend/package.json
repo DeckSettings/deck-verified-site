@@ -4,6 +4,7 @@
   "main": "index.js",
   "dependencies": {
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "logfmt": "^1.4.0",
     "node-fetch": "^3.3.2",
     "redis": "^4.7.0"
