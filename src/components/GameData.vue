@@ -367,7 +367,7 @@ watch(
                                      class="config-item">
                                   <span>Compatibility Tool:</span>
                                   <span>
-                                    {{ issue.data.compatibilityTool }} {{ issue.data.compatibilityToolVersion }}
+                                    {{ issue.data.compatibilityTool }}: {{ issue.data.compatibilityToolVersion }}
                                   </span>
                                 </div>
                                 <div v-if="issue.data.customLaunchOptions" class="config-item">
