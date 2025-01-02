@@ -33,7 +33,8 @@ const createRedisSearchIndex = async () => {
         {
           appsearch: { type: 'TEXT', SORTABLE: true }, // Searchable index
           appname: { type: 'TEXT', SORTABLE: true }, // Full game name
-          appid: { type: 'TEXT', SORTABLE: true }   // App ID
+          appid: { type: 'TEXT', SORTABLE: true },   // App ID
+          appposter: { type: 'TEXT', SORTABLE: true }   // App poster
         },
         {
           ON: 'HASH',
@@ -75,21 +76,22 @@ connectRedis()
 const defaultGithubAuthToken = process.env.GH_TOKEN || null
 
 // Helper functions
-const storeGameInRedis = async (gameName, appid = null) => {
+const storeGameInRedis = async (gameName, appId = null, appPoster = null) => {
   if (!gameName) {
     throw new Error('Game name is required.')
   }
 
-  const gameId = appid ? `game:${appid}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
-  const searchString = appid ? `${appid}_${encodeURIComponent(gameName.toLowerCase())}` : `${encodeURIComponent(gameName.toLowerCase())}`
+  const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
+  const searchString = appId ? `${appId}_${encodeURIComponent(gameName.toLowerCase())}` : `${encodeURIComponent(gameName.toLowerCase())}`
 
   try {
     await redisClient.hSet(gameId, {
       appsearch: searchString, // Add string used for searches
       appname: gameName,  // Use gameName for the appname
-      appid: appid ? String(appid) : ''   // Store appid, use empty string if null
+      appid: appId ? String(appId) : '',   // Store appid, use empty string if null
+      appposter: appPoster ? String(appPoster) : ''   // Store poster, use empty string if null
     })
-    console.log(`Stored game: ${gameName} (appid: ${appid ?? 'null'})`)
+    console.log(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, poster: ${appPoster ?? 'null'})`)
   } catch (error) {
     console.error('Failed to store game in Redis:', error)
   }
@@ -402,7 +404,11 @@ const fetchProject = async (searchTerm, authToken) => {
           projectNumber: project.number,
           shortDescription: project.shortDescription,
           readme: project.readme,
-          metadata: {},
+          metadata: {
+            poster: '',
+            hero: '',
+            banner: ''
+          },
           issues: []
         }
 
@@ -459,7 +465,7 @@ const updateGameIndex = async () => {
       for (const project of projects) {
         console.log(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(project.gameName, project.appId)
+          await storeGameInRedis(project.gameName, project.appId, project.metadata.poster)
         } catch (error) {
           console.error('Error storing game in Redis:', error)
         }
