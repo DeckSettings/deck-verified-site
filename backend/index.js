@@ -54,12 +54,16 @@ const connectRedis = async () => {
       await redisClient.connect()
       console.log('Connected to Redis!')
       await createRedisSearchIndex()
-      break
+      return
     } catch (err) {
       console.error('Redis connection error:', err)
       retries -= 1
+      if (retries === 0) {
+        console.error('Max retries reached. Exiting...')
+        process.exit(1)
+      }
       console.log(`Retrying... attempts left: ${retries}`)
-      await new Promise(resolve => setTimeout(resolve, 5000))  // Wait 5 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 5000))
     }
   }
 }
