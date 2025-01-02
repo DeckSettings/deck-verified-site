@@ -127,6 +127,37 @@ const searchGamesInRedis = async (searchTerm) => {
   }
 }
 
+const extractHeadingValue = async (lines, heading) => {
+  let value = null
+  const headingToFind = `### ${heading}`.toLowerCase()
+  const headingIndex = lines.findIndex(
+    (line) => line.trim().toLowerCase() === headingToFind
+  )
+  if (headingIndex === -1) {
+    return null
+  }
+
+  for (let i = headingIndex + 1; i < lines.length; i++) {
+    const currentLine = lines[i].trim()
+
+    if (currentLine.toLowerCase().startsWith('### ')) {
+      value = null
+      break
+    }
+    if (!currentLine) {
+      continue
+    }
+    value = currentLine
+    break
+  }
+
+  if (value === undefined) {
+    value = null
+  }
+  return value
+}
+
+
 const parseReportBody = async (markdown) => {
   const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/deck-settings-db/refs/heads/master/.github/scripts/config/game-report-validation.json'
   const redisKey = 'issue_game_report_schema:' + schemaUrl
@@ -144,37 +175,28 @@ const parseReportBody = async (markdown) => {
     }
 
     const data = {}
-    const lines = markdown.split('\r\n')
+    const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
+    const lines = normalizedMarkdown.split('\n')
 
     for (const heading in schema.properties) {
-      const headingToFind = `### ${heading}`.toLowerCase()
-      const headingIndex = lines.findIndex(
-        (line) => line.trim().toLowerCase() === headingToFind
-      )
-      if (headingIndex === -1) {
-        data[heading] = null
-        continue
-      }
-
-      for (let i = headingIndex + 1; i < lines.length; i++) {
-        const currentLine = lines[i].trim()
-
-        if (currentLine.toLowerCase().startsWith('### ')) {
-          data[heading] = null
-          break
-        }
-        if (!currentLine) {
-          continue
-        }
-        data[heading] = currentLine
-        break
-      }
-
-      if (data[heading] === undefined) {
-        data[heading] = null
-      }
+      data[heading] = await extractHeadingValue(lines, heading)
     }
 
+    return data
+  } catch (error) {
+    console.error('Error fetching or parsing schema:', error)
+    throw error // Re-throw the error to be handled by the caller
+  }
+}
+
+const parseGameProjectBody = async (markdown) => {
+  try {
+    const data = {}
+    const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
+    const lines = normalizedMarkdown.split('\n')
+    for (const heading of ['Poster', 'Hero', 'Banner']) {
+      data[heading] = await extractHeadingValue(lines, heading)
+    }
     return data
   } catch (error) {
     console.error('Error fetching or parsing schema:', error)
@@ -360,7 +382,7 @@ const fetchProject = async (searchTerm, authToken) => {
       if (!response.ok) {
         const errorBody = await response.text()
         console.error(`GitHub GraphQL API request failed with status ${response.status}: ${errorBody}`)
-        // Handle the error appropriately, e.g., throw an error or return an empty array
+        return null
       }
 
       const responseData = await response.json()
@@ -371,22 +393,28 @@ const fetchProject = async (searchTerm, authToken) => {
       }
       discoveredProjects = discoveredProjects.concat(responseData.data.node.projectsV2.nodes)
 
-      discoveredProjects.forEach(project => {
+      for (const project of discoveredProjects) {
         const parsedTitle = logfmt.parse(project.title)
 
-        // Create a new projectData object for each project
         const projectData = {
           gameName: parsedTitle.name ?? '',
           appId: parsedTitle.appid ? parseInt(parsedTitle.appid, 10) : null,
           projectNumber: project.number,
           shortDescription: project.shortDescription,
           readme: project.readme,
+          metadata: {},
           issues: []
         }
 
-        project.items.nodes.forEach(node => {
+        // Parse Game data from project readme
+        projectData.metadata = Object.fromEntries(
+          Object.entries(await parseGameProjectBody(project.readme)).map(([key, value]) => [key.toLowerCase(), value])
+        )
+
+        // Parse issues list
+        for (const node of project.items.nodes) {
           if (node.content.__typename === 'Issue' && node.content.body) {
-            const parsedData = parseReportBody(node.content.body)
+            const parsedIssueData = await parseReportBody(node.content.body)
             projectData.issues.push({
               id: node.content.databaseId,
               title: node.content.title,
@@ -400,12 +428,12 @@ const fetchProject = async (searchTerm, authToken) => {
               user: node.content.author,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
-              ...parsedData
+              ...parsedIssueData
             })
           }
-        })
+        }
         returnProjects.push(projectData)
-      })
+      }
 
       hasNextPage = responseData.data.node.projectsV2.pageInfo.hasNextPage
       endCursor = responseData.data.node.projectsV2.pageInfo.endCursor
@@ -414,7 +442,7 @@ const fetchProject = async (searchTerm, authToken) => {
     return returnProjects
   } catch (error) {
     console.error('Error fetching organization projects:', error)
-    return null // Return null to indicate an error
+    return null
   }
 }
 
