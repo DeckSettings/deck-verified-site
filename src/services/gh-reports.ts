@@ -106,12 +106,19 @@ export interface GithubProjectIssues {
   issues: GithubIssue[];
 }
 
+export interface GithubProjectMetadata {
+  poster: string;
+  hero: string;
+  banner: string;
+}
+
 export interface GithubProjectData {
   gameName: string;
   appId?: number;
   projectNumber: number;
   shortDescription: string;
   readme: string;
+  metadata: GithubProjectMetadata
   issues: GithubIssue[];
 }
 

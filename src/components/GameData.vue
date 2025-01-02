@@ -17,6 +17,7 @@ const gameData = ref<GithubProjectData | null>(null)
 const parsedReports = ref<ParsedReport[]>([])
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
+const gameBanner = ref<string | null>(null)
 const githubProjectSearchLink = ref<string | null>(null)
 const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/deck-settings-db/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
 
@@ -171,12 +172,11 @@ const initGameData = async (params: RouteParamsGeneric) => {
     if (gameData.value.projectNumber) {
       githubProjectSearchLink.value = `https://github.com/DeckSettings/deck-settings-db/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
     }
-    if (gameData.value.appId) {
-      appId.value = String(gameData.value.appId)
-      gameBackground.value = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId.value}/library_hero.jpg`
-      gamePoster.value = `https://steamcdn-a.akamaihd.net/steam/apps/${appId.value}/library_600x900.jpg`
+    if (gameData.value.metadata) {
+      gameBackground.value = gameData.value.metadata.hero
+      gamePoster.value = gameData.value.metadata.poster
       // TODO: Add header image in place of poster image on larger screens
-      //  - https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId.value}/header.jpg
+      gameBanner.value = gameData.value.metadata.banner
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
     }
     // Parse the gameData issues
