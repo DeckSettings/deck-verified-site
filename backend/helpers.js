@@ -173,30 +173,33 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
   }
 
   // Fetch game suggestions from Steam store
-  const url = `https://store.steampowered.com/search/suggest?f=games&cc=US&use_store_query=1&term=${encodedSearchTerm}`
+  const url = `https://store.steampowered.com/search/suggest?f=json&cc=US&use_store_query=1&category1=998&ndl=1&term=${encodedSearchTerm}`
   try {
     logger.info(`Fetching game suggestions for "${searchTerm}" from Steam API...`)
     const response = await fetch(url)
-    const html = await response.text()
-    const $ = cheerio.load(html)
-
-    const games = $('a.match').map((_, game) => {
-      const appId = $(game).attr('data-ds-appid')
-      const name = $(game).find('.match_name').text().trim()
-      const img = $(game).find('.match_img img').attr('src')
-
-      return {
-        appId,
-        name,
-        img
-      }
-    }).get()
-
+    // Check if response is ok (status 200)
+    if (!response.ok) {
+      logger.error(`Steam API request failed with status: ${response.status}`)
+      return []
+    }
+    // Load JSON
+    const data = await response.json()
+    // Ensure data is an array before filtering
+    if (!Array.isArray(data)) {
+      logger.error(`Unexpected response format for "${searchTerm}":`, data)
+      return []
+    }
+    // Filter for games only
+    const games = data
+      .filter(item => item.type === 'game')
+      .map(item => ({
+        appId: item.id,
+        name: item.name
+      }))
     // Cache results in Redis for 30 days
     const monthCacheTime = 60 * 60 * 24 * 30
     await redisClient.set(redisKey, JSON.stringify(games), { EX: monthCacheTime })
     logger.info(`Steam game suggestions for "${searchTerm}" cached for 30 days`)
-
     return games
   } catch (error) {
     logger.error('Error fetching Steam game suggestions:', error)

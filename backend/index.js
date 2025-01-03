@@ -132,9 +132,12 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
       const steamResults = await fetchSteamGameSuggestions(searchString)
       // Loop over steamResults and add them to redis
       for (const result of steamResults) {
-        logger.info(`Storing project ${result.name}, appId ${result.appId}, and banner ${result.img} in RedisSearch`)
+        logger.info(`Storing project ${result.name}, appId ${result.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(result.name, result.appId, result.img)
+          if (result.name && result.appId) {
+            const headerImage = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${result.appId}/header.jpg`
+            await storeGameInRedis(result.name, result.appId, headerImage)
+          }
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
