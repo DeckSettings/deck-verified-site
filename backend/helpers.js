@@ -10,11 +10,13 @@ const storeGameInRedis = async (gameName, appId = null, banner = null) => {
   }
 
   const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
-  const searchString = appId ? `${appId}_${encodeURIComponent(gameName.toLowerCase())}` : `${encodeURIComponent(gameName.toLowerCase())}`
+  const searchString = appId ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
+  // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
+  const escapedSearchString = searchString.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
 
   try {
     await redisClient.hSet(gameId, {
-      appsearch: searchString, // Add string used for searches
+      appsearch: escapedSearchString, // Add string used for searches
       appname: gameName,  // Use gameName for the appname
       appid: appId ? String(appId) : '',   // Store appid, use empty string if null
       appbanner: banner ? String(banner) : ''   // Store poster, use empty string if null
@@ -33,10 +35,13 @@ const searchGamesInRedis = async (searchTerm) => {
   try {
     // Construct the search query to match either appname or appid
     logger.info(`Searching cached games list for '${searchTerm}'`)
+    // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
+    const escapedSearchTerm = searchTerm.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
 
+    const query = `@appsearch:*${escapedSearchTerm}*`
     const results = await redisClient.ft.search(
       'games_idx',
-      `@appsearch:*${encodeURIComponent(searchTerm.toLowerCase())}*`,
+      query,
       {
         LIMIT: { from: 0, size: 10 }
       }

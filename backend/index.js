@@ -125,12 +125,6 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
     return res.status(400).json({ error: 'Missing search parameter' })
   }
 
-  try {
-    searchString = decodeURIComponent(searchString)
-  } catch (error) {
-    return res.status(400).json({ error: `Invalid game_name parameter: ${error}` })
-  }
-
   // Run search
   let results = []
   try {
