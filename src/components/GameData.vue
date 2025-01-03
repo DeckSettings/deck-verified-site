@@ -242,223 +242,244 @@ watch(
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pl-none-sm q-py-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="gameData">
-            <div class="game-data-filters row q-mb-md justify-between items-center">
-              <!-- Filters (Top Left) -->
-              <div class="filters row q-gutter-sm">
-                <q-select v-model="selectedDevice" label="Device"
-                          dense outlined
-                          class="filter-select"
-                          :options="deviceOptions" emit-value map-options />
-                <q-select v-model="selectedLauncher" label="Launcher"
-                          dense outlined
-                          class="filter-select"
-                          :options="launcherOptions" emit-value map-options />
+            <div v-if="parsedReports === null || parsedReports.length > 0">
+              <div class="game-data-filters row q-mb-md justify-between items-center">
+                <!-- Filters (Top Left) -->
+                <div class="filters row q-gutter-sm">
+                  <q-select v-model="selectedDevice" label="Device"
+                            dense outlined
+                            class="filter-select"
+                            :options="deviceOptions" emit-value map-options />
+                  <q-select v-model="selectedLauncher" label="Launcher"
+                            dense outlined
+                            class="filter-select"
+                            :options="launcherOptions" emit-value map-options />
+                </div>
+
+                <!-- Sorting (Top Right) -->
+                <div class="sorting row q-gutter-sm " :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
+                  <!-- Sort by Updated -->
+                  <q-btn dense round flat @click="toggleSortOrder('updated')"
+                         :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
+                    <q-icon name="event" />
+                    <q-icon
+                      :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
+                      :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
+                    <q-tooltip>Sort by Last Updated</q-tooltip>
+                  </q-btn>
+                  <!-- Sort by Most Liked -->
+                  <q-btn dense round flat @click="toggleSortOrder('reactions')"
+                         :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
+                    <q-icon name="thumb_up" />
+                    <q-icon
+                      :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
+                      :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
+                    <q-tooltip>Sort by Most Liked</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
 
-              <!-- Sorting (Top Right) -->
-              <div class="sorting row q-gutter-sm " :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
-                <!-- Sort by Updated -->
-                <q-btn dense round flat @click="toggleSortOrder('updated')"
-                       :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
-                  <q-icon name="event" />
-                  <q-icon
-                    :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
-                    :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
-                  <q-tooltip>Sort by Last Updated</q-tooltip>
-                </q-btn>
-                <!-- Sort by Most Liked -->
-                <q-btn dense round flat @click="toggleSortOrder('reactions')"
-                       :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
-                  <q-icon name="thumb_up" />
-                  <q-icon
-                    :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
-                    :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
-                  <q-tooltip>Sort by Most Liked</q-tooltip>
-                </q-btn>
-              </div>
-            </div>
+              <q-list separator>
+                <q-item
+                  v-for="(issue, index) in filteredIssues" :key="index"
+                  class="game-data-item q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
+                  <q-item-section class="report">
+                    <q-item-label class="q-mr-lg q-my-sm">
+                      {{ issue.data.summary }}
+                    </q-item-label>
+                    <q-item-label caption class="q-mr-lg q-mb-sm">
+                      <div class="row items-center">
+                        <q-chip
+                          v-if="issue.data.deckCompatibility"
+                          size="sm" square>
+                          <q-avatar
+                            :icon="getCompatibilityIcon(issue.data.deckCompatibility)"
+                            :color="getCompatibilityColor(issue.data.deckCompatibility)"
+                            text-color="white" />
+                          {{ issue.data.deckCompatibility }}
+                        </q-chip>
+                        <q-chip
+                          v-if="issue.data.device"
+                          size="sm" square>
+                          <q-avatar color="blue" text-color="white">
+                            <q-icon name="img:src/assets/icons/handheld.svg" color="white" />
+                          </q-avatar>
+                          {{ issue.data.device }}
+                        </q-chip>
+                        <!--<q-chip
+                          v-if="issue.data.compatibilityTool"
+                          size="sm" square>
+                          <q-avatar icon="gamepad" color="orange" text-color="white" />
+                          {{ issue.data.compatibilityTool }}:
+                          {{ issue.data.compatibilityToolVersion }}
+                        </q-chip>-->
+                        <q-chip
+                          v-if="issue.data.targetFramerate"
+                          size="sm" square>
+                          <q-avatar icon="speed" color="teal" text-color="white" />
+                          Target FPS: {{ issue.data.targetFramerate }}
+                        </q-chip>
+                        <q-chip
+                          v-if="issue.data.launcher"
+                          size="sm" square>
+                          <q-avatar icon="rocket_launch" color="purple" text-color="white" />
+                          Launcher: {{ issue.data.launcher }}
+                        </q-chip>
+                        <q-chip
+                          v-if="issue.data.osVersion"
+                          size="sm" square>
+                          <q-avatar icon="fab fa-steam" color="red" text-color="white" />
+                          OS: {{ issue.data.osVersion }}
+                        </q-chip>
+                      </div>
+                    </q-item-label>
 
-            <q-list separator>
-              <q-item
-                v-for="(issue, index) in filteredIssues" :key="index"
-                class="game-data-item q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
-                <q-item-section class="report">
-                  <q-item-label class="q-mr-lg q-my-sm">
-                    {{ issue.data.summary }}
-                  </q-item-label>
-                  <q-item-label caption class="q-mr-lg q-mb-sm">
-                    <div class="row items-center">
-                      <q-chip
-                        v-if="issue.data.deckCompatibility"
-                        size="sm" square>
-                        <q-avatar
-                          :icon="getCompatibilityIcon(issue.data.deckCompatibility)"
-                          :color="getCompatibilityColor(issue.data.deckCompatibility)"
-                          text-color="white" />
-                        {{ issue.data.deckCompatibility }}
-                      </q-chip>
-                      <q-chip
-                        v-if="issue.data.device"
-                        size="sm" square>
-                        <q-avatar color="blue" text-color="white">
-                          <q-icon name="img:src/assets/icons/handheld.svg" color="white" />
-                        </q-avatar>
-                        {{ issue.data.device }}
-                      </q-chip>
-                      <!--<q-chip
-                        v-if="issue.data.compatibilityTool"
-                        size="sm" square>
-                        <q-avatar icon="gamepad" color="orange" text-color="white" />
-                        {{ issue.data.compatibilityTool }}:
-                        {{ issue.data.compatibilityToolVersion }}
-                      </q-chip>-->
-                      <q-chip
-                        v-if="issue.data.targetFramerate"
-                        size="sm" square>
-                        <q-avatar icon="speed" color="teal" text-color="white" />
-                        Target FPS: {{ issue.data.targetFramerate }}
-                      </q-chip>
-                      <q-chip
-                        v-if="issue.data.launcher"
-                        size="sm" square>
-                        <q-avatar icon="rocket_launch" color="purple" text-color="white" />
-                        Launcher: {{ issue.data.launcher }}
-                      </q-chip>
-                      <q-chip
-                        v-if="issue.data.osVersion"
-                        size="sm" square>
-                        <q-avatar icon="fab fa-steam" color="red" text-color="white" />
-                        OS: {{ issue.data.osVersion }}
-                      </q-chip>
+                    <!-- Toggle Button (Top Right) -->
+                    <div class="top-right">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        :icon="showIssueBody[index] ? 'expand_more' : 'chevron_right'"
+                        :text-color="showIssueBody[index] ? 'primary' : 'white'"
+                        @click="toggleConfigVisibility(index)"
+                        :class="showIssueBody[index] ? 'rotate-down' : 'rotate-right'"
+                      />
                     </div>
-                  </q-item-label>
 
-                  <!-- Toggle Button (Top Right) -->
-                  <div class="top-right">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      :icon="showIssueBody[index] ? 'expand_more' : 'chevron_right'"
-                      :text-color="showIssueBody[index] ? 'primary' : 'white'"
-                      @click="toggleConfigVisibility(index)"
-                      :class="showIssueBody[index] ? 'rotate-down' : 'rotate-right'"
-                    />
-                  </div>
-
-                  <!-- Config and Performance Cards -->
-                  <transition name="expand">
-                    <div v-show="showIssueBody[index]" class="game-config q-mt-md">
-                      <div class="row q-col-gutter-md">
-                        <!-- System Configuration Card -->
-                        <div class="col-xs-12 col-md-6">
-                          <q-card v-if="hasSystemConfig(issue)" class="config-card">
-                            <q-card-section>
-                              <div class="text-h6">System Configuration</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div class="config-list">
-                                <div v-if="issue.data.undervoltApplied" class="config-item">
-                                  <span>Undervolt Applied:</span>
-                                  <span>{{ issue.data.undervoltApplied }}</span>
-                                </div>
-                                <div v-if="issue.data.compatibilityTool && issue.data.compatibilityToolVersion"
-                                     class="config-item">
-                                  <span>Compatibility Tool:</span>
-                                  <span>
+                    <!-- Config and Performance Cards -->
+                    <transition name="expand">
+                      <div v-show="showIssueBody[index]" class="game-config q-mt-md">
+                        <div class="row q-col-gutter-md">
+                          <!-- System Configuration Card -->
+                          <div class="col-xs-12 col-md-6">
+                            <q-card v-if="hasSystemConfig(issue)" class="config-card">
+                              <q-card-section>
+                                <div class="text-h6">System Configuration</div>
+                              </q-card-section>
+                              <q-separator />
+                              <q-card-section class="q-pa-sm q-pa-sm-md">
+                                <div class="config-list">
+                                  <div v-if="issue.data.undervoltApplied" class="config-item">
+                                    <span>Undervolt Applied:</span>
+                                    <span>{{ issue.data.undervoltApplied }}</span>
+                                  </div>
+                                  <div v-if="issue.data.compatibilityTool && issue.data.compatibilityToolVersion"
+                                       class="config-item">
+                                    <span>Compatibility Tool:</span>
+                                    <span>
                                     {{ issue.data.compatibilityTool }}: {{ issue.data.compatibilityToolVersion }}
                                   </span>
+                                  </div>
+                                  <div v-if="issue.data.customLaunchOptions" class="config-item">
+                                    <span>Launch Options:</span>
+                                    <span>{{ issue.data.customLaunchOptions }}</span>
+                                  </div>
                                 </div>
-                                <div v-if="issue.data.customLaunchOptions" class="config-item">
-                                  <span>Launch Options:</span>
-                                  <span>{{ issue.data.customLaunchOptions }}</span>
+                              </q-card-section>
+                            </q-card>
+                          </div>
+                          <!-- Performance Settings Card -->
+                          <div class="col-xs-12 col-md-6">
+                            <q-card v-if="hasPerformanceSettings(issue)" class="config-card">
+                              <q-card-section>
+                                <div class="text-h6">Performance Settings</div>
+                              </q-card-section>
+                              <q-separator />
+                              <q-card-section class="q-pa-sm q-pa-sm-md">
+                                <div class="config-list">
+                                  <div v-if="issue.data.frameLimit" class="config-item">
+                                    <span>Frame Limit:</span>
+                                    <span>{{ issue.data.frameLimit }}</span>
+                                  </div>
+                                  <div v-if="issue.data.allowTearing" class="config-item">
+                                    <span>Allow Tearing:</span>
+                                    <span>{{ issue.data.allowTearing }}</span>
+                                  </div>
+                                  <div v-if="issue.data.halfRateShading" class="config-item">
+                                    <span>Half Rate Shading:</span>
+                                    <span>{{ issue.data.halfRateShading }}</span>
+                                  </div>
+                                  <div v-if="issue.data.tdpLimit" class="config-item">
+                                    <span>TDP Limit:</span>
+                                    <span>{{ issue.data.tdpLimit }}W</span>
+                                  </div>
+                                  <div v-if="issue.data.manualGpuClock" class="config-item">
+                                    <span>Manual GPU Clock:</span>
+                                    <span>{{ issue.data.manualGpuClock }}MHz</span>
+                                  </div>
+                                  <div v-if="issue.data.scalingMode" class="config-item">
+                                    <span>Scaling Mode:</span>
+                                    <span>{{ issue.data.scalingMode }}</span>
+                                  </div>
+                                  <div v-if="issue.data.scalingFilter" class="config-item">
+                                    <span>Scaling Filter:</span>
+                                    <span>{{ issue.data.scalingFilter }}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            </q-card-section>
-                          </q-card>
+                              </q-card-section>
+                            </q-card>
+                          </div>
                         </div>
-                        <!-- Performance Settings Card -->
-                        <div class="col-xs-12 col-md-6">
-                          <q-card v-if="hasPerformanceSettings(issue)" class="config-card">
-                            <q-card-section>
-                              <div class="text-h6">Performance Settings</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div class="config-list">
-                                <div v-if="issue.data.frameLimit" class="config-item">
-                                  <span>Frame Limit:</span>
-                                  <span>{{ issue.data.frameLimit }}</span>
-                                </div>
-                                <div v-if="issue.data.allowTearing" class="config-item">
-                                  <span>Allow Tearing:</span>
-                                  <span>{{ issue.data.allowTearing }}</span>
-                                </div>
-                                <div v-if="issue.data.halfRateShading" class="config-item">
-                                  <span>Half Rate Shading:</span>
-                                  <span>{{ issue.data.halfRateShading }}</span>
-                                </div>
-                                <div v-if="issue.data.tdpLimit" class="config-item">
-                                  <span>TDP Limit:</span>
-                                  <span>{{ issue.data.tdpLimit }}W</span>
-                                </div>
-                                <div v-if="issue.data.manualGpuClock" class="config-item">
-                                  <span>Manual GPU Clock:</span>
-                                  <span>{{ issue.data.manualGpuClock }}MHz</span>
-                                </div>
-                                <div v-if="issue.data.scalingMode" class="config-item">
-                                  <span>Scaling Mode:</span>
-                                  <span>{{ issue.data.scalingMode }}</span>
-                                </div>
-                                <div v-if="issue.data.scalingFilter" class="config-item">
-                                  <span>Scaling Filter:</span>
-                                  <span>{{ issue.data.scalingFilter }}</span>
-                                </div>
-                              </div>
-                            </q-card-section>
-                          </q-card>
-                        </div>
-                      </div>
-                      <div class="row q-ma-none q-pa-none">
-                        <div class="col q-ma-none q-pa-none">
-                          <q-card v-if="issue.data.gameDisplaySettings" class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
-                              <div class="text-h6">Game Display Settings</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(issue.data.gameDisplaySettings)"
-                                   class="markdown q-ml-xs-none q-ml-md-sm"></div>
-                            </q-card-section>
-                          </q-card>
-                          <q-card v-if="issue.data.gameGraphicsSettings"
-                                  class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
-                              <div class="text-h6">Game Graphics Settings</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(issue.data.gameGraphicsSettings)" class="markdown q-ml-md-sm"></div>
-                            </q-card-section>
-                          </q-card>
-                          <q-card v-if="issue.data.additionalNotes" class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
-                              <div class="text-h6">Additional Notes</div>
-                            </q-card-section>
-                            <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(issue.data.additionalNotes)" class="markdown q-ml-md-sm"></div>
-                            </q-card-section>
-                          </q-card>
-                        </div>
+                        <div class="row q-ma-none q-pa-none">
+                          <div class="col q-ma-none q-pa-none">
+                            <q-card v-if="issue.data.gameDisplaySettings"
+                                    class="config-card q-mt-md q-ma-none q-pa-none">
+                              <q-card-section>
+                                <div class="text-h6">Game Display Settings</div>
+                              </q-card-section>
+                              <q-separator />
+                              <q-card-section class="q-pa-sm q-pa-sm-md">
+                                <div v-html="marked(issue.data.gameDisplaySettings)"
+                                     class="markdown q-ml-xs-none q-ml-md-sm"></div>
+                              </q-card-section>
+                            </q-card>
+                            <q-card v-if="issue.data.gameGraphicsSettings"
+                                    class="config-card q-mt-md q-ma-none q-pa-none">
+                              <q-card-section>
+                                <div class="text-h6">Game Graphics Settings</div>
+                              </q-card-section>
+                              <q-separator />
+                              <q-card-section class="q-pa-sm q-pa-sm-md">
+                                <div v-html="marked(issue.data.gameGraphicsSettings)" class="markdown q-ml-md-sm"></div>
+                              </q-card-section>
+                            </q-card>
+                            <q-card v-if="issue.data.additionalNotes" class="config-card q-mt-md q-ma-none q-pa-none">
+                              <q-card-section>
+                                <div class="text-h6">Additional Notes</div>
+                              </q-card-section>
+                              <q-separator />
+                              <q-card-section class="q-pa-sm q-pa-sm-md">
+                                <div v-html="marked(issue.data.additionalNotes)" class="markdown q-ml-md-sm"></div>
+                              </q-card-section>
+                            </q-card>
+                          </div>
 
+                        </div>
                       </div>
-                    </div>
-                  </transition>
-                </q-item-section>
-              </q-item>
-            </q-list>
+                    </transition>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+            <div v-else class="no-reports-container">
+              <div class="no-reports-card">
+                <p class="text-center text-body1">No reports found for this game.</p>
+                <p class="text-center text-body1">Would you like to be the first?</p>
+                <div class="text-center q-mt-md">
+                  <q-btn
+                    class="full-width-sm"
+                    icon="fab fa-github"
+                    :href="githubSubmitReportLink"
+                    target="_blank"
+                    label="Submit a Report"
+                    color="white"
+                    text-color="black"
+                    no-caps
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -531,6 +552,19 @@ watch(
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+.no-reports-container {
+  height: 400px;
+}
+
+.no-reports-card {
+  background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 50px 20px;
+  text-align: center;
 }
 
 .game-data-item {
