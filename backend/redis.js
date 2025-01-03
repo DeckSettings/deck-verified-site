@@ -27,10 +27,7 @@ const createRedisSearchIndex = async () => {
       await redisClient.ft.create(
         'games_idx',
         {
-          appsearch: { type: 'TEXT', SORTABLE: true },  // Searchable index
-          appname: { type: 'TEXT', SORTABLE: true },    // Full game name
-          appid: { type: 'TEXT', SORTABLE: true },      // App ID
-          appbanner: { type: 'TEXT', SORTABLE: true }   // App poster
+          appsearch: { type: 'TEXT', SORTABLE: true }  // Searchable index. Other fields can be added, but will not be searchable.
         },
         {
           ON: 'HASH',
