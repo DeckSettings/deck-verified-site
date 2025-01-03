@@ -90,16 +90,17 @@ onUnmounted(() => {
           v-ripple
           @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.name)}`)">
           <q-item-section avatar>
+            <!-- TODO: Add a banner placeholder -->
             <img
-              v-if="!result.poster"
+              v-if="!result.metadata.banner"
               src="~/assets/poster-placeholder.png"
               alt="Placeholder"
               class="game-image"
             >
             <img
               v-else
-              :src="result.poster"
-              alt="Game Image"
+              :src="result.metadata.banner"
+              alt="Game Banner"
               class="game-image"
             >
           </q-item-section>
@@ -136,7 +137,7 @@ onUnmounted(() => {
 }
 
 .game-image {
-  width: 40px;
+  width: 100px;
   height: auto;
   object-fit: contain;
 }

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "cheerio": "^1.0.0",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "logfmt": "^1.4.0",

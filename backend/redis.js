@@ -30,7 +30,7 @@ const createRedisSearchIndex = async () => {
           appsearch: { type: 'TEXT', SORTABLE: true },  // Searchable index
           appname: { type: 'TEXT', SORTABLE: true },    // Full game name
           appid: { type: 'TEXT', SORTABLE: true },      // App ID
-          appposter: { type: 'TEXT', SORTABLE: true }   // App poster
+          appbanner: { type: 'TEXT', SORTABLE: true }   // App poster
         },
         {
           ON: 'HASH',

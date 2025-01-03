@@ -41,7 +41,7 @@ const updateGameIndex = async () => {
       for (const project of projects) {
         logger.info(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(project.gameName, project.appId, project.metadata.poster)
+          await storeGameInRedis(project.gameName, project.appId, project.metadata.banner)
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
@@ -155,6 +155,13 @@ const fetchProject = async (searchTerm, authToken = null) => {
       }
 
       const responseData = await response.json()
+
+      // Check for rate limit and log if it is
+      if (responseData.errors) {
+        for (const error of responseData.errors) {
+          logger.error(`GitHub GraphQL API Error: ${error.message}`)
+        }
+      }
 
       if (!responseData.data?.node || !responseData.data?.node.projectsV2) {
         logger.info('No project data returned from org node.')

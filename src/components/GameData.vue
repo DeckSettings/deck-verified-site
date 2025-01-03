@@ -2,8 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
-import { fetchIssuesByProjectSearch, fetchLabels, parseMarkdown } from 'src/services/gh-reports'
-import type { GithubProjectData, GithubIssue, GithubIssueLabel, ReportData } from 'src/services/gh-reports'
+import { fetchGameData, fetchLabels, parseMarkdown } from 'src/services/gh-reports'
+import type { GameData, GithubIssue, GithubIssueLabel, ReportData } from 'src/services/gh-reports'
 import { marked } from 'marked'
 
 interface ParsedReport extends GithubIssue {
@@ -13,7 +13,7 @@ interface ParsedReport extends GithubIssue {
 const route = useRoute()
 const appId = ref<string | null>(null)
 const gameName = ref<string | null>(null)
-const gameData = ref<GithubProjectData | null>(null)
+const gameData = ref<GameData | null>(null)
 const parsedReports = ref<ParsedReport[]>([])
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
@@ -158,10 +158,10 @@ const getCompatibilityColor = (compatibility: string) => {
 const initGameData = async (params: RouteParamsGeneric) => {
   if (route.path.startsWith('/app/')) {
     appId.value = params.appId as string
-    gameData.value = await fetchIssuesByProjectSearch(null, appId.value)
+    gameData.value = await fetchGameData(null, appId.value)
   } else if (route.path.startsWith('/game/')) {
     gameName.value = decodeURIComponent(params.gameName as string)
-    gameData.value = await fetchIssuesByProjectSearch(gameName.value, null)
+    gameData.value = await fetchGameData(gameName.value, null)
   }
   // Fill in details from game data
   if (gameData.value) {
@@ -180,7 +180,7 @@ const initGameData = async (params: RouteParamsGeneric) => {
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
     }
     // Parse the gameData issues
-    parsedReports.value = gameData.value.issues.map(issue => ({
+    parsedReports.value = gameData.value.reports.map(issue => ({
       ...issue,
       data: parseMarkdown(issue.body)
     }))

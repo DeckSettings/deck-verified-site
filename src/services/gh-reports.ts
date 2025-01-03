@@ -125,7 +125,22 @@ export interface GithubProjectData {
 export interface GameSearchResult {
   name: string;
   appId: string;
+  metadata: GameMetadata
+}
+
+export interface GameMetadata {
   poster: string;
+  hero: string;
+  background: string;
+  banner: string;
+}
+
+export interface GameData {
+  gameName: string;
+  appId?: number;
+  projectNumber: number;
+  metadata: GameMetadata
+  reports: GithubIssue[];
 }
 
 export const extractHeadingValue = (lines: string[], heading: string): string | null => {
@@ -280,12 +295,12 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
   }
 }
 
-export const fetchIssuesByProjectSearch = async (gameName: string | null, appId: string | null): Promise<GithubProjectData | null> => {
-  let url = '/deck-verified/api/v1/search_games_by_project'
+export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameData | null> => {
+  let url = '/deck-verified/api/v1/game_details'
   if (appId) {
-    url += `?appid=${appId}`
+    url += `?appid=${appId}&include_external=true`
   } else if (gameName) {
-    url += `?game_name=${encodeURIComponent(gameName)}`
+    url += `?name=${encodeURIComponent(gameName)}`
   } else {
     throw new Error('Either appId or gameName must be provided')
   }
@@ -297,15 +312,12 @@ export const fetchIssuesByProjectSearch = async (gameName: string | null, appId:
       console.error(`Failed to fetch project data: ${response.status} - ${errorBody}`)
       throw new Error('Failed to fetch project data')
     }
-    const data = await response.json() as GithubProjectData[]
-    const projectData = data.length > 0 ? data[0] : null
-    if (projectData) {
-      // Do something with projectData if it's not null
-      console.debug('Project data:', projectData)
-      return projectData
+    const data = await response.json() as GameData
+    if (data) {
+      console.debug('Game data:', data)
+      return data
     } else {
-      // Handle the case where no project data was found
-      console.error('Unable to find game data by project')
+      console.error('Unable to find game data by AppID/Game Name')
       return null
     }
   } catch (error) {
@@ -317,7 +329,7 @@ export const fetchIssuesByProjectSearch = async (gameName: string | null, appId:
 export const searchGames = async (searchString: string | null): Promise<GameSearchResult[] | null> => {
   let url = '/deck-verified/api/v1/search_games'
   if (searchString) {
-    url += `?search=${encodeURIComponent(searchString)}`
+    url += `?term=${encodeURIComponent(searchString)}`
   } else {
     throw new Error('No search string provided')
   }
@@ -334,10 +346,10 @@ export const searchGames = async (searchString: string | null): Promise<GameSear
       throw new Error('Failed to fetch project data')
     }
     const data = await response.json() as GameSearchResult[]
-    const gameSearchResults: GameSearchResult[] = data.map(githubData => ({
-      name: githubData.name,
-      appId: githubData.appId,
-      poster: githubData.poster
+    const gameSearchResults: GameSearchResult[] = data.map(gameSearchResult => ({
+      name: gameSearchResult.name,
+      appId: gameSearchResult.appId,
+      metadata: gameSearchResult.metadata
     }))
     return gameSearchResults
   } catch (error) {
