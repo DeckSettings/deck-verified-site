@@ -209,10 +209,25 @@ watch(
           {{ gameName }}
         </div>
       </div>
-      <div class="col-xs-12 col-md-4 text-center q-pa-md-sm q-pa-xs-none self-start">
-        <div class="game-poster-container">
-          <img v-if="gamePoster" class="game-poster" :src="gamePoster" alt="Game Image">
-          <img v-else class="game-poster" src="~/assets/poster-placeholder.png" alt="Placeholder">
+      <div class="col-xs-12 col-md-4 text-center q-pa-md-sm q-pa-xs-none self-start game-links">
+        <div class="game-image-container row justify-center">
+          <q-img
+            v-if="gameBanner"
+            class="game-banner"
+            :src="gameBanner"
+            alt="Game Image">
+            <template v-slot:error>
+              <img
+                src="~/assets/banner-placeholder.png"
+                alt="Placeholder" />
+            </template>
+          </q-img>
+          <q-img
+            v-else
+            class="game-banner"
+            src="~/assets/banner-placeholder.png"
+            alt="Game Image">
+          </q-img>
         </div>
         <div v-if="$q.platform.is.mobile" class="game-title">
           {{ gameName }}
@@ -239,7 +254,7 @@ watch(
           </div>
         </div>
       </div>
-      <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pl-none-sm q-py-md-sm q-pa-xs-none self-start">
+      <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="gameData">
             <div v-if="parsedReports === null || parsedReports.length > 0">
@@ -500,7 +515,7 @@ watch(
 }
 
 .hero-container {
-  position: relative; /* Ensure hero content is positioned relative to this container */
+  position: relative;
 }
 
 .game-title {
@@ -510,21 +525,18 @@ watch(
   text-shadow: 2px 2px 4px black;
 }
 
-.game-poster-container {
-  width: 200px;
-  overflow: hidden;
+.game-image-container {
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 20px;
   box-shadow: 5px 5px 10px black;
-  display: flex; /* Center the poster */
-  justify-content: center; /* Center the poster */
-  margin-left: auto; /* Center the poster */
-  margin-right: auto; /* Center the poster */
+  overflow: hidden;
 }
 
-.game-poster {
-  width: 100%;
-  height: auto; /* Maintain aspect ratio */
-  object-fit: contain; /* Ensure the entire image is visible */
+.game-banner {
+  max-width: 100%;
+  height: auto;
 }
 
 .filter-select {
@@ -699,7 +711,12 @@ watch(
   border-bottom: 1px solid #ddd;
 }
 
+/* -sm- */
 @media (min-width: 600px) {
+  .game-image-container {
+    max-width: 400px;
+  }
+
   .filter-select {
     width: 250px;
   }
@@ -710,6 +727,29 @@ watch(
 
   ::v-deep(.markdown ul li) {
     padding: 12px 16px;
+  }
+}
+
+/* -md- */
+@media (min-width: 1024px) {
+  .game-links {
+    position: sticky;
+    top: 120px;
+  }
+}
+
+
+/* -lg- */
+@media (min-width: 1440px) {
+  .game-image-container {
+    max-width: 500px;
+  }
+}
+
+/* -lg- */
+@media (min-width: 1920px) {
+  .game-image-container {
+    max-width: 600px;
   }
 }
 
