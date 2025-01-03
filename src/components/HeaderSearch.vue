@@ -13,11 +13,24 @@ const searchQuery = ref('')
 const showDialog = ref(false)
 const searchResults = ref<GameSearchResult[]>([])
 
+let searchTimeout: ReturnType<typeof setTimeout>
 const performSearch = async () => {
+  clearTimeout(searchTimeout)
+
   try {
-    const results = await searchGames(searchQuery.value)
-    searchResults.value = results || []
+    const initialResults = await searchGames(searchQuery.value, false)
+    searchResults.value = initialResults || []
     showDialog.value = true
+
+    searchTimeout = setTimeout(async () => {
+      const additionalResults = await searchGames(searchQuery.value, true)
+      if (additionalResults) {
+        const existingAppIds = new Set(searchResults.value.map(result => result.appId))
+        const newResults = additionalResults.filter(result => !existingAppIds.has(result.appId))
+        searchResults.value = [...searchResults.value, ...newResults]
+      }
+    }, 2000)
+
   } catch (error) {
     console.error('Error searching games:', error)
   }

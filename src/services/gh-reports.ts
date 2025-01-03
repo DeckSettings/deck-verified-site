@@ -326,12 +326,15 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
   }
 }
 
-export const searchGames = async (searchString: string | null): Promise<GameSearchResult[] | null> => {
+export const searchGames = async (searchString: string | null, includeExternal: boolean = false): Promise<GameSearchResult[] | null> => {
   let url = '/deck-verified/api/v1/search_games'
   if (searchString) {
     url += `?term=${encodeURIComponent(searchString)}`
   } else {
     throw new Error('No search string provided')
+  }
+  if (includeExternal) {
+    url += '&include_external=true'
   }
 
   try {
