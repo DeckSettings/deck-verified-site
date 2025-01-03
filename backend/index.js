@@ -42,7 +42,7 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime })
       logger.info('Data fetched from GitHub and cached in Redis')
 
       res.json(reports.items)
@@ -81,7 +81,7 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime })
       logger.info('Data fetched from GitHub and cached in Redis')
 
       return res.json(reports.items)
@@ -248,7 +248,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
     // Store results in redis
     // TODO: Check if it is worth storing this search result here
     await storeGameInRedis(returnData.gameName, returnData.appId, returnData.metadata.banner)
-    await redisClient.set(redisKey, JSON.stringify(returnData), { EX: 60 }) // TODO: Cache for 1 hour (cacheTime)
+    await redisClient.set(redisKey, JSON.stringify(returnData), { EX: cacheTime })
 
     return res.json(returnData)
   } catch (error) {
@@ -274,7 +274,7 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
     }
 
     const labels = await fetchIssueLabels()
-    await redisClient.set(redisKey, JSON.stringify(labels), { EX: cacheTime }) // Cache for 1 hour
+    await redisClient.set(redisKey, JSON.stringify(labels), { EX: cacheTime })
     logger.info('Data fetched from GitHub and cached in Redis')
 
     if (!labels) {
@@ -296,10 +296,8 @@ const startServer = async () => {
     logger.info('Redis connected. Proceeding with the rest of the script...')
 
     // Run scheduled tasks
-    // Call updateGameIndex on start
-    await updateGameIndex()
-    // Schedule updateGameIndex to run every "cacheTime" minutes
-    setInterval(updateGameIndex, cacheTime * 1000)
+    // Schedule updateGameIndex to run every hour
+    setInterval(updateGameIndex, 3600 * 1000)
 
     // Server
     const port = 9022

@@ -106,7 +106,7 @@ const parseReportBody = async (markdown) => {
       logger.info('Schema not found in Redis cache, fetching from URL')
       const response = await fetch(schemaUrl)
       schema = await response.json()
-      await redisClient.set(redisKey, JSON.stringify(schema), { EX: cacheTime }) // Cache for 1 hour
+      await redisClient.set(redisKey, JSON.stringify(schema), { EX: cacheTime })
     }
 
     const data = {}
@@ -193,7 +193,8 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
     }).get()
 
     // Cache results in Redis for 30 days
-    await redisClient.set(redisKey, JSON.stringify(games), { EX: 60 })
+    const monthCacheTime = 60 * 60 * 24 * 30
+    await redisClient.set(redisKey, JSON.stringify(games), { EX: monthCacheTime })
     logger.info(`Steam game suggestions for "${searchTerm}" cached for 30 days`)
 
     return games
