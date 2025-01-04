@@ -16,11 +16,14 @@ const {
 } = require('./helpers.cjs')
 const logger = require('./logger.cjs')
 
+// Init Express app
 const app = express()
+
+// Trust the first reverse proxy
+app.set('trust proxy', 1)
 
 // Apply a rate limiter to all routes
 app.use(generalLimiter)
-
 
 /**
  * Get the most recent reports from the GitHub repository.
