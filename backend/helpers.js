@@ -1,67 +1,5 @@
-const cheerio = require('cheerio')
 const { redisClient } = require('./redis')
 const logger = require('./logger')
-
-const cacheTime = process.env.CACHE_TIME || 600 // Default 10 Minutes
-
-const storeGameInRedis = async (gameName, appId = null, banner = null) => {
-  if (!gameName) {
-    throw new Error('Game name is required.')
-  }
-
-  const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
-  const searchString = appId ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
-  // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
-  const escapedSearchString = searchString.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
-
-  try {
-    await redisClient.hSet(gameId, {
-      appsearch: escapedSearchString, // Add string used for searches
-      appname: gameName,  // Use gameName for the appname
-      appid: appId ? String(appId) : '',   // Store appid, use empty string if null
-      appbanner: banner ? String(banner) : ''   // Store poster, use empty string if null
-    })
-    logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
-  } catch (error) {
-    logger.error('Failed to store game in Redis:', error)
-  }
-}
-
-const searchGamesInRedis = async (searchTerm) => {
-  if (!searchTerm) {
-    throw new Error('Search term is required.')
-  }
-
-  try {
-    // Construct the search query to match either appname or appid
-    logger.info(`Searching cached games list for '${searchTerm}'`)
-    // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
-    const escapedSearchTerm = searchTerm.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
-
-    const query = `@appsearch:*${escapedSearchTerm}*`
-    const results = await redisClient.ft.search(
-      'games_idx',
-      query,
-      {
-        LIMIT: { from: 0, size: 10 }
-      }
-    )
-
-    if (results.total === 0) {
-      logger.info('No games found.')
-      return []
-    }
-
-    return results.documents.map(doc => ({
-      name: doc.value.appname,
-      appId: doc.value.appid !== '' ? doc.value.appid : null,
-      banner: doc.value.appbanner !== '' ? doc.value.appbanner : null
-    }))
-  } catch (error) {
-    logger.error('Error during search:', error)
-    return []
-  }
-}
 
 const extractHeadingValue = async (lines, heading) => {
   let value = null
@@ -93,22 +31,8 @@ const extractHeadingValue = async (lines, heading) => {
   return value
 }
 
-const parseReportBody = async (markdown) => {
-  const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/deck-settings-db/refs/heads/master/.github/scripts/config/game-report-validation.json'
-  const redisKey = 'issue_game_report_schema:' + schemaUrl
-
+const parseReportBody = async (markdown, schema) => {
   try {
-    let schema = await redisClient.get(redisKey)
-    if (schema) {
-      logger.info('Schema found in Redis cache')
-      schema = JSON.parse(schema)
-    } else {
-      logger.info('Schema not found in Redis cache, fetching from URL')
-      const response = await fetch(schemaUrl)
-      schema = await response.json()
-      await redisClient.set(redisKey, JSON.stringify(schema), { EX: cacheTime })
-    }
-
     const data = {}
     const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
     const lines = normalizedMarkdown.split('\n')
@@ -116,11 +40,10 @@ const parseReportBody = async (markdown) => {
     for (const heading in schema.properties) {
       data[heading] = await extractHeadingValue(lines, heading)
     }
-
     return data
   } catch (error) {
     logger.error('Error fetching or parsing schema:', error)
-    throw error // Re-throw the error to be handled by the caller
+    throw error
   }
 }
 
@@ -135,7 +58,7 @@ const parseGameProjectBody = async (markdown) => {
     return data
   } catch (error) {
     logger.error('Error fetching or parsing schema:', error)
-    throw error // Re-throw the error to be handled by the caller
+    throw error
   }
 }
 
@@ -209,9 +132,6 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
 
 
 module.exports = {
-  cacheTime,
-  storeGameInRedis,
-  searchGamesInRedis,
   extractHeadingValue,
   parseReportBody,
   parseGameProjectBody,

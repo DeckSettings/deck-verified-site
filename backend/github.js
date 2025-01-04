@@ -1,11 +1,30 @@
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args))
 const logfmt = require('logfmt')
-const { storeGameInRedis, parseGameProjectBody, parseReportBody } = require('./helpers')
+const { parseGameProjectBody, parseReportBody } = require('./helpers')
 const logger = require('./logger')
+const {
+  storeGameInRedis,
+  redisLookupGitHubIssueLabels,
+  redisCacheGitHubIssueLabels,
+  redisLookupReportBodySchema,
+  redisCacheReportBodySchema,
+  redisLookupGitHubProjectDetails,
+  redisCacheGitHubProjectDetails
+} = require('./redis')
 
 // Configure default GitHub auth token
 const defaultGithubAuthToken = process.env.GH_TOKEN || null
 
+/**
+ * Fetches a list of reports filtered and sorted by the provided search
+ *
+ * @param repoOwner
+ * @param repoName
+ * @param state
+ * @param sort
+ * @param direction
+ * @param limit
+ * @returns {Promise<*|*[]>}
+ */
 const fetchReports = async (
   repoOwner = 'DeckSettings',
   repoName = 'deck-settings-db',
@@ -28,6 +47,11 @@ const fetchReports = async (
   return await response.json()
 }
 
+/**
+ * Updates our local cache of games and project data based on the current state of GitHub's projects
+ *
+ * @returns {Promise<void>}
+ */
 const updateGameIndex = async () => {
   try {
     // Configure API auth token
@@ -45,11 +69,48 @@ const updateGameIndex = async () => {
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
+        try {
+          await redisCacheGitHubProjectDetails(project, project.appId, project.gameName)
+        } catch (error) {
+          logger.error('Error storing project details in Redis:', error)
+        }
       }
     }
   } catch (error) {
     logger.error('Error updating game index:', error)
   }
+}
+
+/**
+ * Fetches a single project object given an AppID or Game Name.
+ *
+ * @param appId
+ * @param gameName
+ * @param authToken
+ * @returns {Promise<*|null>}
+ */
+const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null) => {
+  const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
+  if (cachedData) {
+    return cachedData
+  }
+  const searchTerm = appId ? `appid="${appId}"` : `name="${decodeURIComponent(gameName)}"`
+  const projects = await fetchProject(searchTerm, authToken)
+  if (projects && projects.length > 0) {
+    // Get only the first project.
+    if (projects.length > 1) {
+      // If there were more than one, then something is wrong with the query or data stored in GitHub.
+      logger.warning(`GitHub returned more that one project result for the query "${searchTerm}"`)
+    }
+    const project = projects[0]
+    try {
+      await redisCacheGitHubProjectDetails(project, appId, gameName)
+    } catch (error) {
+      logger.error('Error storing project details in Redis:', error)
+    }
+    return project
+  }
+  return null
 }
 
 const fetchProject = async (searchTerm, authToken = null) => {
@@ -192,9 +253,10 @@ const fetchProject = async (searchTerm, authToken = null) => {
         )
 
         // Parse issues list
+        const schema = await fetchReportBodySchema()
         for (const node of project.items.nodes) {
           if (node.content.__typename === 'Issue' && node.content.body) {
-            const parsedIssueData = await parseReportBody(node.content.body)
+            const parsedIssueData = await parseReportBody(node.content.body, schema)
             projectData.issues.push({
               id: node.content.databaseId,
               title: node.content.title,
@@ -226,7 +288,40 @@ const fetchProject = async (searchTerm, authToken = null) => {
   }
 }
 
+const fetchReportBodySchema = async () => {
+  const cachedData = await redisLookupReportBodySchema()
+  if (cachedData) {
+    return cachedData
+  }
+
+  const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/deck-settings-db/refs/heads/master/.github/scripts/config/game-report-validation.json'
+
+  try {
+    logger.info('Fetching GitHub report body schema from URL')
+    const response = await fetch(schemaUrl)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error(`GitHub raw request failed when fetching report body schema with status ${response.status}: ${errorBody}`)
+      throw new Error('Failed to report body schema from GitHub repository. Non-success response received from GitHub')
+    }
+
+    const schema = await response.json()
+    if (schema) {
+      await redisCacheReportBodySchema(schema)
+    }
+    return schema
+  } catch (error) {
+    logger.error('Error fetching or parsing schema:', error)
+    throw error // Re-throw the error to be handled by the caller
+  }
+}
+
 const fetchIssueLabels = async (authToken = null) => {
+  const cachedData = await redisLookupGitHubIssueLabels()
+  if (cachedData) {
+    return cachedData
+  }
+
   // Use default API auth token if none provided
   if (!authToken && defaultGithubAuthToken) {
     authToken = defaultGithubAuthToken
@@ -246,9 +341,13 @@ const fetchIssueLabels = async (authToken = null) => {
   if (!response.ok) {
     const errorBody = await response.text()
     logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
-    throw new Error('Failed to fetch labels from GitHub API. Non-success response recieved from GitHub')
+    throw new Error('Failed to fetch labels from GitHub API. Non-success response received from GitHub')
   }
-  return await response.json()
+  const data = await response.json()
+  if (data) {
+    await redisCacheGitHubIssueLabels(data)
+  }
+  return data
 }
 
 const getOrgId = async (orgName, authToken) => {
@@ -293,4 +392,11 @@ const getOrgId = async (orgName, authToken) => {
   }
 }
 
-module.exports = { fetchReports, fetchProject, updateGameIndex, fetchIssueLabels, getOrgId }
+module.exports = {
+  fetchReports,
+  fetchProject,
+  updateGameIndex,
+  fetchProjectsByAppIdOrGameName,
+  fetchIssueLabels,
+  getOrgId
+}

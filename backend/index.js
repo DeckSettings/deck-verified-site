@@ -1,11 +1,16 @@
 const express = require('express')
-const { connectToRedis, redisClient } = require('./redis')
-const { updateGameIndex, fetchReports, fetchProject, fetchIssueLabels } = require('./github')
 const { generalLimiter } = require('./rateLimiter')
 const {
-  cacheTime,
+  connectToRedis,
   storeGameInRedis,
   searchGamesInRedis,
+  redisLookupRecentGameReports,
+  redisCacheRecentGameReports,
+  redisCachePopularGameReports,
+  redisLookupPopularGameReports
+} = require('./redis')
+const { updateGameIndex, fetchProjectsByAppIdOrGameName, fetchReports, fetchIssueLabels } = require('./github')
+const {
   fetchSteamGameDetails,
   fetchSteamGameSuggestions
 } = require('./helpers')
@@ -25,12 +30,11 @@ app.use(generalLimiter)
  * @returns {object} 500 - Internal server error.
  */
 app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
-  const redisKey = 'issues_top_recent'
   try {
-    const cachedData = await redisClient.get(redisKey)
+    const cachedData = await redisLookupRecentGameReports()
     if (cachedData) {
       logger.info('Serving from Redis cache')
-      return res.json(JSON.parse(cachedData))
+      return res.json(cachedData)
     }
 
     const reports = await fetchReports(
@@ -42,9 +46,7 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime })
-      logger.info('Data fetched from GitHub and cached in Redis')
-
+      await redisCacheRecentGameReports(reports.items)
       res.json(reports.items)
     } else {
       logger.info('No reports found.')
@@ -64,12 +66,11 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
  * @returns {object} 500 - Internal server error.
  */
 app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
-  const redisKey = 'issues_top_popular'
   try {
-    const cachedData = await redisClient.get(redisKey)
+    const cachedData = await redisLookupPopularGameReports()
     if (cachedData) {
       logger.info('Serving from Redis cache')
-      return res.json(JSON.parse(cachedData))
+      return res.json(cachedData)
     }
 
     const reports = await fetchReports(
@@ -81,10 +82,8 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
       5
     )
     if (reports && reports.items.length > 0) {
-      await redisClient.set(redisKey, JSON.stringify(reports.items), { EX: cacheTime })
-      logger.info('Data fetched from GitHub and cached in Redis')
-
-      return res.json(reports.items)
+      await redisCachePopularGameReports(reports.items)
+      res.json(reports.items)
     } else {
       logger.info('No reports found.')
       return res.status(204).json([]) // 204 No Content
@@ -201,20 +200,11 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'No valid query parameter' })
   }
-  const searchTerm = appId ? `appid="${appId}"` : `name="${decodeURIComponent(gameName)}"`
-
-  const redisKey = `game_details:${searchTerm}`
-  const cachedData = await redisClient.get(redisKey)
-  if (cachedData) {
-    logger.info('Serving from Redis cache')
-    return res.json(JSON.parse(cachedData))
-  }
 
   try {
     logger.info('Searching GitHub Projects for results')
-    const projects = await fetchProject(searchTerm, null)
-    if (projects && projects.length > 0) {
-      const project = projects[0]
+    const project = await fetchProjectsByAppIdOrGameName(appId, gameName, null)
+    if (project) {
       returnData = {
         gameName: project.gameName,
         appId: project.appId,
@@ -244,14 +234,9 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
     }
 
     if (!returnData) {
-      logger.info(`No results found for search term "${searchTerm}".`)
+      logger.info(`No results found for appId "${appId}" or gameName "${gameName}".`)
       return res.status(204).json({})
     }
-
-    // Store results in redis
-    // TODO: Check if it is worth storing this search result here
-    await storeGameInRedis(returnData.gameName, returnData.appId, returnData.metadata.banner)
-    await redisClient.set(redisKey, JSON.stringify(returnData), { EX: cacheTime })
 
     return res.json(returnData)
   } catch (error) {
@@ -268,22 +253,11 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
  * @returns {object} 500 - Internal server error.
  */
 app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
-  const redisKey = `issue_labels`
   try {
-    const cachedData = await redisClient.get(redisKey)
-    if (cachedData) {
-      logger.info('Serving from Redis cache')
-      return res.json(JSON.parse(cachedData))
-    }
-
     const labels = await fetchIssueLabels()
-    await redisClient.set(redisKey, JSON.stringify(labels), { EX: cacheTime })
-    logger.info('Data fetched from GitHub and cached in Redis')
-
     if (!labels) {
       return res.status(204).json([])
     }
-
     return res.json(labels)
   } catch (error) {
     logger.error('Error:', error)
