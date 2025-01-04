@@ -6,7 +6,7 @@ COPY package*.json ./
 
 RUN npm ci
 
-COPY *.js ./
+COPY *.cjs ./
 
 EXPOSE 9022
 
