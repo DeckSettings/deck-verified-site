@@ -1,6 +1,6 @@
 const logfmt = require('logfmt')
-const { parseGameProjectBody, parseReportBody } = require('./helpers')
-const logger = require('./logger')
+const { parseGameProjectBody, parseReportBody } = require('./helpers.cjs')
+const logger = require('./logger.cjs')
 const {
   storeGameInRedis,
   redisLookupGitHubIssueLabels,
@@ -9,7 +9,7 @@ const {
   redisCacheReportBodySchema,
   redisLookupGitHubProjectDetails,
   redisCacheGitHubProjectDetails
-} = require('./redis')
+} = require('./redis.cjs')
 
 // Configure default GitHub auth token
 const defaultGithubAuthToken = process.env.GH_TOKEN || null

@@ -1,7 +1,7 @@
 {
   "name": "deck-verified-api",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.cjs",
   "dependencies": {
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
@@ -10,8 +10,8 @@
     "winston": "^3.17.0"
   },
   "scripts": {
-    "serve": "node index.js",
-    "dev": "env $(grep -v '^#' ../.env | xargs) nodemon index.js",
+    "serve": "node index.cjs",
+    "dev": "env $(grep -v '^#' ../.env | xargs) nodemon index.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Josh.5",

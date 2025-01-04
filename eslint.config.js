@@ -81,6 +81,19 @@ export default [
     }
   },
 
+  // Override for backend JS files
+  {
+    files: ['backend/*.js', 'backend/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',  // Use CommonJS for backend
+      ecmaVersion: 'latest',
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',  // Allow require()
+      '@typescript-eslint/no-var-requires': 'off'  // Also allow var requires
+    }
+  },
+
   {
     files: [ 'src-pwa/custom-service-worker.ts' ],
     languageOptions: {

@@ -1,5 +1,5 @@
 const redis = require('redis')
-const logger = require('./logger')
+const logger = require('./logger.cjs')
 
 // Redis config
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'

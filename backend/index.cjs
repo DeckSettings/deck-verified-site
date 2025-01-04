@@ -1,5 +1,5 @@
 const express = require('express')
-const { generalLimiter } = require('./rateLimiter')
+const { generalLimiter } = require('./rateLimiter.cjs')
 const {
   connectToRedis,
   storeGameInRedis,
@@ -8,13 +8,13 @@ const {
   redisCacheRecentGameReports,
   redisCachePopularGameReports,
   redisLookupPopularGameReports
-} = require('./redis')
-const { updateGameIndex, fetchProjectsByAppIdOrGameName, fetchReports, fetchIssueLabels } = require('./github')
+} = require('./redis.cjs')
+const { updateGameIndex, fetchProjectsByAppIdOrGameName, fetchReports, fetchIssueLabels } = require('./github.cjs')
 const {
   fetchSteamGameDetails,
   fetchSteamGameSuggestions
-} = require('./helpers')
-const logger = require('./logger')
+} = require('./helpers.cjs')
+const logger = require('./logger.cjs')
 
 const app = express()
 

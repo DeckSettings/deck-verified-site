@@ -1,5 +1,5 @@
-const { redisClient } = require('./redis')
-const logger = require('./logger')
+const { redisClient } = require('./redis.cjs')
+const logger = require('./logger.cjs')
 
 const extractHeadingValue = async (lines, heading) => {
   let value = null
