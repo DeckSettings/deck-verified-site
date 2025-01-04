@@ -15,15 +15,16 @@ const {
 const defaultGithubAuthToken = process.env.GH_TOKEN || null
 
 /**
- * Fetches a list of reports filtered and sorted by the provided search
+ * Fetches reports from a GitHub repository using the search API.
+ * Filters and sorts issues based on specified criteria.
  *
- * @param repoOwner
- * @param repoName
- * @param state
- * @param sort
- * @param direction
- * @param limit
- * @returns {Promise<*|*[]>}
+ * @param {string} repoOwner - GitHub repository owner.
+ * @param {string} repoName - GitHub repository name.
+ * @param {string} [state='open'] - Issue state (open, closed, or all).
+ * @param {string} [sort='updated'] - Sort criteria (created, updated, comments).
+ * @param {string} [direction='desc'] - Sort direction (asc or desc).
+ * @param {number|null} [limit=null] - Limit number of results. Null for no limit.
+ * @returns {Promise<Array|*>} - Returns the list of issues or an empty array if the fetch fails.
  */
 const fetchReports = async (
   repoOwner = 'DeckSettings',
@@ -48,17 +49,13 @@ const fetchReports = async (
 }
 
 /**
- * Updates our local cache of games and project data based on the current state of GitHub's projects
+ * Updates the Redis cache with the latest game data from GitHub org projects.
  *
- * @returns {Promise<void>}
+ * @returns {Promise<void>} - Resolves when the update process completes.
  */
 const updateGameIndex = async () => {
   try {
-    // Configure API auth token
-    let authToken = null
-    if (defaultGithubAuthToken) {
-      authToken = defaultGithubAuthToken
-    }
+    let authToken = defaultGithubAuthToken || null
 
     const projects = await fetchProject('', authToken)
     if (projects) {
@@ -82,12 +79,14 @@ const updateGameIndex = async () => {
 }
 
 /**
- * Fetches a single project object given an AppID or Game Name.
+ * Fetches project details by app ID or game name.
+ * If cached data is available in Redis, returns it immediately.
+ * Otherwise, fetches the data from GitHub, caches it, and returns the result.
  *
- * @param appId
- * @param gameName
- * @param authToken
- * @returns {Promise<*|null>}
+ * @param {string|number} appId - The App ID to search for.
+ * @param {string} gameName - The game name to search for if App ID is not available.
+ * @param {string|null} [authToken=null] - GitHub auth token for API access.
+ * @returns {Promise<Object|null>} - Returns the project object or null if not found.
  */
 const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null) => {
   const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
@@ -97,10 +96,9 @@ const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null)
   const searchTerm = appId ? `appid="${appId}"` : `name="${decodeURIComponent(gameName)}"`
   const projects = await fetchProject(searchTerm, authToken)
   if (projects && projects.length > 0) {
-    // Get only the first project.
     if (projects.length > 1) {
       // If there were more than one, then something is wrong with the query or data stored in GitHub.
-      logger.warning(`GitHub returned more that one project result for the query "${searchTerm}"`)
+      logger.warning(`GitHub returned more than one project result for "${searchTerm}"`)
     }
     const project = projects[0]
     try {
@@ -113,8 +111,14 @@ const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null)
   return null
 }
 
+/**
+ * Fetches GitHub project data using GraphQL queries based on a search term.
+ *
+ * @param {string} searchTerm - Search term to filter projects (by app ID or game name).
+ * @param {string|null} [authToken=null] - GitHub auth token for API access.
+ * @returns {Promise<Array|*>} - List of project objects or an empty array if no results are found.
+ */
 const fetchProject = async (searchTerm, authToken = null) => {
-  // Use default API auth token if none provided
   if (!authToken && defaultGithubAuthToken) {
     authToken = defaultGithubAuthToken
   }
@@ -288,6 +292,14 @@ const fetchProject = async (searchTerm, authToken = null) => {
   }
 }
 
+/**
+ * Fetches the report body schema from GitHub or Redis cache.
+ * If the schema is available in Redis, it returns the cached version.
+ * Otherwise, it fetches the schema from a remote GitHub URL, caches it, and returns it.
+ *
+ * @returns {Promise<Object>} - Returns the report body schema as an object.
+ * @throws {Error} - Throws an error if fetching or parsing the schema fails.
+ */
 const fetchReportBodySchema = async () => {
   const cachedData = await redisLookupReportBodySchema()
   if (cachedData) {
@@ -316,6 +328,15 @@ const fetchReportBodySchema = async () => {
   }
 }
 
+/**
+ * Fetches GitHub issue labels from the repository, utilizing Redis caching to reduce API calls.
+ * If the labels are cached in Redis, the cached data is returned. Otherwise, the labels are
+ * fetched from the GitHub API, cached in Redis, and returned.
+ *
+ * @param {string|null} [authToken=null] - GitHub authentication token. If not provided, the default token is used.
+ * @returns {Promise<Array>} - Returns an array of issue labels from the GitHub repository.
+ * @throws {Error} - Throws an error if the GitHub API request fails.
+ */
 const fetchIssueLabels = async (authToken = null) => {
   const cachedData = await redisLookupGitHubIssueLabels()
   if (cachedData) {
@@ -350,6 +371,15 @@ const fetchIssueLabels = async (authToken = null) => {
   return data
 }
 
+/**
+ * Retrieves the organization ID from GitHub based on the provided organization name.
+ * Uses the GitHub GraphQL API to query for the organization ID.
+ *
+ * @param {string} orgName - The name of the GitHub organization.
+ * @param {string} authToken - GitHub authentication token required for API access.
+ * @returns {Promise<string>} - Returns the organization ID as a string.
+ * @throws {Error} - Throws an error if the API request fails or if the organization is not found.
+ */
 const getOrgId = async (orgName, authToken) => {
   const query = `
     query GetOrganizationId($orgLogin: String!) {

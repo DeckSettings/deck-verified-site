@@ -1,6 +1,14 @@
-const { redisClient } = require('./redis.cjs')
 const logger = require('./logger.cjs')
+const { redisLookupSteamSearchSuggestions, redisCacheSteamSearchSuggestions } = require('./redis.cjs')
 
+/**
+ * Extracts the value associated with a specific heading from a markdown-like text.
+ * It searches for the heading and returns the first non-empty line below it.
+ *
+ * @param {string[]} lines - Array of strings representing lines of the markdown text.
+ * @param {string} heading - The heading to search for.
+ * @returns {Promise<string|null>} - The extracted value or null if the heading is not found.
+ */
 const extractHeadingValue = async (lines, heading) => {
   let value = null
   const headingToFind = `### ${heading}`.toLowerCase()
@@ -31,6 +39,15 @@ const extractHeadingValue = async (lines, heading) => {
   return value
 }
 
+/**
+ * Parses the body of a GitHub issue report based on a provided schema.
+ * Extracts specific heading values from the markdown content.
+ *
+ * @param {string} markdown - The markdown content of the GitHub issue report.
+ * @param {Object} schema - Schema defining the headings to extract.
+ * @returns {Promise<Object>} - Object containing extracted game report data.
+ * @throws {Error} - Throws if there is an error during parsing.
+ */
 const parseReportBody = async (markdown, schema) => {
   try {
     const data = {}
@@ -47,6 +64,13 @@ const parseReportBody = async (markdown, schema) => {
   }
 }
 
+/**
+ * Parses the body of a GitHub project to extract metadata for game assets.
+ *
+ * @param {string} markdown - The markdown content of the GitHub project.
+ * @returns {Promise<Object>} - Object containing extracted game data.
+ * @throws {Error} - Throws if there is an error during parsing.
+ */
 const parseGameProjectBody = async (markdown) => {
   try {
     const data = {}
@@ -62,6 +86,13 @@ const parseGameProjectBody = async (markdown) => {
   }
 }
 
+/**
+ * Fetches detailed information for a game from the Steam API by its App ID.
+ *
+ * @param {string} appId - The Steam App ID of the game to fetch.
+ * @returns {Promise<Object|null>} - Object containing the game's data or null if not found.
+ * @throws {Error} - Throws if there is an error during the API call.
+ */
 const fetchSteamGameDetails = async (appId) => {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`
   try {
@@ -80,19 +111,20 @@ const fetchSteamGameDetails = async (appId) => {
   }
 }
 
+/**
+ * Fetches a list of game suggestions from Steam based on a search term.
+ * If cached results are available, they are returned immediately. Otherwise,
+ * results are fetched from the Steam API and cached in Redis.
+ *
+ * @param {string} searchTerm - The search term to use for fetching game suggestions.
+ * @returns {Promise<Object[]>} - Array of game objects containing appId and name.
+ * @throws {Error} - Returns an empty array if there is an error during fetching.
+ */
 const fetchSteamGameSuggestions = async (searchTerm) => {
   const encodedSearchTerm = encodeURIComponent(searchTerm)
-  const redisKey = `steam_game_suggestions:${encodedSearchTerm}`
-
-  try {
-    // Attempt to fetch from Redis cache
-    const cachedData = await redisClient.get(redisKey)
-    if (cachedData) {
-      logger.info(`Serving game suggestions for "${searchTerm}" from Redis cache`)
-      return JSON.parse(cachedData)
-    }
-  } catch (error) {
-    logger.error('Redis error while fetching cached suggestions:', error)
+  const cachedData = await redisLookupSteamSearchSuggestions(encodedSearchTerm)
+  if (cachedData) {
+    return cachedData
   }
 
   // Fetch game suggestions from Steam store
@@ -119,17 +151,14 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
         appId: item.id,
         name: item.name
       }))
-    // Cache results in Redis for 30 days
-    const monthCacheTime = 60 * 60 * 24 * 30
-    await redisClient.set(redisKey, JSON.stringify(games), { EX: monthCacheTime })
-    logger.info(`Steam game suggestions for "${searchTerm}" cached for 30 days`)
+    // Cache results, then return them
+    await redisCacheSteamSearchSuggestions(games, encodedSearchTerm)
     return games
   } catch (error) {
     logger.error('Error fetching Steam game suggestions:', error)
     return []
   }
 }
-
 
 module.exports = {
   extractHeadingValue,
