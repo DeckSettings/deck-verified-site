@@ -1,51 +1,79 @@
 <script setup lang="ts">
 
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { searchGames } from 'src/services/gh-reports'
 import type { GameSearchResult } from 'src/services/gh-reports'
 
+const $q = useQuasar()
 const router = useRouter()
 
 const searchContainerRef = ref<HTMLElement | null>(null)
 const searchResultsRef = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const showDialog = ref(false)
-const searchResults = ref<GameSearchResult[]>([])
+const searchResults = ref<GameSearchResult[] | null>(null)
+const isSearching = ref(false)
 
 let searchTimeout: ReturnType<typeof setTimeout>
 const performSearch = async () => {
   clearTimeout(searchTimeout)
-
+  isSearching.value = true
   try {
     const initialResults = await searchGames(searchQuery.value, false)
     searchResults.value = initialResults || []
-    showDialog.value = true
-
     searchTimeout = setTimeout(async () => {
-      const additionalResults = await searchGames(searchQuery.value, true)
-      if (additionalResults) {
-        const existingAppIds = new Set(searchResults.value.map(result => result.appId))
-        const newResults = additionalResults.filter(result => !existingAppIds.has(result.appId))
-        searchResults.value = [...searchResults.value, ...newResults]
+      isSearching.value = true
+      try {
+        const additionalResults = await searchGames(searchQuery.value, true)
+        if (additionalResults) {
+          if (!searchResults.value) {
+            searchResults.value = []
+          }
+          const existingAppIds = new Set(searchResults.value.map(result => result.appId))
+          const newResults = additionalResults.filter(result => !existingAppIds.has(result.appId))
+          searchResults.value = [...searchResults.value, ...newResults]
+        }
+      } catch (error) {
+        console.error('Error running extended search for games:', error)
+      } finally {
+        isSearching.value = false
       }
     }, 2000)
-
   } catch (error) {
     console.error('Error searching games:', error)
+    isSearching.value = false
   }
 }
+
+
+const scrollAreaStyle = computed(() => {
+  if (!searchResults.value) {
+    return {}
+  }
+  const itemHeight = 62.73 // Height of each list item
+  const maxHeight = window.innerHeight * ($q.screen.lt.sm ? 0.7 : 0.8) // 70% on mobile, 80% otherwise
+  if (!isSearching.value && searchResults.value.length > 0) {
+    const totalHeight = searchResults.value.length * itemHeight
+    return {
+      height: `${Math.min(totalHeight, maxHeight)}px`
+    }
+  }
+  return {}
+})
 
 const goToGamePage = async (e: Event, path: string) => {
   e.preventDefault()
   searchQuery.value = ''
   showDialog.value = false
-  searchResults.value = []
+  searchResults.value = null
   await router.push(path)
 }
 
 watch(searchQuery, (newValue, oldValue) => {
   if (newValue.length === 0) {
+    searchResults.value = null
     showDialog.value = false
   } else if (newValue !== oldValue) {
     showDialog.value = true
@@ -95,36 +123,47 @@ onUnmounted(() => {
     </q-input>
 
     <div v-if="showDialog" ref="searchResultsRef" class="search-results">
-      <q-list>
-        <q-item
-          v-for="result in searchResults"
-          :key="result.appId"
-          clickable
-          v-ripple
-          @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.name)}`)">
-          <q-item-section avatar>
-            <!-- TODO: Add a banner placeholder -->
-            <img
-              v-if="!result.metadata.banner"
-              src="~/assets/poster-placeholder.png"
-              alt="Placeholder"
-              class="game-image"
-            >
-            <img
-              v-else
-              :src="result.metadata.banner"
-              alt="Game Banner"
-              class="game-image"
-            >
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>{{ result.name }}</q-item-label>
-            <q-item-label caption>App ID: {{ result.appId }}</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-      <div v-if="searchQuery.length === 0" class="text-center text-grey">
+      <q-scroll-area class="scroll-area" :style="scrollAreaStyle">
+        <q-list>
+          <q-item
+            v-for="result in searchResults"
+            :key="result.appId"
+            clickable
+            v-ripple
+            @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.name)}`)">
+            <q-item-section avatar>
+              <!-- TODO: Add a banner placeholder -->
+              <img
+                v-if="!result.metadata.banner"
+                src="~/assets/poster-placeholder.png"
+                alt="Placeholder"
+                class="game-image"
+              >
+              <img
+                v-else
+                :src="result.metadata.banner"
+                alt="Game Banner"
+                class="game-image"
+              >
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ result.name }}</q-item-label>
+              <q-item-label caption>App ID: {{ result.appId }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-scroll-area>
+      <div v-if="searchResults === null && searchQuery.length >= 0" class="text-center text-grey q-ma-md">
+        <!-- The search box either has no text, or has text but not enough to trigger a search - no search has been performed yet -->
+        Start typing to search for games...
+      </div>
+      <div v-else-if="!isSearching && searchResults && searchResults.length === 0"
+           class="text-center text-grey q-ma-md">
+        <!-- The search box either has text and a search was carried out and is complete, but no search results were found -->
         No results found.
+      </div>
+      <div v-if="isSearching" class="text-center text-grey q-py-md">
+        <q-spinner-dots color="primary" size="2em" />
       </div>
     </div>
   </div>
@@ -142,11 +181,13 @@ onUnmounted(() => {
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 25px;
+  margin-top: 24px;
   z-index: 10;
   width: 100%;
-  background-color: color-mix(in srgb, var(--q-dark) 85%, transparent);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background-color: color-mix(in srgb, var(--q-dark) 95%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0px 0px 3px 3px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.9);
 }
 
 .game-image {
@@ -154,4 +195,12 @@ onUnmounted(() => {
   height: auto;
   object-fit: contain;
 }
+
+/* -sm- */
+@media (max-width: 600px) {
+  .search-results {
+    margin-top: 16px;
+  }
+}
+
 </style>
