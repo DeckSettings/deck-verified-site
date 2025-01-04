@@ -25,6 +25,17 @@ app.set('trust proxy', 1)
 // Apply a rate limiter to all routes
 app.use(generalLimiter)
 
+// Configure middleware to log requests
+app.use((req, res, next) => {
+  const start = process.hrtime()
+  res.on('finish', () => {
+    const duration = process.hrtime(start)
+    const timeTaken = (duration[0] * 1e3) + (duration[1] / 1e6) // Convert to milliseconds
+    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} - ${timeTaken.toFixed(3)} ms`)
+  })
+  next()
+})
+
 /**
  * Get the most recent reports from the GitHub repository.
  *
@@ -205,7 +216,6 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
   }
 
   try {
-    logger.info('Searching GitHub Projects for results')
     const project = await fetchProjectsByAppIdOrGameName(appId, gameName, null)
     if (project) {
       returnData = {
@@ -215,10 +225,10 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
         metadata: project.metadata,
         reports: project.issues
       }
+      logger.info('Using GitHub Project data for game details result')
     }
 
     if (!returnData && includeExternal && appId) {
-      logger.info('Searching Steam Game API Projects for results')
       const steamResults = await fetchSteamGameDetails(appId)
       if (steamResults) {
         returnData = {
@@ -233,6 +243,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
           },
           reports: []
         }
+        logger.info('Using Steam Game API data for game details result')
       }
     }
 
