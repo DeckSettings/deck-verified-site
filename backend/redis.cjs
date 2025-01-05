@@ -5,7 +5,7 @@ const logger = require('./logger.cjs')
 const redisHost = process.env.REDIS_HOST || '127.0.0.1'
 const redisPort = process.env.REDIS_PORT || 6379
 const redisPassword = process.env.REDIS_PASSWORD || null
-const defaultCacheTime = process.env.CACHE_TIME || 600 // Default 10 Minutes
+const defaultCacheTime = process.env.DEFAULT_CACHE_TIME || 600 // Default 10 Minutes
 
 // Redis connection
 const redisClient = redis.createClient({
