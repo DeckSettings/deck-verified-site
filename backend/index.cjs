@@ -286,9 +286,15 @@ const startServer = async () => {
     // Continue with the rest of the script after Redis is connected
     logger.info('Redis connected. Proceeding with the rest of the script...')
 
-    // Run scheduled tasks
-    // Schedule updateGameIndex to run every hour
-    setInterval(updateGameIndex, 3600 * 1000)
+    // Optionally, run scheduled tasks
+    const noScheduledTasks = process.argv.includes('--no-scheduled-tasks')
+    if (!noScheduledTasks) {
+      // Schedule updateGameIndex to run every hour
+      logger.info('Starting scheduled tasks')
+      setInterval(updateGameIndex, 3600 * 1000)
+    } else {
+      logger.info('Running with scheduled tasks disabled.')
+    }
 
     // Server
     const port = 9022

@@ -10,8 +10,9 @@
     "winston": "^3.17.0"
   },
   "scripts": {
-    "serve": "node index.cjs",
     "dev": "env $(grep -v '^#' ../.env | xargs) nodemon index.cjs",
+    "serve": "node index.cjs",
+    "serve-no-tasks": "node index.cjs --no-scheduled-tasks",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Josh.5",
