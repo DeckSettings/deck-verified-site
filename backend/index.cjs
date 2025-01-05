@@ -225,7 +225,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
         metadata: project.metadata,
         reports: project.issues
       }
-      logger.info('Using GitHub Project data for game details result')
+      logger.info('Using GitHub project data for game details result')
     }
 
     if (!returnData && includeExternal && appId) {
@@ -243,7 +243,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
           },
           reports: []
         }
-        logger.info('Using Steam Game API data for game details result')
+        logger.info('Using Steam game API data for game details result')
       }
     }
 

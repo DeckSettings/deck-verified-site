@@ -266,6 +266,7 @@ const fetchProject = async (searchTerm, authToken = null) => {
               title: node.content.title,
               html_url: node.content.url,
               body: node.content.body,
+              parsed_data: parsedIssueData,
               reactions: {
                 'reactions_thumbs_up': node.content.reactions_thumbs_up.totalCount,
                 'reactions_thumbs_down': node.content.reactions_thumbs_down.totalCount
@@ -274,7 +275,6 @@ const fetchProject = async (searchTerm, authToken = null) => {
               user: node.content.author,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
-              ...parsedIssueData
             })
           }
         }

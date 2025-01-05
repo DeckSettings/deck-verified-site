@@ -10,33 +10,22 @@ const { redisLookupSteamSearchSuggestions, redisCacheSteamSearchSuggestions } = 
  * @returns {Promise<string|null>} - The extracted value or null if the heading is not found.
  */
 const extractHeadingValue = async (lines, heading) => {
-  let value = null
   const headingToFind = `### ${heading}`.toLowerCase()
-  const headingIndex = lines.findIndex(
-    (line) => line.trim().toLowerCase() === headingToFind
-  )
-  if (headingIndex === -1) {
-    return null
-  }
+  const headingIndex = lines.findIndex(line => line.trim().toLowerCase() === headingToFind)
+  if (headingIndex === -1) return null
 
+  const sectionLines = []
   for (let i = headingIndex + 1; i < lines.length; i++) {
-    const currentLine = lines[i].trim()
-
-    if (currentLine.toLowerCase().startsWith('### ')) {
-      value = null
-      break
-    }
-    if (!currentLine) {
+    const currentLine = lines[i]?.trim()
+    if (currentLine === undefined) {
       continue
     }
-    value = currentLine
-    break
+    if (currentLine.toLowerCase().startsWith('### ')) break
+    sectionLines.push(currentLine)
   }
 
-  if (value === undefined) {
-    value = null
-  }
-  return value
+  const content = sectionLines.join('\n').trim()
+  return content.length > 0 ? content : null
 }
 
 /**
@@ -55,7 +44,22 @@ const parseReportBody = async (markdown, schema) => {
     const lines = normalizedMarkdown.split('\n')
 
     for (const heading in schema.properties) {
-      data[heading] = await extractHeadingValue(lines, heading)
+      const valueType = schema.properties[heading].type
+      const snakeCaseHeading = heading
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w_]/g, '')
+      let value = await extractHeadingValue(lines, heading)
+      // Set any '_No response_' to null
+      if (value === '_No response_') {
+        value = null
+      }
+      // Convert to number if specified in schema
+      if (valueType === 'number' && value !== null) {
+        const parsedValue = parseFloat(value.replace(/,/g, ''))
+        value = isNaN(parsedValue) ? null : parsedValue
+      }
+      data[snakeCaseHeading] = value
     }
     return data
   } catch (error) {
