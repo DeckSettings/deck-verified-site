@@ -23,7 +23,9 @@ const app = express()
 app.set('trust proxy', 1)
 
 // Apply a rate limiter to all routes
-app.use(generalLimiter)
+if (process.env.DISABLE_RATE_LIMITER !== 'true') {
+  app.use(generalLimiter)
+}
 
 // Configure middleware to log requests
 app.use((req, res, next) => {
