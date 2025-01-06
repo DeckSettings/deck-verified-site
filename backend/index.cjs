@@ -44,6 +44,16 @@ app.use((req, res, next) => {
 /**
  * Get the most recent reports from the GitHub repository.
  *
+ * @returns {object[]} 200 - Service is healthy.
+ * @returns {object} 500 - Internal server error.
+ */
+app.get('/deck-verified/api/v1/health', async (req, res) => {
+  res.status(200).send('OK')
+})
+
+/**
+ * Get the most recent reports from the GitHub repository.
+ *
  * @returns {object[]} 200 - An array of report objects.
  * @returns {array} 204 - No reports found.
  * @returns {object} 500 - Internal server error.
