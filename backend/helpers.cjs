@@ -99,7 +99,7 @@ const parseGameProjectBody = async (markdown) => {
  * Fetches detailed information for a game from the Steam API by its App ID.
  *
  * @param {string} appId - The Steam App ID of the game to fetch.
- * @returns {Promise<Object|null>} - Object containing the game's data or null if not found.
+ * @returns {Promise<Object>} - Object containing the game's data or null if not found.
  * @throws {Error} - Throws if there is an error during the API call.
  */
 const fetchSteamGameDetails = async (appId) => {
@@ -112,6 +112,11 @@ const fetchSteamGameDetails = async (appId) => {
   try {
     logger.info(`Fetching game data for appId ${appId} from Steam API...`)
     const response = await fetch(url)
+    // Check if response is ok (status 200)
+    if (!response.ok) {
+      logger.error(`Steam API request failed with status: ${response.status}`)
+      return {}
+    }
     const data = await response.json()
     if (data && data[appId]?.success) {
       const appDetails = data[appId].data
@@ -120,7 +125,7 @@ const fetchSteamGameDetails = async (appId) => {
       return appDetails
     } else {
       logger.error(`No game data found for appId ${appId}`)
-      return null
+      return {}
     }
   } catch (error) {
     logger.error(`Failed to fetch game data for appId ${appId}:`, error)

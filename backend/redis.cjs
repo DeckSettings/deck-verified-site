@@ -424,7 +424,7 @@ const redisCacheSteamSearchSuggestions = async (data, searchTerm) => {
  * Retrieves a cached list of Steam game search suggestions from Redis.
  *
  * @param {string} searchTerm - The search term used to look up the cached suggestions.
- * @returns {Promise<Object|null>} - Returns the cached list of suggestions if found, or null if not cached.
+ * @returns {Promise<Object[]|null>} - Returns the cached list of suggestions if found, or null if not cached.
  * @throws {Error} - Throws an error if no search term is provided.
  */
 const redisLookupSteamSearchSuggestions = async (searchTerm) => {
