@@ -108,6 +108,7 @@ const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null)
     }
     return project
   }
+  logger.error(`No GitHub projects found for "${searchTerm}"`)
   // Cache an empty response for a short period of time
   await redisCacheGitHubProjectDetails({}, appId, gameName)
   return {}
