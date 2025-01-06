@@ -251,7 +251,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
 
     if (!returnData && includeExternal && appId) {
       const steamResults = await fetchSteamGameDetails(appId)
-      if (steamResults && Object.keys(steamResults).length === 0) {
+      if (steamResults && Object.keys(steamResults).length >= 0) {
         returnData = {
           gameName: steamResults.name,
           appId: appId,
