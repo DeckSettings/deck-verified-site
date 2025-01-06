@@ -49,6 +49,9 @@ jobs:
           images: ${{ steps.set-image.outputs.docker_image }}
           labels: |
             maintainer=Josh.5
+            source.version=${{ github.sha.substring(0, 7) }}
+            source.project=deck-verified-site
+            source.service=deck-verified-api
             org.opencontainers.image.title=deck-verified-api
 
       - name: Build and push Container image
@@ -105,6 +108,9 @@ jobs:
           images: ${{ steps.set-image.outputs.docker_image }}
           labels: |
             maintainer=Josh.5
+            source.version=${{ github.sha.substring(0, 7) }}
+            source.project=deck-verified-site
+            source.service=deck-verified-web
             org.opencontainers.image.title=deck-verified-web
 
       - name: Build and push Container image
