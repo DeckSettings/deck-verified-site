@@ -1,5 +1,6 @@
 const logger = require('./logger.cjs')
 const {
+  storeGameInRedis,
   redisLookupSteamAppDetails,
   redisCacheSteamAppDetails,
   redisLookupSteamSearchSuggestions,
@@ -123,6 +124,11 @@ const fetchSteamGameDetails = async (appId) => {
       const appDetails = data[appId].data
       // Cache results, then return them
       await redisCacheSteamAppDetails(appDetails, appId)
+      // Also cache in search results
+      if (appDetails.name) {
+        const headerImage = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+        await storeGameInRedis(appDetails.name, appId, headerImage)
+      }
       return appDetails
     } else {
       logger.error(`No game data found for appId ${appId}`)
