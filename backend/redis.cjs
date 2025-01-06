@@ -74,6 +74,17 @@ const createRedisSearchIndex = async () => {
 }
 
 /**
+ * Escapes strings for safe usage in Redis keys.
+ *
+ * @param {string} input - The string to be sanitized.
+ * @returns {string} - The escaped string.
+ */
+const escapeRedisKey = (input) => {
+  // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
+  return input.toString().toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
+}
+
+/**
  * Stores game data in Redis as a hash entry.
  * The game is indexed by either AppID or game name.
  * NOTE:  Special characters in the search string are escaped. Without this,
@@ -92,9 +103,7 @@ const storeGameInRedis = async (gameName, appId = null, banner = null) => {
 
   const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
   const searchString = appId ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
-  // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
-  const escapedSearchString = searchString.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
-
+  const escapedSearchString = escapeRedisKey(searchString)
   try {
     await redisClient.hSet(gameId, {
       appsearch: escapedSearchString, // Add string used for searches
@@ -112,22 +121,37 @@ const storeGameInRedis = async (gameName, appId = null, banner = null) => {
  * Searches for games in Redis based on the provided search term.
  * Uses RedisSearch to match the term against indexed game data.
  *
- * @param {string} searchTerm - The term to search for.
+ * @param {string|null} searchTerm - The term to search for.
+ * @param {number|null} appId - An AppID to search for.
+ * @param {string|null} gameName - The game name to search for.
  * @returns {Promise<Array>} - Returns an array of matching game objects.
  * @throws {Error} - Throws an error if no search term is provided.
  */
-const searchGamesInRedis = async (searchTerm) => {
-  if (!searchTerm) {
+const searchGamesInRedis = async (searchTerm = null, appId = null, gameName = null) => {
+  if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
+  }
+  if (searchTerm && searchTerm.length > 100) {
+    throw new Error('Search term too long.')
+  }
+  if (searchTerm && /\*{3,}/.test(searchTerm)) {
+    throw new Error('Too many wildcards in search term.')
   }
 
   try {
-    // Construct the search query to match either appname or appid
-    logger.info(`Searching cached games list for '${searchTerm}'`)
-    // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
-    const escapedSearchTerm = searchTerm.toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
+    let query = null
+    if (searchTerm) {
+      // Construct the search query to match either appname or appid
+      logger.info(`Searching cached games list for '${searchTerm}'`)
+      query = `@appsearch:*${escapeRedisKey(searchTerm)}*`
+    } else if (appId) {
+      logger.info(`Searching cached games list by AppID '${appId}'`)
+      query = `@appsearch:${escapeRedisKey(appId)}_*`
+    } else if (gameName) {
+      logger.info(`Searching cached games list by game name '${gameName}'`)
+      query = `@appsearch:*_${escapeRedisKey(gameName)}`
+    }
 
-    const query = `@appsearch:*${escapedSearchTerm}*`
     const results = await redisClient.ft.search(
       'games_idx',
       query,

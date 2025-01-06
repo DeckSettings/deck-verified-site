@@ -285,11 +285,32 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
       logger.info('Using GitHub project data for game details result')
     }
 
-    if (!returnData && includeExternal && appId) {
-      const steamResults = await fetchSteamGameDetails(appId)
-      if (steamResults && steamResults.name) {
+    // If we have no project data, check RedisSearch
+    if (!returnData && appId) {
+      const games = await searchGamesInRedis(null, appId)
+      if (games.length > 0) {
+        const redisResult = games[0]
         returnData = {
-          gameName: steamResults.name,
+          gameName: redisResult.name,
+          appId: appId,
+          projectNumber: null,
+          metadata: {
+            poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
+            hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
+            background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
+            banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+          },
+          reports: []
+        }
+        logger.info('Using local RedisSearch data for game details result')
+      }
+    }
+
+    if (!returnData && includeExternal && appId) {
+      const steamResult = await fetchSteamGameDetails(appId)
+      if (steamResult && steamResult.name) {
+        returnData = {
+          gameName: steamResult.name,
           appId: appId,
           projectNumber: null,
           metadata: {
