@@ -350,8 +350,57 @@ const redisLookupGitHubProjectDetails = async (appId = null, gameName = null) =>
 }
 
 /**
+ * Caches an object of Steam app details in Redis.
+ * The cached data is stored for 2 days to improve search performance and reduce API calls
+ * to the Steam store.
+ *
+ * @param {Object} data - The list of Steam game suggestions to cache.
+ * @param {string} appId - The AppID of the game details from Steam.
+ * @returns {Promise<void>}
+ * @throws {Error} - Throws an error if no data or search term is provided.
+ */
+const redisCacheSteamAppDetails = async (data, appId) => {
+  if (!data) {
+    throw new Error('Data is required for caching a Steam app details.')
+  }
+  if (!appId) {
+    throw new Error('An AppID is required to cache a Steam app details.')
+  }
+  const redisKey = `steam_app_details:${appId}`
+  const cacheTime = 60 * 60 * 24 * 2 // Cache results in Redis for 2 days
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Retrieves a cached object of Steam details for a given App ID.
+ *
+ * @param {string} appId - The AppID of the project to look up.
+ * @returns {Promise<Object|null>} - Returns the cached list of suggestions if found, or null if not cached.
+ * @throws {Error} - Throws an error if no search term is provided.
+ */
+const redisLookupSteamAppDetails = async (appId) => {
+  if (!appId) {
+    throw new Error('An AppID is required to lookup Steam app details.')
+  }
+  const redisKey = `steam_app_details:${appId}`
+  try {
+    // Attempt to fetch from Redis cache
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved Steam app details for "${appId}" from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached Steam app details:', error)
+  }
+  return null
+}
+
+/**
  * Caches a list of Steam game search suggestions in Redis.
- * The cached data is stored for 2 days to improve search performance and reduce API calls.
+ * The cached data is stored for 2 days to improve search performance and reduce API calls
+ * to the Steam store.
  *
  * @param {Object} data - The list of Steam game suggestions to cache.
  * @param {string} searchTerm - The search term used to retrieve the suggestions.
@@ -411,6 +460,8 @@ module.exports = {
   redisLookupReportBodySchema,
   redisCacheGitHubProjectDetails,
   redisLookupGitHubProjectDetails,
+  redisCacheSteamAppDetails,
+  redisLookupSteamAppDetails,
   redisCacheSteamSearchSuggestions,
   redisLookupSteamSearchSuggestions
 }

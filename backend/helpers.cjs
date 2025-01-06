@@ -1,5 +1,10 @@
 const logger = require('./logger.cjs')
-const { redisLookupSteamSearchSuggestions, redisCacheSteamSearchSuggestions } = require('./redis.cjs')
+const {
+  redisLookupSteamAppDetails,
+  redisCacheSteamAppDetails,
+  redisLookupSteamSearchSuggestions,
+  redisCacheSteamSearchSuggestions
+} = require('./redis.cjs')
 
 /**
  * Extracts the value associated with a specific heading from a markdown-like text.
@@ -98,13 +103,21 @@ const parseGameProjectBody = async (markdown) => {
  * @throws {Error} - Throws if there is an error during the API call.
  */
 const fetchSteamGameDetails = async (appId) => {
+  const cachedData = await redisLookupSteamAppDetails(appId)
+  if (cachedData) {
+    return cachedData
+  }
+
   const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`
   try {
     logger.info(`Fetching game data for appId ${appId} from Steam API...`)
     const response = await fetch(url)
     const data = await response.json()
     if (data && data[appId]?.success) {
-      return data[appId].data
+      const appDetails = data[appId].data
+      // Cache results, then return them
+      await redisCacheSteamAppDetails(appDetails, appId)
+      return appDetails
     } else {
       logger.error(`No game data found for appId ${appId}`)
       return null
