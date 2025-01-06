@@ -7,15 +7,15 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "logfmt": "^1.4.0",
-    "node-pm": "^0.11.9",
+    "pm2": "^5.4.3",
     "redis": "^4.7.0",
     "winston": "^3.17.0"
   },
   "scripts": {
     "dev-local": "env $(grep -v '^#' ../.env | xargs) nodemon index.cjs",
-    "serve-local": "env $(grep -v '^#' ../.env | xargs) node index.cjs",
+    "serve-local": "env $(grep -v '^#' ../.env | xargs) pm2-runtime index.cjs",
     "serve": "node index.cjs",
-    "serve-no-tasks": "node-pm -n2 index.cjs --no-scheduled-tasks",
+    "serve-no-tasks": "pm2-runtime -i 2 index.cjs --no-scheduled-tasks",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Josh.5",
