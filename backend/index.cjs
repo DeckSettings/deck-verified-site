@@ -1,4 +1,5 @@
 const express = require('express')
+const helmet = require('helmet')
 const { generalLimiter } = require('./rateLimiter.cjs')
 const {
   connectToRedis,
@@ -27,6 +28,14 @@ const app = express()
 
 // Trust the first reverse proxy
 app.set('trust proxy', 1)
+
+// Apply some production security hardening
+if (process.env.NODE_ENV === 'production') {
+  logger.info('Running with helmet enabled.')
+  app.use(helmet())
+} else {
+  logger.info('Running with helmet disabled.')
+}
 
 // Apply a rate limiter to all routes
 if (process.env.DISABLE_RATE_LIMITER !== 'true') {
