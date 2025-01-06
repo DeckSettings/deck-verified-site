@@ -50,8 +50,35 @@ app.use((req, res, next) => {
   const start = process.hrtime()
   res.on('finish', () => {
     const duration = process.hrtime(start)
-    const timeTaken = (duration[0] * 1e3) + (duration[1] / 1e6) // Convert to milliseconds
-    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} - ${timeTaken.toFixed(3)} ms`)
+    const timeTaken = (duration[0] * 1e3) + (duration[1] / 1e6)
+    const user = '' // Placeholder for is user auth is added at a later stage
+    const timeNow = new Date()
+    const timeNowString = timeNow.toISOString()
+    const responseLength = res.getHeader('Content-Length') || 0
+    const httpReferer = req.headers['referer'] || '-'
+    const userAgent = req.headers['user-agent'] || ''
+    const message = `${req.ip} - ${user} [${timeNowString}] "${req.method}" ${res.statusCode} ${responseLength} "${httpReferer}" "${userAgent}"`
+    const logData = {
+      source_project: 'deck-verified-api',
+      source_version: 1, // TODO: Cook version into build
+      filename: __filename,
+      process: process.pid,
+      time: timeNowString,
+      timestamp: Math.floor(Date.now() / 1000),
+      duration_in_ms: timeTaken.toFixed(3),
+      message: message,
+      x_forwarded_for: req.headers['x-forwarded-for'] || '',
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      response_length: responseLength,
+      rate_limit_used: req.rateLimit ? parseInt(req.rateLimit.used, 10) : 0,
+      rate_limit_remaining: req.rateLimit ? parseInt(req.rateLimit.remaining, 10) : 0,
+      referer: httpReferer,
+      user_agent: userAgent,
+      remote_ip: req.ip
+    }
+    logger.info(logData)
   })
   next()
 })
