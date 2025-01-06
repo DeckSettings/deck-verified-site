@@ -16,6 +16,12 @@ const {
 } = require('./helpers.cjs')
 const logger = require('./logger.cjs')
 
+// Log shutdown requests
+process.on('SIGINT', () => {
+  logger.info('Shutting down server...')
+  process.exit(0)
+})
+
 // Init Express app
 const app = express()
 
