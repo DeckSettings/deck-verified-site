@@ -24,7 +24,10 @@ app.set('trust proxy', 1)
 
 // Apply a rate limiter to all routes
 if (process.env.DISABLE_RATE_LIMITER !== 'true') {
+  logger.info('Running with rate limiter enabled.')
   app.use(generalLimiter)
+} else {
+  logger.info('Running with rate limiter disabled.')
 }
 
 // Configure middleware to log requests
