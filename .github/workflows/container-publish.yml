@@ -47,6 +47,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.set-image.outputs.docker_image }}
+          labels: |
+            maintainer=Josh.5
+            org.opencontainers.image.title=deck-verified-api
 
       - name: Build and push Container image
         uses: docker/build-push-action@v6
@@ -100,6 +103,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.set-image.outputs.docker_image }}
+          labels: |
+            maintainer=Josh.5
+            org.opencontainers.image.title=deck-verified-web
 
       - name: Build and push Container image
         uses: docker/build-push-action@v6
