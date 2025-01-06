@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [ staging, master ]
   schedule:
     # At 02:30 on Saturday
     - cron: '30 2 * * 6'
@@ -22,8 +22,17 @@ jobs:
       - name: Set Docker image name
         id: set-image
         run: |
+          echo  "GITHUB_REF:${GITHUB_REF}"
+          echo  "GITHUB_REPOSITORY:${GITHUB_REPOSITORY}"
+          VERSION_TAG=${GITHUB_REF#refs/*/}
           ORG=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "docker_image=ghcr.io/${ORG}/deck-verified-api" >> $GITHUB_OUTPUT
+          if [[ ${VERSION_TAG%/merge} == 'master' ]]; then
+            echo "docker_tag=latest" >> $GITHUB_OUTPUT
+          elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then
+            echo "docker_tag=staging" >> $GITHUB_OUTPUT
+          fi
+
 
       - name: Log into registry ${{ vars.REGISTRY }}
         if: github.event_name != 'pull_request'
@@ -47,7 +56,7 @@ jobs:
           pull: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ steps.set-image.outputs.docker_image }}:latest
+            ${{ steps.set-image.outputs.docker_image }}:${{ steps.set-image.outputs.docker_tag }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -67,8 +76,16 @@ jobs:
       - name: Set Docker image name
         id: set-image
         run: |
+          echo  "GITHUB_REF:${GITHUB_REF}"
+          echo  "GITHUB_REPOSITORY:${GITHUB_REPOSITORY}"
+          VERSION_TAG=${GITHUB_REF#refs/*/}
           ORG=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "docker_image=ghcr.io/${ORG}/deck-verified-web" >> $GITHUB_OUTPUT
+          if [[ ${VERSION_TAG%/merge} == 'master' ]]; then
+            echo "docker_tag=latest" >> $GITHUB_OUTPUT
+          elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then
+            echo "docker_tag=staging" >> $GITHUB_OUTPUT
+          fi
 
       - name: Log into registry ${{ vars.REGISTRY }}
         if: github.event_name != 'pull_request'
@@ -93,7 +110,7 @@ jobs:
           pull: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ steps.set-image.outputs.docker_image }}:latest
+            ${{ steps.set-image.outputs.docker_image }}:${{ steps.set-image.outputs.docker_tag }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
