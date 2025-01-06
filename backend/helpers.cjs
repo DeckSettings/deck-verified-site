@@ -114,7 +114,8 @@ const fetchSteamGameDetails = async (appId) => {
     const response = await fetch(url)
     // Check if response is ok (status 200)
     if (!response.ok) {
-      logger.error(`Steam API request failed with status: ${response.status}`)
+      const errorBody = await response.text()
+      logger.error(`Steam app details API request failed with status ${response.status}: ${errorBody}`)
       return {}
     }
     const data = await response.json()
@@ -156,7 +157,8 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
     const response = await fetch(url)
     // Check if response is ok (status 200)
     if (!response.ok) {
-      logger.error(`Steam API request failed with status: ${response.status}`)
+      const errorBody = await response.text()
+      logger.error(`Steam suggest API request failed with status ${response.status}: ${errorBody}`)
       return []
     }
     // Load JSON
