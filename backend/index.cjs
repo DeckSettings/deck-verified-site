@@ -300,6 +300,11 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
   }
 })
 
+// Custom 404 response
+app.use((req, res, next) => {
+  return res.status(404).json({ error: 'Not Found' })
+})
+
 const startServer = async () => {
   try {
     await connectToRedis()
