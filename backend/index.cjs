@@ -274,7 +274,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
 
   try {
     const project = await fetchProjectsByAppIdOrGameName(appId, gameName, null)
-    if (project) {
+    if (project && project.projectNumber) {
       returnData = {
         gameName: project.gameName,
         appId: project.appId,

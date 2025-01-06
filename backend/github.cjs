@@ -86,7 +86,7 @@ const updateGameIndex = async () => {
  * @param {string|number} appId - The App ID to search for.
  * @param {string} gameName - The game name to search for if App ID is not available.
  * @param {string|null} [authToken=null] - GitHub auth token for API access.
- * @returns {Promise<Object|null>} - Returns the project object or null if not found.
+ * @returns {Promise<Object>} - Returns the project object or null if not found.
  */
 const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null) => {
   const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
@@ -108,7 +108,9 @@ const fetchProjectsByAppIdOrGameName = async (appId, gameName, authToken = null)
     }
     return project
   }
-  return null
+  // Cache an empty response for a short period of time
+  await redisCacheGitHubProjectDetails({}, appId, gameName)
+  return {}
 }
 
 /**
