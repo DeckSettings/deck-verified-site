@@ -341,7 +341,7 @@ const redisCacheGitHubProjectDetails = async (data, appId = null, gameName = nul
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }
-  const redisKey = appId ? `github_project_details:${appId}` : `github_project_details:${gameName}`
+  const redisKey = appId ? `github_project_details:${escapeRedisKey(appId)}` : `github_project_details:${escapeRedisKey(gameName)}`
   const cacheTime = 60 * 60 * 24 // Cache results in Redis for 1 day
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub project details for ${cacheTime} seconds with key ${redisKey}`)
@@ -359,7 +359,7 @@ const redisLookupGitHubProjectDetails = async (appId = null, gameName = null) =>
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }
-  const redisKey = appId ? `github_project_details:${appId}` : `github_project_details:${gameName}`
+  const redisKey = appId ? `github_project_details:${escapeRedisKey(appId)}` : `github_project_details:${escapeRedisKey(gameName)}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
@@ -390,7 +390,7 @@ const redisCacheSteamAppDetails = async (data, appId) => {
   if (!appId) {
     throw new Error('An AppID is required to cache a Steam app details.')
   }
-  const redisKey = `steam_app_details:${appId}`
+  const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
   const cacheTime = 60 * 60 * 24 * 2 // Cache results in Redis for 2 days
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
@@ -407,7 +407,7 @@ const redisLookupSteamAppDetails = async (appId) => {
   if (!appId) {
     throw new Error('An AppID is required to lookup Steam app details.')
   }
-  const redisKey = `steam_app_details:${appId}`
+  const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
@@ -438,7 +438,7 @@ const redisCacheSteamSearchSuggestions = async (data, searchTerm) => {
   if (!searchTerm) {
     throw new Error('A search term is required to cache a Steam suggestion list.')
   }
-  const redisKey = `steam_game_suggestions:${searchTerm}`
+  const redisKey = `steam_game_suggestions:${escapeRedisKey(searchTerm)}`
   const cacheTime = 60 * 60 * 24 * 2 // Cache results in Redis for 2 days
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
@@ -455,7 +455,7 @@ const redisLookupSteamSearchSuggestions = async (searchTerm) => {
   if (!searchTerm) {
     throw new Error('A search term is required.')
   }
-  const redisKey = `steam_game_suggestions:${searchTerm}`
+  const redisKey = `steam_game_suggestions:${escapeRedisKey(searchTerm)}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
