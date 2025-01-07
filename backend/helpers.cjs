@@ -117,6 +117,7 @@ const fetchSteamGameDetails = async (appId) => {
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`Steam app details API request failed with status ${response.status}: ${errorBody}`)
+      await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
       return {}
     }
     const data = await response.json()
@@ -132,12 +133,14 @@ const fetchSteamGameDetails = async (appId) => {
       return appDetails
     } else {
       logger.error(`No game data found for appId ${appId}`)
+      await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
       return {}
     }
   } catch (error) {
     logger.error(`Failed to fetch game data for appId ${appId}:`, error)
-    throw error
   }
+  await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
+  return {}
 }
 
 /**
@@ -165,6 +168,7 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`Steam suggest API request failed with status ${response.status}: ${errorBody}`)
+      await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
       return []
     }
     // Load JSON
@@ -172,6 +176,7 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
     // Ensure data is an array before filtering
     if (!Array.isArray(data)) {
       logger.error(`Unexpected response format for "${searchTerm}":`, data)
+      await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
       return []
     }
     // Filter for games only
@@ -186,8 +191,9 @@ const fetchSteamGameSuggestions = async (searchTerm) => {
     return games
   } catch (error) {
     logger.error('Error fetching Steam game suggestions:', error)
-    return []
   }
+  await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
+  return []
 }
 
 module.exports = {
