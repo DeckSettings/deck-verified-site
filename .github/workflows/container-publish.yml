@@ -25,8 +25,11 @@ jobs:
           echo  "GITHUB_REF:${GITHUB_REF}"
           echo  "GITHUB_REPOSITORY:${GITHUB_REPOSITORY}"
           VERSION_TAG=${GITHUB_REF#refs/*/}
+          SHA_SHORT="${GITHUB_SHA::7}"
           ORG=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "docker_image=ghcr.io/${ORG}/deck-verified-api" >> $GITHUB_OUTPUT
+
+          echo "sha_short=${SHA_SHORT:?}" >> $GITHUB_OUTPUT
+          echo "docker_image=ghcr.io/${ORG:?}/deck-verified-web" >> $GITHUB_OUTPUT
           if [[ ${VERSION_TAG%/merge} == 'master' ]]; then
             echo "docker_tag=latest" >> $GITHUB_OUTPUT
           elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then
@@ -49,7 +52,7 @@ jobs:
           images: ${{ steps.set-image.outputs.docker_image }}
           labels: |
             maintainer=Josh.5
-            source.version=${{ github.sha.substring(0, 7) }}
+            source.version=${{ steps.set-image.outputs.sha_short }}
             source.project=deck-verified-site
             source.service=deck-verified-api
             org.opencontainers.image.title=deck-verified-api
@@ -85,8 +88,11 @@ jobs:
           echo  "GITHUB_REF:${GITHUB_REF}"
           echo  "GITHUB_REPOSITORY:${GITHUB_REPOSITORY}"
           VERSION_TAG=${GITHUB_REF#refs/*/}
+          SHA_SHORT="${GITHUB_SHA::7}"
           ORG=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "docker_image=ghcr.io/${ORG}/deck-verified-web" >> $GITHUB_OUTPUT
+
+          echo "sha_short=${SHA_SHORT:?}" >> $GITHUB_OUTPUT
+          echo "docker_image=ghcr.io/${ORG:?}/deck-verified-web" >> $GITHUB_OUTPUT
           if [[ ${VERSION_TAG%/merge} == 'master' ]]; then
             echo "docker_tag=latest" >> $GITHUB_OUTPUT
           elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then
@@ -108,7 +114,7 @@ jobs:
           images: ${{ steps.set-image.outputs.docker_image }}
           labels: |
             maintainer=Josh.5
-            source.version=${{ github.sha.substring(0, 7) }}
+            source.version=${{ steps.set-image.outputs.sha_short }}
             source.project=deck-verified-site
             source.service=deck-verified-web
             org.opencontainers.image.title=deck-verified-web
