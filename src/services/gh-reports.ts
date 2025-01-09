@@ -529,7 +529,7 @@ export const fetchIssuesByProjectSearchLocal = async (searchTerm: string, authTo
 
 export const fetchReports = async (
   repoOwner: string = 'DeckSettings',
-  repoName: string = 'deck-settings-db',
+  repoName: string = 'game-reports-steamos',
   state: string = 'open',
   sort: string = 'updated',
   direction: string = 'desc'

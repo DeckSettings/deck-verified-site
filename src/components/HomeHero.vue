@@ -20,7 +20,7 @@
           class="q-mr-md q-mt-md"
           :class="{'full-width': $q.screen.lt.sm}"
           icon="fab fa-github"
-          href="https://github.com/DeckSettings/deck-settings-db"
+          href="https://github.com/DeckSettings/game-reports-steamos"
           target="_blank"
           label="View & Contribute to Reports"
           color="white"

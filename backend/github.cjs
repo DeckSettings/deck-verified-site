@@ -28,7 +28,7 @@ const defaultGithubAuthToken = process.env.GH_TOKEN || null
  */
 const fetchReports = async (
   repoOwner = 'DeckSettings',
-  repoName = 'deck-settings-db',
+  repoName = 'game-reports-steamos',
   state = 'open',
   sort = 'updated',
   direction = 'desc',
@@ -309,7 +309,7 @@ const fetchReportBodySchema = async () => {
     return cachedData
   }
 
-  const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/deck-settings-db/refs/heads/master/.github/scripts/config/game-report-validation.json'
+  const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/scripts/config/game-report-validation.json'
 
   try {
     logger.info('Fetching GitHub report body schema from URL')
@@ -358,7 +358,7 @@ const fetchIssueLabels = async (authToken = null) => {
   if (authToken) {
     headers['Authorization'] = `bearer ${authToken}`
   }
-  const response = await fetch('https://api.github.com/repos/DeckSettings/deck-settings-db/labels', {
+  const response = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/labels', {
     method: 'GET',
     headers: headers
   })

@@ -19,7 +19,7 @@ const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
 const githubProjectSearchLink = ref<string | null>(null)
-const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/deck-settings-db/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
+const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GithubIssueLabel[]>([])
@@ -170,7 +170,7 @@ const initGameData = async (params: RouteParamsGeneric) => {
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&game_name=${encodeURIComponent(gameName.value)}`
     }
     if (gameData.value.projectNumber) {
-      githubProjectSearchLink.value = `https://github.com/DeckSettings/deck-settings-db/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
+      githubProjectSearchLink.value = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
     }
     if (gameData.value.metadata) {
       gameBackground.value = gameData.value.metadata.hero

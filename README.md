@@ -22,7 +22,7 @@ Deck Verified is built by gamers, for gamers. We encourage you to contribute you
 **Links:**
 
 * **Website:** [https://deckverified.games/](https://deckverified.games/)
-* **Game Reports Repository:** [https://github.com/DeckSettings/deck-settings-db](https://github.com/DeckSettings/deck-settings-db)
+* **Game Reports Repository:** [https://github.com/DeckSettings/game-reports-steamos](https://github.com/DeckSettings/game-reports-steamos)
 * **Website Source Code:** [https://github.com/DeckSettings/deck-verified-site](https://github.com/DeckSettings/deck-verified-site)
 
 **Join the Community:**
