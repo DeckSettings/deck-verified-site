@@ -66,17 +66,17 @@ fetchLabels().then(labels => {
 
 // Toggle function for sorting
 const sortOption = ref('none')
-const sortOrder = ref('off') // 'asc', 'desc', 'off'
+const sortOrder = ref('off') // 'desc', 'asc', 'off'
 const toggleSortOrder = (option: string) => {
   if (sortOption.value !== option) {
-    sortOrder.value = 'asc'
+    sortOrder.value = 'desc'
     sortOption.value = option
     return
   }
   if (sortOrder.value === 'off') {
-    sortOrder.value = 'asc'
-  } else if (sortOrder.value === 'asc') {
     sortOrder.value = 'desc'
+  } else if (sortOrder.value === 'desc') {
+    sortOrder.value = 'asc'
   } else {
     sortOrder.value = 'off'
   }
@@ -117,23 +117,31 @@ const filteredReports = computed(() => {
 
   let reports: GameReport[] = gameData.value.reports
 
+  // Filter by device selector
   if (selectedDevice.value !== 'all' && selectedDevice.value) {
     reports = reports.filter(report => report.labels.some(label => label.name === selectedDevice.value))
   }
-
+  // Filter by launcher selector
   if (selectedLauncher.value !== 'all' && selectedLauncher.value) {
     reports = reports.filter(report => report.labels.some(label => label.name === selectedLauncher.value))
   }
 
-  if (sortOrder.value === 'reactions') {
-    reports = reports.sort((a, b) => {
-      const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-      const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-      return bLikes - aLikes // Sort by likes in descending order
-    })
-  } else {
-    reports = reports.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()) // Sort by last updated in descending order
+  if (sortOrder.value !== 'off') {
+    if (sortOption.value === 'reactions') {
+      reports = reports.sort((a, b) => {
+        const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+        const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+        return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes // Ascending or descending
+      })
+    } else if (sortOption.value === 'updated') {
+      reports = reports.sort((a, b) => {
+        const aUpdated = new Date(a.updated_at).getTime()
+        const bUpdated = new Date(b.updated_at).getTime()
+        return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated // Ascending or descending
+      })
+    }
   }
+  console.log(reports)
 
   return reports
 })
@@ -294,7 +302,15 @@ watch(
                     <q-icon
                       :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
                       :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
-                    <q-tooltip>Sort by Most Liked</q-tooltip>
+                    <q-tooltip v-if="sortOption !== 'reactions' || sortOrder === 'off'">
+                      Sort by Most Liked
+                    </q-tooltip>
+                    <q-tooltip v-else-if="sortOrder === 'asc'">
+                      Sorting by Most Liked Ascending
+                    </q-tooltip>
+                    <q-tooltip v-else-if="sortOrder === 'desc'">
+                      Sorting by Most Liked Descending
+                    </q-tooltip>
                   </q-btn>
                 </div>
               </div>

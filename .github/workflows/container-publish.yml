@@ -29,7 +29,7 @@ jobs:
           ORG=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
 
           echo "sha_short=${SHA_SHORT:?}" >> $GITHUB_OUTPUT
-          echo "docker_image=ghcr.io/${ORG:?}/deck-verified-web" >> $GITHUB_OUTPUT
+          echo "docker_image=ghcr.io/${ORG:?}/deck-verified-api" >> $GITHUB_OUTPUT
           if [[ ${VERSION_TAG%/merge} == 'master' ]]; then
             echo "docker_tag=latest" >> $GITHUB_OUTPUT
           elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then

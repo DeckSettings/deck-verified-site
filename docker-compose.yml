@@ -44,6 +44,7 @@ services:
       - ./backend:/app/
 
   # --- FRONTEND ---
+  # NOTE: Ensure you run 'npm run build' first due to the ./dist/spa volume mounted into the container.
   web:
     image: ghcr.io/decksettings/deck-verified-web:latest
     build:
