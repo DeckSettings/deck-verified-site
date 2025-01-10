@@ -26,7 +26,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: npm run dev
+    command: npm run watch
     ports:
       - '9022:9022'
     depends_on:
