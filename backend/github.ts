@@ -1,5 +1,5 @@
 import logfmt from 'logfmt'
-//import { parseGameProjectBody, parseReportBody } from './helpers'
+import config from './config'
 import logger from './logger'
 import {
   redisCacheGitHubIssueLabels, redisCacheGitHubProjectDetails,
@@ -16,9 +16,6 @@ import type {
   GitHubReportIssueBodySchema
 } from '../shared/types/game'
 import { parseGameProjectBody, parseReportBody } from './helpers'
-
-// Configure default GitHub auth token
-const defaultGithubAuthToken: string | null = process.env.GH_TOKEN || null
 
 /**
  * Fetches reports from a GitHub repository using the search API.
@@ -57,7 +54,7 @@ export const fetchReports = async (
  */
 export const updateGameIndex = async (): Promise<void> => {
   try {
-    const authToken = defaultGithubAuthToken || null
+    const authToken = config.defaultGithubAuthToken
 
     const projects = await fetchProject('', authToken)
     if (projects) {
@@ -293,8 +290,8 @@ export const fetchProject = async (
   searchTerm: string,
   authToken: string | null = null
 ): Promise<GitHubProjectDetails[] | null> => {
-  if (!authToken && defaultGithubAuthToken) {
-    authToken = defaultGithubAuthToken
+  if (!authToken && config.defaultGithubAuthToken) {
+    authToken = config.defaultGithubAuthToken
   }
 
   const orgNodeId = 'O_kgDOC35waw'
@@ -498,8 +495,8 @@ export const fetchIssueLabels = async (authToken: string | null = null): Promise
   }
 
   // Use default API auth token if none provided
-  if (!authToken && defaultGithubAuthToken) {
-    authToken = defaultGithubAuthToken
+  if (!authToken && config.defaultGithubAuthToken) {
+    authToken = config.defaultGithubAuthToken
   }
 
   logger.info('Fetching labels from GitHub API')

@@ -1,6 +1,7 @@
 import express from 'express'
 import type { Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
+import config from './config'
 import { generalLimiter } from './rateLimiter'
 import logger from './logger'
 import {
@@ -14,7 +15,7 @@ import {
   updateGameIndex
 } from './github'
 import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails, generateImageLinksFromAppId } from './helpers'
-import { GameDetails, GameImages, GameMetadata, GameSearchResult } from '../shared/types/game'
+import type { GameDetails, GameMetadata, GameSearchResult } from '../shared/types/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -29,7 +30,7 @@ const app = express()
 app.set('trust proxy', 1)
 
 // Apply some production security hardening
-if (process.env.NODE_ENV === 'production') {
+if (config.nodeEnv === 'production') {
   logger.info('Running with helmet enabled.')
   app.use(helmet())
 } else {
@@ -37,7 +38,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Apply a rate limiter to all routes
-if (process.env.DISABLE_RATE_LIMITER !== 'true') {
+if (config.enableRateLimiter) {
   logger.info('Running with rate limiter enabled.')
   app.use(generalLimiter)
 } else {
@@ -362,6 +363,10 @@ const startServer = async () => {
       // Schedule updateGameIndex to run every hour
       logger.info('Starting scheduled tasks')
       setInterval(updateGameIndex, 3600 * 1000)
+      // Optionally run on start also
+      if (config.runScheduledTaskOnStart) {
+        await updateGameIndex()
+      }
     } else {
       logger.info('Running with scheduled tasks disabled.')
     }

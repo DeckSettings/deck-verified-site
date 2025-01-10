@@ -6,8 +6,8 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "dev-local": "env $(grep -v '^#' ../.env | xargs) nodemon --watch './**/*.ts' --exec 'tsx' index.ts",
-    "serve-local": "env $(grep -v '^#' ../.env | xargs) pm2-runtime --interpreter tsx index.ts",
+    "watch": "nodemon --watch './**/*.ts' --exec 'tsx' index.ts",
+    "serve-dev": "pm2-runtime --interpreter tsx index.ts",
     "build": "tsc",
     "serve": "node dist/index.js",
     "serve-no-tasks": "pm2-runtime -i 2 dist/index.js --no-scheduled-tasks",

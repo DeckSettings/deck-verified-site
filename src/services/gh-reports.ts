@@ -109,13 +109,7 @@ export const searchGames = async (searchString: string | null, includeExternal: 
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
       throw new Error('Failed to fetch project data')
     }
-    const data = await response.json() as GameSearchResult[]
-    const gameSearchResults: GameSearchResult[] = data.map(gameSearchResult => ({
-      name: gameSearchResult.name,
-      appId: gameSearchResult.appId,
-      metadata: gameSearchResult.metadata
-    }))
-    return gameSearchResults
+    return await response.json() as GameSearchResult[]
   } catch (error) {
     console.error('Error fetching project data:', error)
     throw error

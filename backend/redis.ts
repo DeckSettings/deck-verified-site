@@ -1,5 +1,6 @@
 import { createClient, SchemaFieldTypes } from 'redis'
 import type { RedisClientType } from 'redis'
+import config from './config'
 import logger from './logger'
 import type {
   GameReport,
@@ -11,19 +12,13 @@ import type {
   SteamGame
 } from '../shared/types/game'
 
-// Redis configuration
-const redisHost: string = process.env.REDIS_HOST || '127.0.0.1'
-const redisPort: number = parseInt(process.env.REDIS_PORT || '6379', 10)
-const redisPassword: string = process.env.REDIS_PASSWORD || 'mySecretPassword'
-const defaultCacheTime: number = parseInt(process.env.DEFAULT_CACHE_TIME || '600', 10) // Default 10 minutes
-
 // Redis client
 export const redisClient: RedisClientType = createClient({
   socket: {
-    host: redisHost,
-    port: redisPort
+    host: config.redisHost,
+    port: config.redisPort
   },
-  password: redisPassword
+  password: config.redisPassword
 })
 
 /**
@@ -177,7 +172,7 @@ export const redisCacheRecentGameReports = async (data: GameReport[]): Promise<v
     throw new Error('Data is required for caching GitHub recent game reports.')
   }
   const redisKey = 'github_game_reports_recent'
-  const cacheTime = defaultCacheTime
+  const cacheTime = config.defaultCacheTime
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub recent game reports for ${cacheTime} seconds with key ${redisKey}`)
 }
@@ -210,7 +205,7 @@ export const redisCachePopularGameReports = async (data: GameReport[]): Promise<
     throw new Error('Data is required for caching GitHub popular game reports.')
   }
   const redisKey = 'github_game_reports_popular'
-  const cacheTime = defaultCacheTime
+  const cacheTime = config.defaultCacheTime
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub popular game reports for ${cacheTime} seconds with key ${redisKey}`)
 }
@@ -241,7 +236,7 @@ export const redisCacheGitHubIssueLabels = async (data: GitHubIssueLabel[]): Pro
     throw new Error('Data is required for caching GitHub issue labels.')
   }
   const redisKey = 'github_issue_labels'
-  const cacheTime = defaultCacheTime
+  const cacheTime = config.defaultCacheTime
 
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub issue labels for ${cacheTime} seconds with key ${redisKey}`)
@@ -273,7 +268,7 @@ export const redisCacheReportBodySchema = async (data: GitHubReportIssueBodySche
     throw new Error('Data is required for caching GitHub report body schema.')
   }
   const redisKey = 'github_game_reports_body_schema'
-  const cacheTime = defaultCacheTime
+  const cacheTime = config.defaultCacheTime
 
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub report body schema for ${cacheTime} seconds with key ${redisKey}`)
