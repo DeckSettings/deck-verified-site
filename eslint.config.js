@@ -83,7 +83,7 @@ export default [
 
   // Override for backend JS files
   {
-    files: ['backend/*.js', 'backend/*.cjs'],
+    files: ['backend/**/*.js', 'backend/**/*.cjs'],
     languageOptions: {
       sourceType: 'commonjs',  // Use CommonJS for backend
       ecmaVersion: 'latest',

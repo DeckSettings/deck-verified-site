@@ -1,14 +1,24 @@
-const redis = require('redis')
-const logger = require('./logger.cjs')
+import { createClient, SchemaFieldTypes } from 'redis'
+import type { RedisClientType } from 'redis'
+import logger from './logger'
+import type {
+  GameReport,
+  GameSearchResult,
+  GitHubIssueLabel,
+  GitHubReportIssueBodySchema,
+  GitHubProjectDetails,
+  SteamStoreAppDetails,
+  SteamGame
+} from './types/game'
 
-// Redis config
-const redisHost = process.env.REDIS_HOST || '127.0.0.1'
-const redisPort = process.env.REDIS_PORT || 6379
-const redisPassword = process.env.REDIS_PASSWORD || null
-const defaultCacheTime = process.env.DEFAULT_CACHE_TIME || 600 // Default 10 Minutes
+// Redis configuration
+const redisHost: string = process.env.REDIS_HOST || '127.0.0.1'
+const redisPort: number = parseInt(process.env.REDIS_PORT || '6379', 10)
+const redisPassword: string = process.env.REDIS_PASSWORD || 'mySecretPassword'
+const defaultCacheTime: number = parseInt(process.env.DEFAULT_CACHE_TIME || '600', 10) // Default 10 minutes
 
-// Redis connection
-const redisClient = redis.createClient({
+// Redis client
+export const redisClient: RedisClientType = createClient({
   socket: {
     host: redisHost,
     port: redisPort
@@ -22,7 +32,7 @@ const redisClient = redis.createClient({
  *
  * @returns {Promise<void>}
  */
-const connectToRedis = async () => {
+export const connectToRedis = async (): Promise<void> => {
   redisClient.on('connect', () => {
     logger.info('Connected to Redis!')
   })
@@ -44,10 +54,8 @@ const connectToRedis = async () => {
  * Creates a RedisSearch index for games if it doesn't already exist.
  * This index allows efficient searching of game data stored in Redis.
  * Logs success or failure during index creation.
- *
- * @returns {Promise<void>}
  */
-const createRedisSearchIndex = async () => {
+export const createRedisSearchIndex = async (): Promise<void> => {
   try {
     // Check if the index already exists
     const indexExists = await redisClient.ft.info('games_idx').catch(() => null)
@@ -59,7 +67,7 @@ const createRedisSearchIndex = async () => {
       await redisClient.ft.create(
         'games_idx',
         {
-          appsearch: { type: 'TEXT', SORTABLE: true }  // Searchable index. Other fields can be added, but will not be searchable.
+          appsearch: { type: SchemaFieldTypes.TEXT, SORTABLE: true }
         },
         {
           ON: 'HASH',
@@ -75,11 +83,8 @@ const createRedisSearchIndex = async () => {
 
 /**
  * Escapes strings for safe usage in Redis keys.
- *
- * @param {string} input - The string to be sanitized.
- * @returns {string} - The escaped string.
  */
-const escapeRedisKey = (input) => {
+export const escapeRedisKey = (input: string): string => {
   // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
   return input.toString().toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
 }
@@ -89,14 +94,8 @@ const escapeRedisKey = (input) => {
  * The game is indexed by either AppID or game name.
  * NOTE:  Special characters in the search string are escaped. Without this,
  *        we are unable to search on these special characters.
- *
- * @param {string} gameName - The name of the game.
- * @param {string|null} [appId=null] - The AppID of the game, if available.
- * @param {string|null} [banner=null] - URL of the game banner image.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if gameName is not provided.
  */
-const storeGameInRedis = async (gameName, appId = null, banner = null) => {
+export const storeGameInRedis = async (gameName: string, appId: string | null = null, banner: string | null = null): Promise<void> => {
   if (!gameName) {
     throw new Error('Game name is required.')
   }
@@ -104,12 +103,13 @@ const storeGameInRedis = async (gameName, appId = null, banner = null) => {
   const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
   const searchString = appId ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
   const escapedSearchString = escapeRedisKey(searchString)
+
   try {
     await redisClient.hSet(gameId, {
       appsearch: escapedSearchString, // Add string used for searches
-      appname: gameName,  // Use gameName for the appname
-      appid: appId ? String(appId) : '',   // Store appid, use empty string if null
-      appbanner: banner ? String(banner) : ''   // Store poster, use empty string if null
+      appname: gameName,              // Use gameName for the appname
+      appid: appId || '',             // Store appid, use empty string if null
+      appbanner: banner || ''         // Store poster, use empty string if null
     })
     logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
   } catch (error) {
@@ -120,14 +120,8 @@ const storeGameInRedis = async (gameName, appId = null, banner = null) => {
 /**
  * Searches for games in Redis based on the provided search term.
  * Uses RedisSearch to match the term against indexed game data.
- *
- * @param {string|null} searchTerm - The term to search for.
- * @param {number|null} appId - An AppID to search for.
- * @param {string|null} gameName - The game name to search for.
- * @returns {Promise<Array>} - Returns an array of matching game objects.
- * @throws {Error} - Throws an error if no search term is provided.
  */
-const searchGamesInRedis = async (searchTerm = null, appId = null, gameName = null) => {
+export const searchGamesInRedis = async (searchTerm: string | null = null, appId: string | null = null, gameName: string | null = null): Promise<GameSearchResult[]> => {
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
   }
@@ -139,9 +133,8 @@ const searchGamesInRedis = async (searchTerm = null, appId = null, gameName = nu
   }
 
   try {
-    let query = null
+    let query = ''
     if (searchTerm) {
-      // Construct the search query to match either appname or appid
       logger.info(`Searching cached games list for '${searchTerm}'`)
       query = `@appsearch:*${escapeRedisKey(searchTerm)}*`
     } else if (appId) {
@@ -165,10 +158,10 @@ const searchGamesInRedis = async (searchTerm = null, appId = null, gameName = nu
       return []
     }
 
-    return results.documents.map(doc => ({
-      name: doc.value.appname,
-      appId: doc.value.appid !== '' ? doc.value.appid : null,
-      banner: doc.value.appbanner !== '' ? doc.value.appbanner : null
+    return results.documents.map((doc): GameSearchResult => ({
+      name: typeof doc.value.appname === 'string' ? doc.value.appname : '',
+      appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
+      banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null
     }))
   } catch (error) {
     logger.error('Error during search:', error)
@@ -178,13 +171,9 @@ const searchGamesInRedis = async (searchTerm = null, appId = null, gameName = nu
 
 /**
  * Caches recent game reports from GitHub in Redis.
- *
- * @param {Array} data - The data to cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data is provided.
  */
-const redisCacheRecentGameReports = async (data) => {
-  if (!data) {
+export const redisCacheRecentGameReports = async (data: GameReport[]): Promise<void> => {
+  if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub recent game reports.')
   }
   const redisKey = 'github_game_reports_recent'
@@ -196,16 +185,16 @@ const redisCacheRecentGameReports = async (data) => {
 /**
  * Looks up recent game reports cached in Redis.
  *
- * @returns {Promise<Object|null>} - Returns cached data or null if no cache exists.
+ * @returns {Promise<GameReport[] | null>} - Returns cached data or null if no cache exists.
  */
-const redisLookupRecentGameReports = async () => {
+export const redisLookupRecentGameReports = async (): Promise<GameReport[] | null> => {
   const redisKey = 'github_game_reports_recent'
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved GitHub recent game reports from Redis cache`)
-      return JSON.parse(cachedData)
+      logger.info('Retrieved GitHub recent game reports from Redis cache')
+      return JSON.parse(cachedData) as GameReport[]
     }
   } catch (error) {
     logger.error('Redis error while fetching cached recent game reports:', error)
@@ -215,13 +204,9 @@ const redisLookupRecentGameReports = async () => {
 
 /**
  * Caches popular game reports from GitHub in Redis.
- *
- * @param {Array} data - The data to cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data is provided.
  */
-const redisCachePopularGameReports = async (data) => {
-  if (!data) {
+export const redisCachePopularGameReports = async (data: GameReport[]): Promise<void> => {
+  if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub popular game reports.')
   }
   const redisKey = 'github_game_reports_popular'
@@ -232,17 +217,15 @@ const redisCachePopularGameReports = async (data) => {
 
 /**
  * Looks up popular game reports cached in Redis.
- *
- * @returns {Promise<Object|null>} - Returns cached data or null if no cache exists.
  */
-const redisLookupPopularGameReports = async () => {
+export const redisLookupPopularGameReports = async (): Promise<GameReport[] | null> => {
   const redisKey = 'github_game_reports_popular'
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved GitHub popular game reports from Redis cache`)
-      return JSON.parse(cachedData)
+      logger.info('Retrieved GitHub popular game reports from Redis cache')
+      return JSON.parse(cachedData) as GameReport[]
     }
   } catch (error) {
     logger.error('Redis error while fetching cached popular game reports:', error)
@@ -252,34 +235,29 @@ const redisLookupPopularGameReports = async () => {
 
 /**
  * Caches the list of issue labels from GitHub in Redis.
- *
- * @param {Array} data - The data to cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data is provided.
  */
-const redisCacheGitHubIssueLabels = async (data) => {
+export const redisCacheGitHubIssueLabels = async (data: GitHubIssueLabel[]): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching GitHub issue labels.')
   }
   const redisKey = 'github_issue_labels'
   const cacheTime = defaultCacheTime
+
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub issue labels for ${cacheTime} seconds with key ${redisKey}`)
 }
 
 /**
  * Looks up the list of issue labels cached in Redis.
- *
- * @returns {Promise<Object|null>} - Returns cached data or null if no cache exists.
  */
-const redisLookupGitHubIssueLabels = async () => {
+export const redisLookupGitHubIssueLabels = async (): Promise<GitHubIssueLabel[] | null> => {
   const redisKey = 'github_issue_labels'
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
       logger.info(`Retrieved GitHub issue labels from Redis cache`)
-      return JSON.parse(cachedData)
+      return JSON.parse(cachedData) as GitHubIssueLabel[]
     }
   } catch (error) {
     logger.error('Redis error while fetching cached GitHub issue labels:', error)
@@ -289,27 +267,22 @@ const redisLookupGitHubIssueLabels = async () => {
 
 /**
  * Caches the game report body schema from the GitHub repo in Redis.
- *
- * @param {Array} data - The data to cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data is provided.
  */
-const redisCacheReportBodySchema = async (data) => {
+export const redisCacheReportBodySchema = async (data: GitHubReportIssueBodySchema): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching GitHub report body schema.')
   }
   const redisKey = 'github_game_reports_body_schema'
   const cacheTime = defaultCacheTime
+
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub report body schema for ${cacheTime} seconds with key ${redisKey}`)
 }
 
 /**
  * Looks up the game report body schema cached in Redis.
- *
- * @returns {Promise<Object|null>} - Returns cached data or null if no cache exists.
  */
-const redisLookupReportBodySchema = async () => {
+export const redisLookupReportBodySchema = async (): Promise<GitHubReportIssueBodySchema | null> => {
   const redisKey = 'github_game_reports_body_schema'
   try {
     // Attempt to fetch from Redis cache
@@ -327,44 +300,37 @@ const redisLookupReportBodySchema = async () => {
 /**
  * Caches GitHub project details in Redis.
  * This data is cached for one day.
- *
- * @param {Object} data - The project details to be cached.
- * @param {string|null} [appId=null] - The AppID associated with the project.
- * @param {string|null} [gameName=null] - The name of the game associated with the project.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data is provided or if neither AppID nor Game Name is specified.
  */
-const redisCacheGitHubProjectDetails = async (data, appId = null, gameName = null) => {
+export const redisCacheGitHubProjectDetails = async (data: GitHubProjectDetails | Record<string, never>, appId: string | null = null, gameName: string | null = null): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching GitHub project details.')
   }
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }
-  const redisKey = appId ? `github_project_details:${escapeRedisKey(appId)}` : `github_project_details:${escapeRedisKey(gameName)}`
+  const redisKey = appId
+    ? `github_project_details:${escapeRedisKey(appId)}`
+    : `github_project_details:${escapeRedisKey(gameName!)}`
   const cacheTime = 60 * 60 * 24 // Cache results in Redis for 1 day
+
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub project details for ${cacheTime} seconds with key ${redisKey}`)
 }
-
 /**
  * Looks up GitHub project details from Redis by AppID or Game Name.
- *
- * @param {string|null} [appId=null] - The AppID of the project to look up.
- * @param {string|null} [gameName=null] - The game name associated with the project to look up.
- * @returns {Promise<Object|null>} - Returns the cached project details if found, or null if not cached.
- * @throws {Error} - Throws an error if neither AppID nor Game Name is provided.
  */
-const redisLookupGitHubProjectDetails = async (appId = null, gameName = null) => {
+export const redisLookupGitHubProjectDetails = async (appId: string | null = null, gameName: string | null = null): Promise<GitHubProjectDetails | null> => {
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }
-  const redisKey = appId ? `github_project_details:${escapeRedisKey(appId)}` : `github_project_details:${escapeRedisKey(gameName)}`
+  const redisKey = appId
+    ? `github_project_details:${escapeRedisKey(appId)}`
+    : `github_project_details:${escapeRedisKey(gameName!)}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved GitHub project for AppID "${appId}" from Redis cache`)
+      logger.info(`Retrieved GitHub project for AppID "${appId}" or Game Name "${gameName}" from Redis cache`)
       return JSON.parse(cachedData)
     }
   } catch (error) {
@@ -377,46 +343,38 @@ const redisLookupGitHubProjectDetails = async (appId = null, gameName = null) =>
  * Caches an object of Steam app details in Redis.
  * The cached data is stored for 2 days to improve search performance and reduce API calls
  * to the Steam store.
- *
- * @param {Object} data - The list of Steam game suggestions to cache.
- * @param {string} appId - The AppID of the game details from Steam.
- * @param {number} cacheTime - Optional value for the time to store the data in the cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data or search term is provided.
  */
-const redisCacheSteamAppDetails = async (data, appId, cacheTime = null) => {
+export const redisCacheSteamAppDetails = async (
+  data: SteamStoreAppDetails | Record<string, never>,
+  appId: string,
+  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+): Promise<void> => {
   if (!data) {
-    throw new Error('Data is required for caching a Steam app details.')
+    throw new Error('Data is required for caching Steam app details.')
   }
   if (!appId) {
-    throw new Error('An AppID is required to cache a Steam app details.')
+    throw new Error('An AppID is required to cache Steam app details.')
   }
+
   const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
-  if (!cacheTime) {
-    cacheTime = 60 * 60 * 24 * 2 // Cache results in Redis for 2 days
-  }
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
-  logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
+  logger.info(`Cached Steam app details for ${cacheTime} seconds with key ${redisKey}`)
 }
 
 /**
  * Retrieves a cached object of Steam details for a given App ID.
- *
- * @param {string} appId - The AppID of the project to look up.
- * @returns {Promise<Object|null>} - Returns the cached list of suggestions if found, or null if not cached.
- * @throws {Error} - Throws an error if no search term is provided.
  */
-const redisLookupSteamAppDetails = async (appId) => {
+export const redisLookupSteamAppDetails = async (appId: string): Promise<SteamStoreAppDetails | null> => {
   if (!appId) {
     throw new Error('An AppID is required to lookup Steam app details.')
   }
+
   const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
   try {
-    // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
       logger.info(`Retrieved Steam app details for "${appId}" from Redis cache`)
-      return JSON.parse(cachedData)
+      return JSON.parse(cachedData) as SteamStoreAppDetails
     }
   } catch (error) {
     logger.error('Redis error while fetching cached Steam app details:', error)
@@ -426,16 +384,14 @@ const redisLookupSteamAppDetails = async (appId) => {
 
 /**
  * Caches a list of Steam game search suggestions in Redis.
- * The cached data is stored for 2 days to improve search performance and reduce API calls
- * to the Steam store.
- *
- * @param {Object} data - The list of Steam game suggestions to cache.
- * @param {string} searchTerm - The search term used to retrieve the suggestions.
- * @param {number} cacheTime - Optional value for the time to store the data in the cache.
- * @returns {Promise<void>}
- * @throws {Error} - Throws an error if no data or search term is provided.
+ * The cached data is stored for a default of 2 days to improve search performance
+ * and reduce API calls to the Steam store.
  */
-const redisCacheSteamSearchSuggestions = async (data, searchTerm, cacheTime = null) => {
+export const redisCacheSteamSearchSuggestions = async (
+  data: SteamGame[],
+  searchTerm: string,
+  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching a Steam suggestion list.')
   }
@@ -443,21 +399,16 @@ const redisCacheSteamSearchSuggestions = async (data, searchTerm, cacheTime = nu
     throw new Error('A search term is required to cache a Steam suggestion list.')
   }
   const redisKey = `steam_game_suggestions:${escapeRedisKey(searchTerm)}`
-  if (!cacheTime) {
-    cacheTime = 60 * 60 * 24 * 2 // Cache results in Redis for 2 days
-  }
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
 }
 
 /**
  * Retrieves a cached list of Steam game search suggestions from Redis.
- *
- * @param {string} searchTerm - The search term used to look up the cached suggestions.
- * @returns {Promise<Object[]|null>} - Returns the cached list of suggestions if found, or null if not cached.
- * @throws {Error} - Throws an error if no search term is provided.
  */
-const redisLookupSteamSearchSuggestions = async (searchTerm) => {
+export const redisLookupSteamSearchSuggestions = async (
+  searchTerm: string
+): Promise<SteamGame[] | null> => {
   if (!searchTerm) {
     throw new Error('A search term is required.')
   }
@@ -467,31 +418,10 @@ const redisLookupSteamSearchSuggestions = async (searchTerm) => {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
       logger.info(`Retrieved Steam suggestion list for search term "${searchTerm}" from Redis cache`)
-      return JSON.parse(cachedData)
+      return JSON.parse(cachedData) as SteamGame[]
     }
   } catch (error) {
     logger.error('Redis error while fetching cached suggestions:', error)
   }
   return null
-}
-
-module.exports = {
-  redisClient,
-  connectToRedis,
-  storeGameInRedis,
-  searchGamesInRedis,
-  redisCacheRecentGameReports,
-  redisLookupRecentGameReports,
-  redisCachePopularGameReports,
-  redisLookupPopularGameReports,
-  redisCacheGitHubIssueLabels,
-  redisLookupGitHubIssueLabels,
-  redisCacheReportBodySchema,
-  redisLookupReportBodySchema,
-  redisCacheGitHubProjectDetails,
-  redisLookupGitHubProjectDetails,
-  redisCacheSteamAppDetails,
-  redisLookupSteamAppDetails,
-  redisCacheSteamSearchSuggestions,
-  redisLookupSteamSearchSuggestions
 }

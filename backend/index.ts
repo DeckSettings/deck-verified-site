@@ -1,7 +1,9 @@
-const express = require('express')
-const helmet = require('helmet')
-const { generalLimiter } = require('./rateLimiter.cjs')
-const {
+import express from 'express'
+import type { Request, Response, NextFunction } from 'express'
+import helmet from 'helmet'
+import { generalLimiter } from './rateLimiter'
+import logger from './logger'
+import {
   connectToRedis,
   storeGameInRedis,
   searchGamesInRedis,
@@ -9,13 +11,14 @@ const {
   redisCacheRecentGameReports,
   redisCachePopularGameReports,
   redisLookupPopularGameReports
-} = require('./redis.cjs')
-const { updateGameIndex, fetchProjectsByAppIdOrGameName, fetchReports, fetchIssueLabels } = require('./github.cjs')
-const {
-  fetchSteamGameDetails,
-  fetchSteamGameSuggestions
-} = require('./helpers.cjs')
-const logger = require('./logger.cjs')
+} from './redis'
+import {
+  fetchIssueLabels,
+  fetchProjectsByAppIdOrGameName,
+  fetchReports, updateGameIndex
+} from './github'
+import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './helpers'
+import type { GameDetails } from './types/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -46,7 +49,14 @@ if (process.env.DISABLE_RATE_LIMITER !== 'true') {
 }
 
 // Configure middleware to log requests
-app.use((req, res, next) => {
+interface AugmentedRequest extends Request {
+  rateLimit?: {
+    used: number;
+    remaining: number;
+  };
+}
+
+app.use((req: AugmentedRequest, res: Response, next: NextFunction) => {
   const start = process.hrtime()
   res.on('finish', () => {
     const duration = process.hrtime(start)
@@ -61,7 +71,6 @@ app.use((req, res, next) => {
     const logData = {
       source_project: 'deck-verified-api',
       source_version: 1, // TODO: Cook version into build
-      filename: __filename,
       process: process.pid,
       time: timeNowString,
       timestamp: Math.floor(Date.now() / 1000),
@@ -72,8 +81,8 @@ app.use((req, res, next) => {
       path: req.originalUrl,
       status: res.statusCode,
       response_length: responseLength,
-      rate_limit_used: req.rateLimit ? parseInt(req.rateLimit.used, 10) : 0,
-      rate_limit_remaining: req.rateLimit ? parseInt(req.rateLimit.remaining, 10) : 0,
+      rate_limit_used: req.rateLimit ? req.rateLimit.used : '0',
+      rate_limit_remaining: req.rateLimit ? req.rateLimit.remaining : '0',
       referer: httpReferer,
       user_agent: userAgent,
       remote_ip: req.ip
@@ -89,7 +98,7 @@ app.use((req, res, next) => {
  * @returns {object[]} 200 - Service is healthy.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/health', async (req, res) => {
+app.get('/deck-verified/api/v1/health', async (_req: Request, res: Response) => {
   res.status(200).send('OK')
 })
 
@@ -100,7 +109,7 @@ app.get('/deck-verified/api/v1/health', async (req, res) => {
  * @returns {array} 204 - No reports found.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
+app.get('/deck-verified/api/v1/recent_reports', async (_req: Request, res: Response) => {
   try {
     const cachedData = await redisLookupRecentGameReports()
     if (cachedData) {
@@ -108,24 +117,16 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
       return res.json(cachedData)
     }
 
-    const reports = await fetchReports(
-      undefined,
-      undefined,
-      'open',
-      'updated',
-      'desc',
-      5
-    )
-    if (reports && reports.items.length > 0) {
+    const reports = await fetchReports(undefined, undefined, 'open', 'updated', 'desc', 5)
+    if (reports && reports?.items?.length > 0) {
       await redisCacheRecentGameReports(reports.items)
-      res.json(reports.items)
-    } else {
-      logger.info('No reports found.')
-      res.status(204).json([]) // 204 No Content
+      return res.json(reports.items)
     }
+    logger.info('No reports found.')
+    return res.status(204).json([]) // 204 No Content
   } catch (error) {
     logger.error('Error fetching recent reports:', error)
-    res.status(500).json({ error: 'Failed to fetch recent reports' })
+    return res.status(500).json({ error: 'Failed to fetch recent reports' })
   }
 })
 
@@ -136,7 +137,7 @@ app.get('/deck-verified/api/v1/recent_reports', async (req, res) => {
  * @returns {array} 204 - No reports found.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
+app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Response) => {
   try {
     const cachedData = await redisLookupPopularGameReports()
     if (cachedData) {
@@ -144,21 +145,13 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
       return res.json(cachedData)
     }
 
-    const reports = await fetchReports(
-      undefined,
-      undefined,
-      'open',
-      'reactions-+1',
-      'desc',
-      5
-    )
-    if (reports && reports.items.length > 0) {
+    const reports = await fetchReports(undefined, undefined, 'open', 'reactions-+1', 'desc', 5)
+    if (reports && reports?.items?.length > 0) {
       await redisCachePopularGameReports(reports.items)
-      res.json(reports.items)
-    } else {
-      logger.info('No reports found.')
-      return res.status(204).json([]) // 204 No Content
+      return res.json(reports.items)
     }
+    logger.info('No reports found.')
+    return res.status(204).json([]) // 204 No Content
   } catch (error) {
     logger.error('Error fetching popular reports:', error)
     return res.status(500).json({ error: 'Failed to fetch popular reports' })
@@ -187,29 +180,25 @@ app.get('/deck-verified/api/v1/popular_reports', async (req, res) => {
  *   }
  * ]
  */
-app.get('/deck-verified/api/v1/search_games', async (req, res) => {
-  let searchString = req.query['term']
+app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response) => {
+  const searchString = req.query['term'] as string
   const includeExternal = req.query['include_external'] === 'true'
 
   if (!searchString) {
     return res.status(400).json({ error: 'Missing search parameter' })
   }
 
-  // Run search
-  let results = []
   try {
     if (includeExternal) {
-      const steamResults = await fetchSteamGameSuggestions(searchString)
-      // Loop over steamResults and add them to redis
-      for (const result of steamResults) {
-        logger.info(`Storing project ${result.name}, appId ${result.appId} in RedisSearch`)
-        try {
+      const { suggestions: steamResults, fromCache } = await fetchSteamGameSuggestions(searchString)
+      if (!fromCache) {
+        // Loop over steamResults and add them to redis
+        for (const result of steamResults) {
+          logger.info(`Storing project ${result.name}, appId ${result.appId} in RedisSearch`)
           if (result.name && result.appId) {
             const headerImage = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${result.appId}/header.jpg`
             await storeGameInRedis(result.name, result.appId, headerImage)
           }
-        } catch (error) {
-          logger.error('Error storing game in Redis:', error)
         }
       }
     }
@@ -217,20 +206,15 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
     // Fetch results from redis
     const games = await searchGamesInRedis(searchString)
     if (games.length > 0) {
-      for (let game of games) {
-        results.push({
-          gameName: game.name,
-          appId: game.appId,
-          metadata: {
-            banner: game.banner
-          }
-        })
-      }
+      const results = games.map(game => ({
+        gameName: game.name,
+        appId: game.appId,
+        metadata: { banner: game.banner }
+      }))
       return res.json(results)
-    } else {
-      logger.info('No games found.')
-      return res.status(204).json([])
     }
+    logger.info('No games found.')
+    return res.status(204).json([])
   } catch (error) {
     logger.error('Error:', error)
     return res.status(500).json({ error: 'Failed to search games' })
@@ -262,11 +246,11 @@ app.get('/deck-verified/api/v1/search_games', async (req, res) => {
  *   "reports": []
  * }
  */
-app.get('/deck-verified/api/v1/game_details', async (req, res) => {
-  const appId = req.query['appid']
-  const gameName = req.query['name']
+app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response) => {
+  const appId = req.query['appid'] as string | null
+  const gameName = req.query['name'] as string | null
   const includeExternal = req.query['include_external'] === 'true'
-  let returnData = null
+  let returnData: GameDetails | null = null
 
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'No valid query parameter' })
@@ -278,7 +262,6 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
       returnData = {
         gameName: project.gameName,
         appId: project.appId,
-        projectNumber: project.projectNumber,
         metadata: project.metadata,
         reports: project.issues
       }
@@ -290,29 +273,29 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
       const games = await searchGamesInRedis(null, appId)
       if (games.length > 0) {
         const redisResult = games[0]
-        returnData = {
-          gameName: redisResult.name,
-          appId: appId,
-          projectNumber: null,
-          metadata: {
-            poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
-            hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
-            background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
-            banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
-          },
-          reports: []
+        if (redisResult) {
+          returnData = {
+            gameName: redisResult.name,
+            appId: Number(appId),
+            metadata: {
+              poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
+              hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
+              background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
+              banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+            },
+            reports: []
+          }
+          logger.info('Using local RedisSearch data for game details result')
         }
-        logger.info('Using local RedisSearch data for game details result')
       }
     }
 
     if (!returnData && includeExternal && appId) {
-      const steamResult = await fetchSteamGameDetails(appId)
+      const steamResult = await fetchSteamStoreGameDetails(appId)
       if (steamResult && steamResult.name) {
         returnData = {
           gameName: steamResult.name,
-          appId: appId,
-          projectNumber: null,
+          appId: Number(appId),
           metadata: {
             poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
             hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
@@ -321,7 +304,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
           },
           reports: []
         }
-        logger.info('Using Steam game API data for game details result')
+        logger.info('Using Steam store API data for game details result')
       }
     }
 
@@ -344,7 +327,7 @@ app.get('/deck-verified/api/v1/game_details', async (req, res) => {
  * @returns {array} 204 - No labels found
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
+app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Response) => {
   try {
     const labels = await fetchIssueLabels()
     if (!labels) {
@@ -358,7 +341,7 @@ app.get('/deck-verified/api/v1/issue_labels', async (req, res) => {
 })
 
 // Custom 404 response
-app.use((req, res, next) => {
+app.use((_req: Request, res: Response) => {
   return res.status(404).json({ error: 'Not Found' })
 })
 

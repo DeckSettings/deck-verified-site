@@ -1,7 +1,18 @@
 {
   "name": "deck-verified-api",
   "version": "1.0.0",
-  "main": "index.cjs",
+  "author": "Josh.5",
+  "license": "MIT",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "dev-local": "env $(grep -v '^#' ../.env | xargs) nodemon --watch './**/*.ts' --exec 'tsx' index.ts",
+    "serve-local": "env $(grep -v '^#' ../.env | xargs) pm2-runtime --interpreter tsx index.ts",
+    "build": "tsc",
+    "serve": "node dist/index.js",
+    "serve-no-tasks": "pm2-runtime -i 2 dist/index.js --no-scheduled-tasks",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
@@ -11,17 +22,9 @@
     "redis": "^4.7.0",
     "winston": "^3.17.0"
   },
-  "scripts": {
-    "dev-local": "env $(grep -v '^#' ../.env | xargs) nodemon index.cjs",
-    "serve-local": "env $(grep -v '^#' ../.env | xargs) pm2-runtime index.cjs",
-    "serve": "node index.cjs",
-    "serve-no-tasks": "pm2-runtime -i 2 index.cjs --no-scheduled-tasks",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Josh.5",
-  "license": "MIT",
-  "description": "",
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
   }
 }

@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit')
+import rateLimit from 'express-rate-limit'
 
 // General rate limiter for all routes
 const generalLimiter = rateLimit({
@@ -8,4 +8,4 @@ const generalLimiter = rateLimit({
   legacyHeaders: false      // Disable X-RateLimit headers
 })
 
-module.exports = { generalLimiter }
+export { generalLimiter }
