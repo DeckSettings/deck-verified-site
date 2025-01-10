@@ -2,19 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
-import { fetchGameData, fetchLabels, parseMarkdown } from 'src/services/gh-reports'
-import type { GameData, GithubIssue, GithubIssueLabel, ReportData } from 'src/services/gh-reports'
+import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
 import { marked } from 'marked'
-
-interface ParsedReport extends GithubIssue {
-  data: ReportData;
-}
+import type { GameReport, GitHubProjectGameDetails, GitHubIssueLabel } from 'app/shared/types/game'
 
 const route = useRoute()
 const appId = ref<string | null>(null)
 const gameName = ref<string | null>(null)
-const gameData = ref<GameData | null>(null)
-const parsedReports = ref<ParsedReport[]>([])
+const gameData = ref<GitHubProjectGameDetails | null>(null)
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
@@ -22,35 +17,45 @@ const githubProjectSearchLink = ref<string | null>(null)
 const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
 
 const selectedDevice = ref('all')
-const deviceLabels = ref<GithubIssueLabel[]>([])
+const deviceLabels = ref<GitHubIssueLabel[]>([])
 const deviceOptions = computed(() => {
   if (deviceLabels.value) {
     const options = deviceLabels.value
-      .filter(label => label.description)
-      .map(label => ({ label: label.description, value: label.name }))
-      .sort((a, b) => a.label.localeCompare(b.label))
+      .map(label => ({
+        label: label.description || label.name || 'Unknown',
+        value: label.name
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })) // Case-insensitive sorting
     return [{ label: 'All', value: 'all' }, ...options]
   }
+  // Default fallback to 'all' if no device lables are defined
   return [{ label: 'All', value: 'all' }]
 })
 
 const selectedLauncher = ref('all')
-const launcherLabels = ref<GithubIssueLabel[]>([])
+const launcherLabels = ref<GitHubIssueLabel[]>([])
 const launcherOptions = computed(() => {
   if (launcherLabels.value) {
     let options = launcherLabels.value
-      .filter(label => label.description)
-      .map(label => ({ label: label.description, value: label.name }))
+      .map(label => ({
+        label: label.description || label.name || 'Unknown',
+        value: label.name
+      }))
+    // Separate out the 'launcher:other' option
     const otherOption = options.find(option => option.value === 'launcher:other')
     if (otherOption) {
       options = options.filter(option => option.value !== 'launcher:other')
     }
-    options = options.sort((a, b) => a.label.localeCompare(b.label))
+    // Sort options alphabetically (case-insensitive)
+    options = options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+    // Add the 'launcher:other' option back at the end
     if (otherOption) {
       options.push(otherOption)
     }
+    // Include the 'All' option at the beginning
     return [{ label: 'All', value: 'all' }, ...options]
   }
+  // Default fallback to 'all' if no launcher lables are defined
   return [{ label: 'All', value: 'all' }]
 })
 
@@ -78,55 +83,59 @@ const toggleSortOrder = (option: string) => {
 }
 
 
-// Toggle show/hide logic for each issue
+// Toggle show/hide logic for each report
 const showIssueBody = ref<boolean[]>([])
 const toggleConfigVisibility = (index: number) => {
   showIssueBody.value[index] = !showIssueBody.value[index]
 }
 
-const hasSystemConfig = (issue: ParsedReport) => {
+const hasSystemConfig = (report: GameReport) => {
   return (
-    issue.data.undervoltApplied ||
-    issue.data.compatibilityToolVersion ||
-    issue.data.customLaunchOptions
+    report.data.undervolt_applied ||
+    report.data.compatibility_tool_version ||
+    report.data.custom_launch_options
   )
 }
 
-const hasPerformanceSettings = (issue: ParsedReport) => {
+const hasPerformanceSettings = (report: GameReport) => {
   return (
-    issue.data.frameLimit ||
-    issue.data.allowTearing ||
-    issue.data.halfRateShading ||
-    issue.data.tdpLimit ||
-    issue.data.manualGpuClock ||
-    issue.data.scalingMode ||
-    issue.data.scalingFilter
+    report.data.frame_limit ||
+    report.data.allow_tearing ||
+    report.data.half_rate_shading ||
+    report.data.tdp_limit ||
+    report.data.manual_gpu_clock ||
+    report.data.scaling_mode ||
+    report.data.scaling_filter
   )
 }
 
 // Generate a filtered/sorted list
-const filteredIssues = computed(() => {
-  let issues: ParsedReport[] = parsedReports.value
+const filteredReports = computed(() => {
+  if (!gameData.value || !gameData.value.reports) {
+    return []
+  }
+
+  let reports: GameReport[] = gameData.value.reports
 
   if (selectedDevice.value !== 'all' && selectedDevice.value) {
-    issues = issues.filter(issue => issue.labels.some(label => label.name === selectedDevice.value))
+    reports = reports.filter(report => report.labels.some(label => label.name === selectedDevice.value))
   }
 
   if (selectedLauncher.value !== 'all' && selectedLauncher.value) {
-    issues = issues.filter(issue => issue.labels.some(label => label.name === selectedLauncher.value))
+    reports = reports.filter(report => report.labels.some(label => label.name === selectedLauncher.value))
   }
 
   if (sortOrder.value === 'reactions') {
-    issues = issues.sort((a, b) => {
+    reports = reports.sort((a, b) => {
       const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
       const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
       return bLikes - aLikes // Sort by likes in descending order
     })
   } else {
-    issues = issues.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()) // Sort by last updated in descending order
+    reports = reports.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()) // Sort by last updated in descending order
   }
 
-  return issues
+  return reports
 })
 
 const getCompatibilityIcon = (compatibility: string) => {
@@ -173,17 +182,13 @@ const initGameData = async (params: RouteParamsGeneric) => {
       githubProjectSearchLink.value = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
     }
     if (gameData.value.metadata) {
+      console.log(gameData.value.metadata)
       gameBackground.value = gameData.value.metadata.hero
       gamePoster.value = gameData.value.metadata.poster
       // TODO: Add header image in place of poster image on larger screens
       gameBanner.value = gameData.value.metadata.banner
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
     }
-    // Parse the gameData issues
-    parsedReports.value = gameData.value.reports.map(issue => ({
-      ...issue,
-      data: parseMarkdown(issue.body)
-    }))
   }
 }
 
@@ -257,7 +262,7 @@ watch(
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="gameData">
-            <div v-if="parsedReports === null || parsedReports.length > 0">
+            <div v-if="gameData.reports === null || gameData.reports.length > 0">
               <div class="game-data-filters row q-mb-md justify-between items-center">
                 <!-- Filters (Top Left) -->
                 <div class="filters row q-gutter-sm">
@@ -296,7 +301,7 @@ watch(
 
               <q-list separator>
                 <q-item
-                  v-for="(issue, index) in filteredIssues" :key="index"
+                  v-for="(issue, index) in filteredReports" :key="index"
                   class="game-data-item q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
                   <q-item-section class="report">
                     <q-item-label class="q-mr-lg q-my-sm">
@@ -305,13 +310,13 @@ watch(
                     <q-item-label caption class="q-mr-lg q-mb-sm">
                       <div class="row items-center">
                         <q-chip
-                          v-if="issue.data.deckCompatibility"
+                          v-if="issue.data.device_compatibility"
                           size="sm" square>
                           <q-avatar
-                            :icon="getCompatibilityIcon(issue.data.deckCompatibility)"
-                            :color="getCompatibilityColor(issue.data.deckCompatibility)"
+                            :icon="getCompatibilityIcon(issue.data.device_compatibility)"
+                            :color="getCompatibilityColor(issue.data.device_compatibility)"
                             text-color="white" />
-                          {{ issue.data.deckCompatibility }}
+                          {{ issue.data.device_compatibility }}
                         </q-chip>
                         <q-chip
                           v-if="issue.data.device"
@@ -322,17 +327,17 @@ watch(
                           {{ issue.data.device }}
                         </q-chip>
                         <!--<q-chip
-                          v-if="issue.data.compatibilityTool"
+                          v-if="issue.data.steam_play_compatibility_tool_used"
                           size="sm" square>
                           <q-avatar icon="gamepad" color="orange" text-color="white" />
-                          {{ issue.data.compatibilityTool }}:
-                          {{ issue.data.compatibilityToolVersion }}
+                          {{ issue.data.steam_play_compatibility_tool_used }}:
+                          {{ issue.data.compatibility_tool_version }}
                         </q-chip>-->
                         <q-chip
-                          v-if="issue.data.targetFramerate"
+                          v-if="issue.data.target_framerate"
                           size="sm" square>
                           <q-avatar icon="speed" color="teal" text-color="white" />
-                          Target FPS: {{ issue.data.targetFramerate }}
+                          Target FPS: {{ issue.data.target_framerate }}
                         </q-chip>
                         <q-chip
                           v-if="issue.data.launcher"
@@ -341,10 +346,10 @@ watch(
                           Launcher: {{ issue.data.launcher }}
                         </q-chip>
                         <q-chip
-                          v-if="issue.data.osVersion"
+                          v-if="issue.data.os_version"
                           size="sm" square>
                           <q-avatar icon="fab fa-steam" color="red" text-color="white" />
-                          OS: {{ issue.data.osVersion }}
+                          OS: {{ issue.data.os_version }}
                         </q-chip>
                       </div>
                     </q-item-label>
@@ -375,20 +380,22 @@ watch(
                               <q-separator />
                               <q-card-section class="q-pa-sm q-pa-sm-md">
                                 <div class="config-list">
-                                  <div v-if="issue.data.undervoltApplied" class="config-item">
+                                  <div v-if="issue.data.undervolt_applied" class="config-item">
                                     <span>Undervolt Applied:</span>
-                                    <span>{{ issue.data.undervoltApplied }}</span>
+                                    <span>{{ issue.data.undervolt_applied }}</span>
                                   </div>
-                                  <div v-if="issue.data.compatibilityTool && issue.data.compatibilityToolVersion"
-                                       class="config-item">
+                                  <div
+                                    v-if="issue.data.steam_play_compatibility_tool_used && issue.data.compatibility_tool_version"
+                                    class="config-item">
                                     <span>Compatibility Tool:</span>
                                     <span>
-                                    {{ issue.data.compatibilityTool }}: {{ issue.data.compatibilityToolVersion }}
+                                    {{ issue.data.steam_play_compatibility_tool_used
+                                      }}: {{ issue.data.compatibility_tool_version }}
                                   </span>
                                   </div>
-                                  <div v-if="issue.data.customLaunchOptions" class="config-item">
+                                  <div v-if="issue.data.custom_launch_options" class="config-item">
                                     <span>Launch Options:</span>
-                                    <span>{{ issue.data.customLaunchOptions }}</span>
+                                    <span>{{ issue.data.custom_launch_options }}</span>
                                   </div>
                                 </div>
                               </q-card-section>
@@ -403,33 +410,33 @@ watch(
                               <q-separator />
                               <q-card-section class="q-pa-sm q-pa-sm-md">
                                 <div class="config-list">
-                                  <div v-if="issue.data.frameLimit" class="config-item">
+                                  <div v-if="issue.data.frame_limit" class="config-item">
                                     <span>Frame Limit:</span>
-                                    <span>{{ issue.data.frameLimit }}</span>
+                                    <span>{{ issue.data.frame_limit }}</span>
                                   </div>
-                                  <div v-if="issue.data.allowTearing" class="config-item">
+                                  <div v-if="issue.data.allow_tearing" class="config-item">
                                     <span>Allow Tearing:</span>
-                                    <span>{{ issue.data.allowTearing }}</span>
+                                    <span>{{ issue.data.allow_tearing }}</span>
                                   </div>
-                                  <div v-if="issue.data.halfRateShading" class="config-item">
+                                  <div v-if="issue.data.half_rate_shading" class="config-item">
                                     <span>Half Rate Shading:</span>
-                                    <span>{{ issue.data.halfRateShading }}</span>
+                                    <span>{{ issue.data.half_rate_shading }}</span>
                                   </div>
-                                  <div v-if="issue.data.tdpLimit" class="config-item">
+                                  <div v-if="issue.data.tdp_limit" class="config-item">
                                     <span>TDP Limit:</span>
-                                    <span>{{ issue.data.tdpLimit }}W</span>
+                                    <span>{{ issue.data.tdp_limit }}W</span>
                                   </div>
-                                  <div v-if="issue.data.manualGpuClock" class="config-item">
+                                  <div v-if="issue.data.manual_gpu_clock" class="config-item">
                                     <span>Manual GPU Clock:</span>
-                                    <span>{{ issue.data.manualGpuClock }}MHz</span>
+                                    <span>{{ issue.data.manual_gpu_clock }}MHz</span>
                                   </div>
-                                  <div v-if="issue.data.scalingMode" class="config-item">
+                                  <div v-if="issue.data.scaling_mode" class="config-item">
                                     <span>Scaling Mode:</span>
-                                    <span>{{ issue.data.scalingMode }}</span>
+                                    <span>{{ issue.data.scaling_mode }}</span>
                                   </div>
-                                  <div v-if="issue.data.scalingFilter" class="config-item">
+                                  <div v-if="issue.data.scaling_filter" class="config-item">
                                     <span>Scaling Filter:</span>
-                                    <span>{{ issue.data.scalingFilter }}</span>
+                                    <span>{{ issue.data.scaling_filter }}</span>
                                   </div>
                                 </div>
                               </q-card-section>
@@ -438,34 +445,35 @@ watch(
                         </div>
                         <div class="row q-ma-none q-pa-none">
                           <div class="col q-ma-none q-pa-none">
-                            <q-card v-if="issue.data.gameDisplaySettings"
+                            <q-card v-if="issue.data.game_display_settings"
                                     class="config-card q-mt-md q-ma-none q-pa-none">
                               <q-card-section>
                                 <div class="text-h6">Game Display Settings</div>
                               </q-card-section>
                               <q-separator />
                               <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.gameDisplaySettings)"
+                                <div v-html="marked(issue.data.game_display_settings)"
                                      class="markdown q-ml-xs-none q-ml-md-sm"></div>
                               </q-card-section>
                             </q-card>
-                            <q-card v-if="issue.data.gameGraphicsSettings"
+                            <q-card v-if="issue.data.game_graphics_settings"
                                     class="config-card q-mt-md q-ma-none q-pa-none">
                               <q-card-section>
                                 <div class="text-h6">Game Graphics Settings</div>
                               </q-card-section>
                               <q-separator />
                               <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.gameGraphicsSettings)" class="markdown q-ml-md-sm"></div>
+                                <div v-html="marked(issue.data.game_graphics_settings)"
+                                     class="markdown q-ml-md-sm"></div>
                               </q-card-section>
                             </q-card>
-                            <q-card v-if="issue.data.additionalNotes" class="config-card q-mt-md q-ma-none q-pa-none">
+                            <q-card v-if="issue.data.additional_notes" class="config-card q-mt-md q-ma-none q-pa-none">
                               <q-card-section>
                                 <div class="text-h6">Additional Notes</div>
                               </q-card-section>
                               <q-separator />
                               <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.additionalNotes)" class="markdown q-ml-md-sm"></div>
+                                <div v-html="marked(issue.data.additional_notes)" class="markdown q-ml-md-sm"></div>
                               </q-card-section>
                             </q-card>
                           </div>

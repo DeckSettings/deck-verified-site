@@ -3,13 +3,13 @@ import type { RedisClientType } from 'redis'
 import logger from './logger'
 import type {
   GameReport,
-  GameSearchResult,
+  GameSearchCache,
   GitHubIssueLabel,
   GitHubReportIssueBodySchema,
-  GitHubProjectDetails,
+  GitHubProjectGameDetails,
   SteamStoreAppDetails,
   SteamGame
-} from './types/game'
+} from '../shared/types/game'
 
 // Redis configuration
 const redisHost: string = process.env.REDIS_HOST || '127.0.0.1'
@@ -121,7 +121,7 @@ export const storeGameInRedis = async (gameName: string, appId: string | null = 
  * Searches for games in Redis based on the provided search term.
  * Uses RedisSearch to match the term against indexed game data.
  */
-export const searchGamesInRedis = async (searchTerm: string | null = null, appId: string | null = null, gameName: string | null = null): Promise<GameSearchResult[]> => {
+export const searchGamesInRedis = async (searchTerm: string | null = null, appId: string | null = null, gameName: string | null = null): Promise<GameSearchCache[]> => {
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
   }
@@ -158,7 +158,7 @@ export const searchGamesInRedis = async (searchTerm: string | null = null, appId
       return []
     }
 
-    return results.documents.map((doc): GameSearchResult => ({
+    return results.documents.map((doc): GameSearchCache => ({
       name: typeof doc.value.appname === 'string' ? doc.value.appname : '',
       appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
       banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null
@@ -301,7 +301,7 @@ export const redisLookupReportBodySchema = async (): Promise<GitHubReportIssueBo
  * Caches GitHub project details in Redis.
  * This data is cached for one day.
  */
-export const redisCacheGitHubProjectDetails = async (data: GitHubProjectDetails | Record<string, never>, appId: string | null = null, gameName: string | null = null): Promise<void> => {
+export const redisCacheGitHubProjectDetails = async (data: GitHubProjectGameDetails | Record<string, never>, appId: string | null = null, gameName: string | null = null): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching GitHub project details.')
   }
@@ -319,7 +319,7 @@ export const redisCacheGitHubProjectDetails = async (data: GitHubProjectDetails 
 /**
  * Looks up GitHub project details from Redis by AppID or Game Name.
  */
-export const redisLookupGitHubProjectDetails = async (appId: string | null = null, gameName: string | null = null): Promise<GitHubProjectDetails | null> => {
+export const redisLookupGitHubProjectDetails = async (appId: string | null = null, gameName: string | null = null): Promise<GitHubProjectGameDetails | null> => {
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }

@@ -4,7 +4,7 @@ import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { searchGames } from 'src/services/gh-reports'
-import type { GameSearchResult } from 'src/services/gh-reports'
+import type { GameSearchResult } from 'app/shared/types/game'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -130,24 +130,28 @@ onUnmounted(() => {
             :key="result.appId"
             clickable
             v-ripple
-            @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.name)}`)">
+            @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.gameName)}`)">
             <q-item-section avatar>
-              <!-- TODO: Add a banner placeholder -->
-              <img
-                v-if="!result.metadata.banner"
-                src="~/assets/poster-placeholder.png"
-                alt="Placeholder"
+              <q-img
+                v-if="result.metadata.banner"
                 class="game-image"
-              >
-              <img
-                v-else
                 :src="result.metadata.banner"
-                alt="Game Banner"
+                alt="Game Banner">
+                <template v-slot:error>
+                  <img
+                    src="~/assets/banner-placeholder.png"
+                    alt="Placeholder" />
+                </template>
+              </q-img>
+              <q-img
+                v-else
                 class="game-image"
-              >
+                src="~/assets/banner-placeholder.png"
+                alt="Game Image">
+              </q-img>
             </q-item-section>
             <q-item-section>
-              <q-item-label>{{ result.name }}</q-item-label>
+              <q-item-label>{{ result.gameName }}</q-item-label>
               <q-item-label caption>App ID: {{ result.appId }}</q-item-label>
             </q-item-section>
           </q-item>

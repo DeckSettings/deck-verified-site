@@ -6,19 +6,15 @@ import logger from './logger'
 import {
   connectToRedis,
   storeGameInRedis,
-  searchGamesInRedis,
-  redisLookupRecentGameReports,
-  redisCacheRecentGameReports,
-  redisCachePopularGameReports,
-  redisLookupPopularGameReports
+  searchGamesInRedis
 } from './redis'
 import {
-  fetchIssueLabels,
-  fetchProjectsByAppIdOrGameName,
-  fetchReports, updateGameIndex
+  fetchIssueLabels, fetchPopularReports,
+  fetchProjectsByAppIdOrGameName, fetchRecentReports,
+  updateGameIndex
 } from './github'
-import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './helpers'
-import type { GameDetails } from './types/game'
+import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails, generateImageLinksFromAppId } from './helpers'
+import { GameDetails, GameImages, GameMetadata, GameSearchResult } from '../shared/types/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -111,22 +107,15 @@ app.get('/deck-verified/api/v1/health', async (_req: Request, res: Response) => 
  */
 app.get('/deck-verified/api/v1/recent_reports', async (_req: Request, res: Response) => {
   try {
-    const cachedData = await redisLookupRecentGameReports()
-    if (cachedData) {
-      logger.info('Serving from Redis cache')
-      return res.json(cachedData)
-    }
-
-    const reports = await fetchReports(undefined, undefined, 'open', 'updated', 'desc', 5)
-    if (reports && reports?.items?.length > 0) {
-      await redisCacheRecentGameReports(reports.items)
-      return res.json(reports.items)
+    const reports = await fetchRecentReports()
+    if (reports && reports?.length > 0) {
+      return res.json(reports)
     }
     logger.info('No reports found.')
     return res.status(204).json([]) // 204 No Content
   } catch (error) {
-    logger.error('Error fetching recent reports:', error)
-    return res.status(500).json({ error: 'Failed to fetch recent reports' })
+    logger.error('Error fetching popular reports:', error)
+    return res.status(500).json({ error: 'Failed to fetch popular reports' })
   }
 })
 
@@ -139,16 +128,9 @@ app.get('/deck-verified/api/v1/recent_reports', async (_req: Request, res: Respo
  */
 app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Response) => {
   try {
-    const cachedData = await redisLookupPopularGameReports()
-    if (cachedData) {
-      logger.info('Serving from Redis cache')
-      return res.json(cachedData)
-    }
-
-    const reports = await fetchReports(undefined, undefined, 'open', 'reactions-+1', 'desc', 5)
-    if (reports && reports?.items?.length > 0) {
-      await redisCachePopularGameReports(reports.items)
-      return res.json(reports.items)
+    const reports = await fetchPopularReports()
+    if (reports && reports?.length > 0) {
+      return res.json(reports)
     }
     logger.info('No reports found.')
     return res.status(204).json([]) // 204 No Content
@@ -206,11 +188,31 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
     // Fetch results from redis
     const games = await searchGamesInRedis(searchString)
     if (games.length > 0) {
-      const results = games.map(game => ({
-        gameName: game.name,
-        appId: game.appId,
-        metadata: { banner: game.banner }
-      }))
+      const results: GameSearchResult[] = await Promise.all(
+        games.map(async (game) => {
+          let metadata: Partial<GameMetadata> = {
+            banner: game.banner,
+            poster: null,
+            hero: null,
+            background: null
+          }
+          if (game.appId) {
+            // Generate image links if appId is not null
+            const gameImages = await generateImageLinksFromAppId(String(game.appId))
+            metadata = {
+              banner: metadata.banner ?? gameImages.banner,
+              poster: metadata.poster ?? gameImages.poster,
+              hero: metadata.hero ?? gameImages.hero,
+              background: metadata.background ?? gameImages.background
+            }
+          }
+          return {
+            gameName: game.name,
+            appId: Number(game.appId),
+            metadata: metadata as GameMetadata
+          }
+        })
+      )
       return res.json(results)
     }
     logger.info('No games found.')
@@ -263,7 +265,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         gameName: project.gameName,
         appId: project.appId,
         metadata: project.metadata,
-        reports: project.issues
+        reports: project.reports || []
       }
       logger.info('Using GitHub project data for game details result')
     }
@@ -274,14 +276,15 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       if (games.length > 0) {
         const redisResult = games[0]
         if (redisResult) {
+          const gameImages = await generateImageLinksFromAppId(appId)
           returnData = {
             gameName: redisResult.name,
             appId: Number(appId),
             metadata: {
-              poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
-              hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
-              background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
-              banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+              poster: gameImages.poster,
+              hero: gameImages.hero,
+              background: gameImages.background,
+              banner: gameImages.banner
             },
             reports: []
           }
@@ -293,14 +296,15 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     if (!returnData && includeExternal && appId) {
       const steamResult = await fetchSteamStoreGameDetails(appId)
       if (steamResult && steamResult.name) {
+        const gameImages = await generateImageLinksFromAppId(appId)
         returnData = {
           gameName: steamResult.name,
           appId: Number(appId),
           metadata: {
-            poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
-            hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
-            background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
-            banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+            poster: gameImages.poster,
+            hero: gameImages.hero,
+            background: gameImages.background,
+            banner: gameImages.banner
           },
           reports: []
         }

@@ -80,14 +80,14 @@ export default defineComponent({
             :key="report.id"
             clickable
             v-ripple
-            :to="report.data.appid ? `/app/${report.data.appid}` : `/game/${encodeURIComponent(report.data.gameName)}`"
+            :to="report.data.app_id ? `/app/${report.data.app_id}` : `/game/${encodeURIComponent(report.data.game_name)}`"
           >
             <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
               <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
                 <q-img
-                  v-if="report.data.appid"
+                  v-if="report.data.app_id"
                   class="game-poster"
-                  :src="`https://steamcdn-a.akamaihd.net/steam/apps/${report.data.appid}/library_600x900.jpg`"
+                  :src="`https://steamcdn-a.akamaihd.net/steam/apps/${report.data.app_id}/library_600x900.jpg`"
                   alt="Game Image"
                   :ratio="2/3"
                   :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
@@ -111,30 +111,30 @@ export default defineComponent({
             </q-item-section>
 
             <q-item-section v-if="!$q.platform.is.mobile" top class="game-info-section">
-              <q-item-label class="text-h6">{{ report.data.gameName }}: {{ report.data.summary }}</q-item-label>
+              <q-item-label class="text-h6">{{ report.data.game_name }}: {{ report.data.summary }}</q-item-label>
               <q-item-label caption class="q-pt-sm">
-                <div><b>Target Framerate:</b> {{ report.data.targetFramerate }}</div>
+                <div><b>Target Framerate:</b> {{ report.data.target_framerate }}</div>
                 <div><b>Device:</b> {{ report.data.device }}</div>
                 <div>
                   <b>Compatibility Tool Version:</b>
-                  {{ report.data.compatibilityToolVersion }}
+                  {{ report.data.compatibility_tool_version }}
                 </div>
               </q-item-label>
             </q-item-section>
             <q-item-section v-else top class="game-info-section">
-              <q-item-label class="text-h6">{{ report.data.gameName }}</q-item-label>
+              <q-item-label class="text-h6">{{ report.data.game_name }}</q-item-label>
               <q-item-label caption class="q-pt-sm">
                 {{ report.data.summary }}
               </q-item-label>
               <q-item-label>
                 <q-icon name="info"
-                        :color="report.data.deckCompatibility === 'Verified'
+                        :color="report.data.device_compatibility === 'Verified'
                           ? 'green'
-                          : report.data.deckCompatibility === 'Playable'
+                          : report.data.device_compatibility === 'Playable'
                           ? 'amber'
                           : 'red'">
                   <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
-                    {{ report.data.deckCompatibility }}
+                    {{ report.data.device_compatibility }}
                   </q-tooltip>
                 </q-icon>
 
@@ -150,13 +150,13 @@ export default defineComponent({
 
             <q-item-section v-if="!$q.platform.is.mobile" side top>
               <q-icon name="info"
-                      :color="report.data.deckCompatibility === 'Verified'
+                      :color="report.data.device_compatibility === 'Verified'
                         ? 'green'
-                        : report.data.deckCompatibility === 'Playable'
+                        : report.data.device_compatibility === 'Playable'
                         ? 'amber'
                         : 'red'">
                 <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
-                  {{ report.data.deckCompatibility }}
+                  {{ report.data.device_compatibility }}
                 </q-tooltip>
               </q-icon>
 

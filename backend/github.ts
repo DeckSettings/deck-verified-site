@@ -2,20 +2,19 @@ import logfmt from 'logfmt'
 //import { parseGameProjectBody, parseReportBody } from './helpers'
 import logger from './logger'
 import {
-  storeGameInRedis,
-  redisLookupGitHubIssueLabels,
-  redisCacheGitHubIssueLabels,
-  redisLookupReportBodySchema,
-  redisCacheReportBodySchema,
-  redisLookupGitHubProjectDetails,
-  redisCacheGitHubProjectDetails
+  redisCacheGitHubIssueLabels, redisCacheGitHubProjectDetails,
+  redisCachePopularGameReports, redisCacheRecentGameReports,
+  redisCacheReportBodySchema, redisLookupGitHubIssueLabels,
+  redisLookupGitHubProjectDetails, redisLookupPopularGameReports,
+  redisLookupRecentGameReports, redisLookupReportBodySchema,
+  storeGameInRedis
 } from './redis'
 import type {
-  GitHubIssueLabel,
+  GameReport, GitHubIssueLabel,
   GithubIssuesSearchResult,
-  GitHubProjectDetails,
+  GitHubProjectDetails, GitHubProjectGameDetails,
   GitHubReportIssueBodySchema
-} from './types/game'
+} from '../shared/types/game'
 import { parseGameProjectBody, parseReportBody } from './helpers'
 
 // Configure default GitHub auth token
@@ -63,14 +62,15 @@ export const updateGameIndex = async (): Promise<void> => {
     const projects = await fetchProject('', authToken)
     if (projects) {
       for (const project of projects) {
-        logger.info(`Storing project ${project.gameName} with appId ${project.appId} in RedisSearch`)
+        const parsedProject = await parseProjectDetails(project)
+        logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(project.gameName, String(project.appId), project.metadata.banner || '')
+          await storeGameInRedis(parsedProject.gameName, String(parsedProject.appId), parsedProject.metadata.banner || '')
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
         try {
-          await redisCacheGitHubProjectDetails(project, String(project.appId), project.gameName)
+          await redisCacheGitHubProjectDetails(parsedProject, String(parsedProject.appId), parsedProject.gameName)
         } catch (error) {
           logger.error('Error storing project details in Redis:', error)
         }
@@ -78,6 +78,164 @@ export const updateGameIndex = async (): Promise<void> => {
     }
   } catch (error) {
     logger.error('Error updating game index:', error)
+  }
+}
+
+/**
+ * Parses the provided GitHub project data to extract and structure relevant information
+ * into the GitHubProjectDetails format.
+ */
+const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHubProjectGameDetails> => {
+  const reportBodySchema = await fetchReportBodySchema()
+
+  const parsedTitle = logfmt.parse(project.title)
+  const projectDetails: GitHubProjectGameDetails = {
+    projectNumber: project.number,
+    gameName: parsedTitle.name ? String(parsedTitle.name) : '',
+    appId: parsedTitle.appid ? Number(parsedTitle.appid) : null,
+    shortDescription: project.shortDescription,
+    readme: project.readme,
+    metadata: {
+      poster: '',
+      hero: '',
+      banner: '',
+      background: ''
+    },
+    reports: []
+  }
+
+  const rawMetadata = await parseGameProjectBody(project.readme)
+  projectDetails.metadata = {
+    poster: rawMetadata.poster ?? null,
+    hero: rawMetadata.hero ?? null,
+    banner: rawMetadata.banner ?? null,
+    background: rawMetadata.background ?? null
+  }
+
+  for (const issue of project.issues) {
+    const parsedIssueData = await parseReportBody(issue.body, reportBodySchema)
+    projectDetails.reports.push({
+      id: issue.id,
+      title: issue.title,
+      html_url: issue.html_url,
+      data: parsedIssueData,
+      reactions: {
+        reactions_thumbs_up: issue.reactions['+1'] || 0,
+        reactions_thumbs_down: issue.reactions['-1'] || 0
+      },
+      labels: issue.labels.map((label: GitHubIssueLabel) => ({
+        name: label.name,
+        color: label.color,
+        description: label.description || ''
+      })),
+      user: {
+        login: issue.user.login,
+        avatar_url: issue.user.avatar_url
+      },
+      created_at: issue.created_at,
+      updated_at: issue.updated_at
+    })
+  }
+  return projectDetails
+}
+
+/**
+ * Parses the provided GitHub issues data to extract and structure relevant
+ * information into the GameReport format. It also processes the issue body using a schema
+ * to populate the `data` field of each GameReport.
+ */
+const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
+  const schema = await fetchReportBodySchema()
+  return await Promise.all(
+    reports.items.map(async (report) => {
+      const parsedIssueData = await parseReportBody(report.body, schema)
+      return {
+        id: report.id,
+        title: report.title,
+        html_url: report.html_url,
+        data: parsedIssueData,
+        reactions: {
+          reactions_thumbs_up: report.reactions['+1'] || 0,
+          reactions_thumbs_down: report.reactions['-1'] || 0
+        },
+        labels: report.labels.map((label: GitHubIssueLabel) => ({
+          name: label.name,
+          color: label.color,
+          description: label.description || ''
+        })),
+        user: {
+          login: report.user.login,
+          avatar_url: report.user.avatar_url
+        },
+        created_at: report.created_at,
+        updated_at: report.updated_at
+      }
+    })
+  )
+}
+
+/**
+ * Retrieves the most recent game reports from Redis if available.
+ * If not cached, it fetches the reports from GitHub, parses the data into GameReport format,
+ * and caches the results in Redis for future use.
+ */
+export const fetchRecentReports = async (): Promise<GameReport[]> => {
+  try {
+    const cachedData = await redisLookupRecentGameReports()
+    if (cachedData) {
+      logger.info('Serving recent reports from Redis cache')
+      return cachedData
+    }
+
+    const reports = await fetchReports(undefined, undefined, 'open', 'updated', 'desc', 5)
+    if (reports && reports?.items?.length > 0) {
+      const returnData = await parseGameReport(reports)
+      // Store the transformed data in the Redis cache
+      await redisCacheRecentGameReports(returnData)
+      return returnData
+    }
+
+    logger.info('No reports found.')
+    return []
+  } catch (error) {
+    logger.error('Error fetching popular reports:', error)
+
+    // Cache an empty response for a short period of time
+    await redisCacheRecentGameReports([])
+    return []
+  }
+}
+
+/**
+ * Retrieves the most popular game reports (sorted by the highest number of
+ * thumbs-up reactions) from Redis if available. If not cached, it fetches the reports
+ * from GitHub, parses the data into GameReport format, and caches the results in Redis
+ * for future use.
+ */
+export const fetchPopularReports = async (): Promise<GameReport[]> => {
+  try {
+    const cachedData = await redisLookupPopularGameReports()
+    if (cachedData) {
+      logger.info('Serving popular reports from Redis cache')
+      return cachedData
+    }
+
+    const reports = await fetchReports(undefined, undefined, 'open', 'reactions-+1', 'desc', 5)
+    if (reports && reports?.items?.length > 0) {
+      const returnData = await parseGameReport(reports)
+      // Store the transformed data in the Redis cache
+      await redisCachePopularGameReports(returnData)
+      return returnData
+    }
+
+    logger.info('No reports found.')
+    return []
+  } catch (error) {
+    logger.error('Error fetching popular reports:', error)
+
+    // Cache an empty response for a short period of time
+    await redisCachePopularGameReports([])
+    return []
   }
 }
 
@@ -90,7 +248,7 @@ export const fetchProjectsByAppIdOrGameName = async (
   appId: string | null,
   gameName: string | null,
   authToken: string | null = null
-): Promise<GitHubProjectDetails | Record<string, never>> => {
+): Promise<GitHubProjectGameDetails | Record<string, never>> => {
   if (!appId && !gameName) {
     throw new Error('Either appId or gameName must be provided.')
   }
@@ -111,12 +269,13 @@ export const fetchProjectsByAppIdOrGameName = async (
 
     const project = projects[0]
     if (project) {
+      const parsedProject = await parseProjectDetails(project)
       try {
-        await redisCacheGitHubProjectDetails(project, appId, gameName)
+        await redisCacheGitHubProjectDetails(parsedProject, appId, gameName)
       } catch (error) {
         logger.error('Error storing project details in Redis:', error)
       }
-      return project
+      return parsedProject
     }
   }
 
@@ -248,15 +407,10 @@ export const fetchProject = async (
 
       discoveredProjects.push(...responseData.data.node.projectsV2.nodes)
 
-      const schema = await fetchReportBodySchema()
-
       for (const project of discoveredProjects) {
-        const parsedTitle = logfmt.parse(project.title)
-
         const projectData: GitHubProjectDetails = {
-          gameName: parsedTitle.name ? String(parsedTitle.name) : '',
-          appId: parsedTitle.appid ? Number(parsedTitle.appid) : null,
-          projectNumber: project.number,
+          title: project.title,
+          number: project.number,
           shortDescription: project.shortDescription,
           readme: project.readme,
           metadata: {
@@ -267,27 +421,16 @@ export const fetchProject = async (
           },
           issues: []
         }
-
-        const rawMetadata = await parseGameProjectBody(project.readme)
-        projectData.metadata = {
-          poster: rawMetadata.poster ?? null,
-          hero: rawMetadata.hero ?? null,
-          banner: rawMetadata.banner ?? null,
-          background: rawMetadata.background ?? null
-        }
-
         for (const node of project.items.nodes) {
           if (node.content.__typename === 'Issue' && node.content.body) {
-            const parsedIssueData = await parseReportBody(node.content.body, schema)
             projectData.issues.push({
               id: node.content.databaseId,
               title: node.content.title,
               html_url: node.content.url,
               body: node.content.body,
-              parsed_data: parsedIssueData,
               reactions: {
-                reactions_thumbs_up: node.content.reactions_thumbs_up.totalCount,
-                reactions_thumbs_down: node.content.reactions_thumbs_down.totalCount
+                '+1': node.content.reactions_thumbs_up.totalCount,
+                '-1': node.content.reactions_thumbs_down.totalCount
               },
               labels: node.content.labels.nodes,
               user: node.content.author,
@@ -296,7 +439,6 @@ export const fetchProject = async (
             })
           }
         }
-
         returnProjects.push(projectData)
       }
 

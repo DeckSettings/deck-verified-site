@@ -1,5 +1,12 @@
 import logger from './logger'
-import { type GitHubReportIssueBodySchema, SteamGame, SteamStoreAppDetails, SteamSuggestApp } from './types/game'
+import {
+  GameImages,
+  GameReportData,
+  type GitHubReportIssueBodySchema,
+  SteamGame,
+  SteamStoreAppDetails,
+  SteamSuggestApp
+} from '../shared/types/game'
 import {
   redisCacheSteamAppDetails,
   redisCacheSteamSearchSuggestions,
@@ -44,32 +51,48 @@ export const extractHeadingValue = async (
 export const parseReportBody = async (
   markdown: string,
   schema: GitHubReportIssueBodySchema
-): Promise<Record<string, string | number | null>> => {
+): Promise<GameReportData> => {
   try {
-    const data: Record<string, string | number | null> = {}
+    const data: Partial<GameReportData> = {}
     const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
     const lines = normalizedMarkdown.split('\n')
 
     for (const heading in schema.properties) {
-      let value: string | number | null = null
-      const valueType = schema.properties[heading].type
+      const valueType = schema.properties[heading]?.type
       const snakeCaseHeading = heading
         .toLowerCase()
         .replace(/\s+/g, '_')
         .replace(/[^\w_]/g, '')
-      value = await extractHeadingValue(lines, heading)
-      // Set any '_No response_' to null
+
+      let value: string | number | null = await extractHeadingValue(lines, heading)
+
+      // Set "_No response_" to null
       if (value === '_No response_') {
         value = null
       }
-      // Convert to number if specified in schema
+
+      // Convert to number if required by schema
       if (valueType === 'number' && value !== null) {
         const parsedValue = parseFloat(value.replace(/,/g, ''))
         value = isNaN(parsedValue) ? null : parsedValue
       }
+
+      // @ts-expect-error: The key is dynamically generated and TypeScript cannot infer its type
       data[snakeCaseHeading] = value
     }
-    return data
+
+    // Check for required fields and log warnings for missing ones
+    for (const requiredField of schema.required) {
+      const snakeCaseField = requiredField
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w_]/g, '')
+      if (!(snakeCaseField in data)) {
+        logger.warn(`Missing required field: ${requiredField}`)
+      }
+    }
+
+    return data as GameReportData
   } catch (error) {
     logger.error('Error fetching or parsing schema:', error)
     throw error
@@ -203,5 +226,14 @@ export const fetchSteamGameSuggestions = async (
     logger.error('Error fetching Steam game suggestions:', error)
     await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
     return { suggestions: [], fromCache: false }
+  }
+}
+
+export const generateImageLinksFromAppId = async (appId: string): Promise<GameImages> => {
+  return {
+    poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
+    hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
+    background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
+    banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
   }
 }
