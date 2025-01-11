@@ -8,6 +8,8 @@ RUN npm ci
 
 COPY *.cjs ./
 
+RUN npm run build
+
 EXPOSE 9022
 
 CMD ["npm", "start"]
