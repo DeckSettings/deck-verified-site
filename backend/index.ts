@@ -46,14 +46,7 @@ if (config.enableRateLimiter) {
 }
 
 // Configure middleware to log requests
-interface AugmentedRequest extends Request {
-  rateLimit?: {
-    used: number;
-    remaining: number;
-  };
-}
-
-app.use((req: AugmentedRequest, res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = process.hrtime()
   res.on('finish', () => {
     const duration = process.hrtime(start)

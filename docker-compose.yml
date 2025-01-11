@@ -21,11 +21,12 @@ services:
       - redis-cache:/data
 
   # --- BACKEND API ---
+  # NOTE: Ensure you run 'npm install' first due to the ./backend volume mounted into the container.
   api:
     image: ghcr.io/decksettings/deck-verified-api:latest
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./backend/Dockerfile
     command: npm run watch
     ports:
       - '9022:9022'
@@ -44,7 +45,7 @@ services:
       - ./backend:/app/
 
   # --- FRONTEND ---
-  # NOTE: Ensure you run 'npm run build' first due to the ./dist/spa volume mounted into the container.
+  # NOTE: Ensure you run 'npm install && npm run build' first due to the ./dist/spa volume mounted into the container.
   web:
     image: ghcr.io/decksettings/deck-verified-web:latest
     build:
