@@ -273,19 +273,19 @@ watch(
             <div v-if="gameData.reports === null || gameData.reports.length > 0">
               <div class="game-data-filters row q-mb-md justify-between items-center">
                 <!-- Filters (Top Left) -->
-                <div class="filters row q-gutter-sm">
+                <div class="filters col-xs-12 col-md-8">
                   <q-select v-model="selectedDevice" label="Device"
                             dense outlined
-                            class="filter-select"
+                            class="filter-select q-my-xs-sm q-mr-xs"
                             :options="deviceOptions" emit-value map-options />
                   <q-select v-model="selectedLauncher" label="Launcher"
                             dense outlined
-                            class="filter-select"
+                            class="filter-select q-my-xs-sm q-ml-xs"
                             :options="launcherOptions" emit-value map-options />
                 </div>
 
                 <!-- Sorting (Top Right) -->
-                <div class="sorting row q-gutter-sm " :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
+                <div class="sorting col-md-shrink" :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
                   <!-- Sort by Updated -->
                   <q-btn dense round flat @click="toggleSortOrder('updated')"
                          :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
@@ -563,14 +563,14 @@ watch(
   height: auto;
 }
 
-.filter-select {
-  width: 100%;
-  background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
-}
-
 .filters {
   display: flex;
   align-items: center;
+}
+
+.filter-select {
+  width: 100%;
+  background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
 }
 
 .sorting {
@@ -742,7 +742,7 @@ watch(
   }
 
   .filter-select {
-    width: 250px;
+    width: 210px;
   }
 
   .config-card .config-item {
