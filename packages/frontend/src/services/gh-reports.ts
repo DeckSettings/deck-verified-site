@@ -5,7 +5,7 @@ import type {
   GameSearchResult,
   GitHubIssueLabel,
   GitHubProjectGameDetails
-} from 'app/shared/types/game'
+} from '../../../shared/src/game'
 
 export interface Report {
   id: number;

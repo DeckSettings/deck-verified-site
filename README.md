@@ -33,38 +33,27 @@ Help us build the ultimate resource for handheld gaming!
 
 ### Install the dependencies
 ```bash
-yarn
-# or
 npm install
 ```
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 ```bash
+# Redis
+docker compose up -d redis
+
 # Backend API
-docker compose up -d
+docker compose up -d api --build
+# or...
+npm run watch:backend
 
 # Frontend
-quasar dev
-```
-
-
-### Lint the files
-```bash
-yarn lint
-# or
-npm run lint
-```
-
-
-### Format the files
-```bash
-yarn format
-# or
-npm run format
+npm run watch:frontend
 ```
 
 
 ### Build the app for production
 ```bash
-quasar build
+docker compose build api web
+# and/or...
+npm run build
 ```

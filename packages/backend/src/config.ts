@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 
 // Load environment variables from .env file (if not already loaded)
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
 const requiredEnvVars = [
   'GH_TOKEN'

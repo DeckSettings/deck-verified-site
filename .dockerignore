@@ -10,12 +10,12 @@
 .gitattributes
 
 # Build files
-frontend/dist
-backend/dist
+packages/frontend/dist
+packages/backend/dist
 
 # Dependencies
-frontend/node_modules
-backend/node_modules
+packages/frontend/node_modules
+packages/backend/node_modules
 
 # local .env files
 .env

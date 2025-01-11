@@ -6,7 +6,7 @@ import {
   SteamGame,
   SteamStoreAppDetails,
   SteamSuggestApp
-} from '../shared/types/game'
+} from '../../shared/src/game'
 import {
   redisCacheSteamAppDetails,
   redisCacheSteamSearchSuggestions,

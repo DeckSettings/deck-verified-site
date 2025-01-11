@@ -4,7 +4,7 @@ import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { searchGames } from 'src/services/gh-reports'
-import type { GameSearchResult } from 'app/shared/types/game'
+import type { GameSearchResult } from '../../../shared/src/game'
 
 const $q = useQuasar()
 const router = useRouter()

@@ -15,7 +15,7 @@ import {
   updateGameIndex
 } from './github'
 import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails, generateImageLinksFromAppId } from './helpers'
-import type { GameDetails, GameMetadata, GameSearchResult } from '../shared/types/game'
+import type { GameDetails, GameMetadata, GameSearchResult } from '../../shared/src/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -71,7 +71,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       path: req.originalUrl,
       status: res.statusCode,
       response_length: responseLength,
-      rate_limit_used: req.rateLimit ? req.rateLimit.used : '0',
+      // @ts-ignore
+      rate_limit_used: req.rateLimit ? req.rateLimit.current : '0',
+      // @ts-ignore
       rate_limit_remaining: req.rateLimit ? req.rateLimit.remaining : '0',
       referer: httpReferer,
       user_agent: userAgent,

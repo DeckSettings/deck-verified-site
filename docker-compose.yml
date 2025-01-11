@@ -25,9 +25,9 @@ services:
   api:
     image: ghcr.io/decksettings/deck-verified-api:latest
     build:
-      context: ./
-      dockerfile: ./backend/Dockerfile
-    command: npm run watch
+      context: .
+      dockerfile: ./packages/backend/docker/Dockerfile
+    command: npm run watch:backend
     ports:
       - '9022:9022'
     depends_on:
@@ -42,7 +42,7 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Missing Redis Password}
     volumes:
-      - ./backend:/app/
+      - ./:/app/
 
   # --- FRONTEND ---
   # NOTE: Ensure you run 'npm install && npm run build' first due to the ./dist/spa volume mounted into the container.
@@ -50,7 +50,7 @@ services:
     image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./packages/frontend/docker/Dockerfile
     ports:
       - '9021:9021'
     depends_on:

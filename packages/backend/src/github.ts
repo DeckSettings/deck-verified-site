@@ -14,7 +14,7 @@ import type {
   GithubIssuesSearchResult,
   GitHubProjectDetails, GitHubProjectGameDetails,
   GitHubReportIssueBodySchema
-} from '../shared/types/game'
+} from '../../shared/src/game'
 import { parseGameProjectBody, parseReportBody } from './helpers'
 
 /**
@@ -50,7 +50,7 @@ export const fetchReports = async (
 }
 
 /**
- * Updates the Redis cache with the latest game data from GitHub org projects.
+ * Updates the Redis cache with the latest game data from GitHub org packages.
  */
 export const updateGameIndex = async (): Promise<void> => {
   try {
@@ -445,7 +445,7 @@ export const fetchProject = async (
 
     return returnProjects
   } catch (error) {
-    logger.error('Error fetching organization projects:', error)
+    logger.error('Error fetching organization packages:', error)
     return null
   }
 }

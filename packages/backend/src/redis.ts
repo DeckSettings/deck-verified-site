@@ -10,7 +10,7 @@ import type {
   GitHubProjectGameDetails,
   SteamStoreAppDetails,
   SteamGame
-} from '../shared/types/game'
+} from '../../shared/src/game'
 
 // Redis client
 export const redisClient: RedisClientType = createClient({
