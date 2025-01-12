@@ -143,6 +143,7 @@ jobs:
   build-swarm-stack-templates:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    needs: [build-api-image, build-web-image]
     permissions:
       contents: write
     steps:
