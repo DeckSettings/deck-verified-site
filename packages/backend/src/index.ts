@@ -260,6 +260,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       returnData = {
         gameName: project.gameName,
         appId: project.appId,
+        projectNumber: project.projectNumber,
         metadata: project.metadata,
         reports: project.reports || []
       }
@@ -276,6 +277,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
           returnData = {
             gameName: redisResult.name,
             appId: Number(appId),
+            projectNumber: null,
             metadata: {
               poster: gameImages.poster,
               hero: gameImages.hero,
@@ -296,6 +298,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         returnData = {
           gameName: steamResult.name,
           appId: Number(appId),
+          projectNumber: null,
           metadata: {
             poster: gameImages.poster,
             hero: gameImages.hero,

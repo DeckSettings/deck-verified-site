@@ -100,7 +100,12 @@ export default defineConfig((ctx) => {
       port: 9021,
       proxy: {
         '/deck-verified/api': {
-          target: 'http://localhost:9022'
+          // Environments:
+          //  - Local: 'http://localhost:9022'
+          //  - Prod: 'https://deckverified.games'
+          target: 'https://deckverified.games',
+          changeOrigin: true,   // Modify the origin to match the target's origin (required to fetch from CDN)
+          secure: false         // Disable SSL certificate validation (as cert will not be "localhost")
         }
       },
       open: false // opens browser window automatically

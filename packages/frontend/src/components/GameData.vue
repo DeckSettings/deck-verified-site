@@ -4,12 +4,12 @@ import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
 import { marked } from 'marked'
-import type { GameReport, GitHubProjectGameDetails, GitHubIssueLabel } from '../../../shared/src/game'
+import type { GameReport, GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
 
 const route = useRoute()
 const appId = ref<string | null>(null)
 const gameName = ref<string | null>(null)
-const gameData = ref<GitHubProjectGameDetails | null>(null)
+const gameData = ref<GameDetails | null>(null)
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)

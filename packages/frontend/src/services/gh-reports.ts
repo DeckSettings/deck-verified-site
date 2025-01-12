@@ -3,8 +3,8 @@ import type {
   GameReportData,
   GameReportReactions,
   GameSearchResult,
-  GitHubIssueLabel,
-  GitHubProjectGameDetails
+  GameDetails,
+  GitHubIssueLabel
 } from '../../../shared/src/game'
 
 export interface Report {
@@ -56,7 +56,7 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
   }
 }
 
-export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GitHubProjectGameDetails | null> => {
+export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameDetails | null> => {
   let url = '/deck-verified/api/v1/game_details'
   if (appId) {
     url += `?appid=${appId}&include_external=true`
@@ -73,7 +73,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
       console.error(`Failed to fetch project data: ${response.status} - ${errorBody}`)
       throw new Error('Failed to fetch project data')
     }
-    const data = await response.json() as GitHubProjectGameDetails
+    const data = await response.json() as GameDetails
     if (data) {
       console.debug('Game data:', data)
       return data

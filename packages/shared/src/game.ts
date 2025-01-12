@@ -71,6 +71,7 @@ export interface GameReportData {
 export interface GameDetails {
   gameName: string;
   appId: number | null;
+  projectNumber: number | null;
   metadata: GameMetadata;
   reports: GameReport[];
 }
