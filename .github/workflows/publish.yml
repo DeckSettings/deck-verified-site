@@ -1,7 +1,9 @@
+name: Publish
+
 on:
   workflow_dispatch:
   push:
-    branches: [ staging, master ]
+    branches: [ 'feature-**', 'fix-**', staging, master ]
   schedule:
     # At 02:30 on Saturday
     - cron: '30 2 * * 6'
@@ -98,6 +100,10 @@ jobs:
             echo "docker_tag=latest" >> $GITHUB_OUTPUT
           elif [[ ${VERSION_TAG%/merge} == 'staging' ]]; then
             echo "docker_tag=staging" >> $GITHUB_OUTPUT
+          elif [[ ${VERSION_TAG%/merge} =~ "feature-"* ]]; then
+            echo "docker_tag=${VERSION_TAG%/merge}" >> $GITHUB_OUTPUT
+          elif [[ ${VERSION_TAG%/merge} =~ "fix-"* ]]; then
+            echo "docker_tag=${VERSION_TAG%/merge}" >> $GITHUB_OUTPUT
           fi
 
       - name: Log into registry ${{ vars.REGISTRY }}
@@ -133,3 +139,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  build-swarm-stack-templates:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish Swarm Template
+        uses: Josh5/action.publish-swarm-stack@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          templates_path: infra/swarm
+          branch_name: release/latest

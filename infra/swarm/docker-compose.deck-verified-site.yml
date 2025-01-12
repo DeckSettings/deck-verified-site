@@ -1,0 +1,243 @@
+# ---------------
+# Deck Verified Site
+#
+# ---------------
+# Config (paste into portainer advance env text input):
+#
+# <config_start>
+#   #@ Placement
+#   #-    Configure a placement constraint to where the container will be run.
+#   #-    Examples:
+#   #-        - node.hostname==<hostname>
+#   #-        - engine.labels.fs-access.<worker-hostname>.mnt==true
+#   #-        - node.role!=manager
+#   PLACEMENT_CONSTRAINT_CACHE=node.hostname==<hostname>
+#   PLACEMENT_CONSTRAINT_TASKS=node.platform.os==linux
+#   PLACEMENT_CONSTRAINT_API=node.role==worker
+#   PLACEMENT_CONSTRAINT_WEB=node.platform.os==linux
+#   #@ Replication
+#   #-    Configure the replication of the services
+#   REPLICAS_API=2
+#   REPLICAS_WEB=2
+#   #@ Traefik Config
+#   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
+#   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
+#   #@ Container Config
+#   #-  - REDIS_PASSWORD -
+#   REDIS_PASSWORD=password
+#   #-  - GH_TOKEN -
+#   #-    A GH Token for read access to the repo API
+#   GH_TOKEN=XXXXXXXXXXX
+#   #-  - DEFAULT_CACHE_TIME -
+#   #-    The default time to cache game information. This mostly is used to avoid GitHub rate limiting.
+#   DEFAULT_CACHE_TIME=1200
+#   #-  - DISABLE_RATE_LIMITER -
+#   #-    Disable the rate limiter. Should normally be false for production.
+#   DISABLE_RATE_LIMITER=true
+#   #-  - RUN_SCHEDULED_TASKS_ON_START -
+#   #-    Run the scheduled tasks on container start. Should normally be false for production.
+#   RUN_SCHEDULED_TASKS_ON_START=true
+# <config_end>
+#
+# ---------------
+---
+networks:
+  # Use a previously created public network "swarm-public", shared with other services.
+  # This network should be available to a Traefik service.
+  swarm-public:
+    external: true
+  private-net:
+    driver: overlay
+
+volumes:
+  redis-cache:
+    driver: local
+
+services:
+  # --- REDIS ---
+  redis:
+    image: redis/redis-stack:latest
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+      update_config:
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 100M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_CACHE:?}
+    networks:
+      - private-net
+    environment:
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?} --protected-mode yes
+    volumes:
+      - redis-cache:/data
+
+  # --- BACKEND ASYNC TASKS ---
+  tasks:
+    image: ghcr.io/decksettings/deck-verified-api:latest
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+      update_config:
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 50M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_TASKS:?}
+      labels:
+        #### -- Configure Logging labels
+        - "source.env=${ENVIRONMENT_NAME:-test}"
+        - "source.service=deck-verified-tasks"
+        - "source.project=deck-verified-site"
+    user: "1000:1000"
+    command: npm run serve
+    networks:
+      - private-net
+    environment:
+      NODE_ENV: production
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
+      RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
+      # -- GitHub token (required to increase rate limits on API calls).
+      GH_TOKEN: ${GH_TOKEN:?}
+      # -- Cache Config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24225"
+        fluentd-request-ack: "true"
+        fluentd-async: "false"
+        tag: "deck-verified-tasks"
+        env: "source_env,source_service,source_project"
+
+  # --- BACKEND API ---
+  api:
+    image: ghcr.io/decksettings/deck-verified-api:latest
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_API}
+      restart_policy:
+        condition: on-failure
+        delay: 2s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          memory: 160M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_API:?}
+      labels:
+        #### -- Configure Logging labels
+        - "source.env=${ENVIRONMENT_NAME:-test}"
+        - "source.service=deck-verified-api"
+        - "source.project=deck-verified-site"
+
+        #### -- Enable traefik router for this service
+        - "traefik.enable=true"
+
+        #### -- Main Service
+        - "traefik.http.services.deck-verified-api.loadbalancer.server.port=9022"
+        - "traefik.http.routers.deck-verified-api.entrypoints=web"
+        # Configure router domain
+        - "traefik.http.routers.deck-verified-api.rule=${TRAEFIK_ROUTE_RULE_API}"
+        # Router uses SSL
+        - "traefik.http.routers.deck-verified-api.tls=true"
+        # Use the "le" (Let's Encrypt) resolver created below
+        - "traefik.http.routers.deck-verified-api.tls.certresolver=le"
+        # Enable middlewares:
+        #   - Redirect HTTP -> HTTPS
+        - "traefik.http.routers.deck-verified-api.middlewares=https-redirect"
+    user: "1000:1000"
+    command: npm run serve-no-tasks
+    networks:
+      - swarm-public
+      - private-net
+    environment:
+      NODE_ENV: production
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
+      DISABLE_RATE_LIMITER: ${DISABLE_RATE_LIMITER:-false}
+      RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
+      # -- GitHub token (required to increase rate limits on API calls).
+      GH_TOKEN: ${GH_TOKEN:?}
+      # -- Cache Config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24225"
+        fluentd-request-ack: "true"
+        fluentd-async: "false"
+        tag: "deck-verified-api"
+        env: "source_env,source_service,source_version,source_project"
+
+  # --- FRONTEND ---
+  web:
+    image: ghcr.io/decksettings/deck-verified-web:latest
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_WEB}
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          memory: 50M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_WEB:?}
+      labels:
+        #### -- Configure Logging labels
+        - "source.env=${ENVIRONMENT_NAME:-test}"
+        - "source.service=deck-verified-web"
+        - "source.project=deck-verified-site"
+
+        #### -- Enable traefik router for this service
+        - "traefik.enable=true"
+
+        #### -- Main Service
+        - "traefik.http.services.deck-verified-web.loadbalancer.server.port=9021"
+        - "traefik.http.routers.deck-verified-web.entrypoints=web"
+        # Configure router domain
+        - "traefik.http.routers.deck-verified-web.rule=${TRAEFIK_ROUTE_RULE_WEB}"
+        # Router uses SSL
+        - "traefik.http.routers.deck-verified-web.tls=true"
+        # Use the "le" (Let's Encrypt) resolver created below
+        - "traefik.http.routers.deck-verified-web.tls.certresolver=le"
+        # Enable middlewares:
+        #   - Redirect HTTP -> HTTPS
+        - "traefik.http.routers.deck-verified-web.middlewares=https-redirect"
+    networks:
+      - swarm-public
+      - private-net
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24225"
+        fluentd-request-ack: "true"
+        fluentd-async: "false"
+        tag: "deck-verified-web"
+        env: "source_env,source_service,source_version,source_project"
