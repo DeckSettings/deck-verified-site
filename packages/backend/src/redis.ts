@@ -120,6 +120,9 @@ export const searchGamesInRedis = async (searchTerm: string | null = null, appId
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
   }
+  if (Array.isArray(searchTerm)) {
+    throw new Error('Search term cannot be an array.')
+  }
   if (searchTerm && searchTerm.length > 100) {
     throw new Error('Search term too long.')
   }
