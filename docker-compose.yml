@@ -27,6 +27,7 @@ services:
     build:
       context: .
       dockerfile: ./packages/backend/docker/Dockerfile
+    user: '1000:1000'
     command: npm run watch:backend
     ports:
       - '9022:9022'
@@ -51,6 +52,7 @@ services:
     build:
       context: .
       dockerfile: ./packages/frontend/docker/Dockerfile
+    user: '1000:1000'
     ports:
       - '9021:9021'
     depends_on:
