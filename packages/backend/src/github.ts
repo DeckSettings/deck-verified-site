@@ -2,10 +2,10 @@ import logfmt from 'logfmt'
 import config from './config'
 import logger from './logger'
 import {
-  redisCacheGitHubIssueLabels, redisCacheGitHubProjectDetails,
+  redisCacheGitHubIssueLabels, redisCacheGitHubProjectDetails, redisCacheHardwareInfo,
   redisCachePopularGameReports, redisCacheRecentGameReports,
   redisCacheReportBodySchema, redisLookupGitHubIssueLabels,
-  redisLookupGitHubProjectDetails, redisLookupPopularGameReports,
+  redisLookupGitHubProjectDetails, redisLookupHardwareInfo, redisLookupPopularGameReports,
   redisLookupRecentGameReports, redisLookupReportBodySchema,
   storeGameInRedis
 } from './redis'
@@ -13,7 +13,7 @@ import type {
   GameReport, GitHubIssueLabel,
   GithubIssuesSearchResult,
   GitHubProjectDetails, GitHubProjectGameDetails,
-  GitHubReportIssueBodySchema
+  GitHubReportIssueBodySchema, HardwareInfo
 } from '../../shared/src/game'
 import { parseGameProjectBody, parseReportBody } from './helpers'
 
@@ -84,6 +84,7 @@ export const updateGameIndex = async (): Promise<void> => {
  */
 const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHubProjectGameDetails> => {
   const reportBodySchema = await fetchReportBodySchema()
+  const hardwareInfo = await fetchHardwareInfo()
 
   const parsedTitle = logfmt.parse(project.title)
   const projectDetails: GitHubProjectGameDetails = {
@@ -110,7 +111,7 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
   }
 
   for (const issue of project.issues) {
-    const parsedIssueData = await parseReportBody(issue.body, reportBodySchema)
+    const parsedIssueData = await parseReportBody(issue.body, reportBodySchema, hardwareInfo)
     projectDetails.reports.push({
       id: issue.id,
       title: issue.title,
@@ -143,9 +144,10 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
  */
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
   const schema = await fetchReportBodySchema()
+  const hardwareInfo = await fetchHardwareInfo()
   return await Promise.all(
     reports.items.map(async (report) => {
-      const parsedIssueData = await parseReportBody(report.body, schema)
+      const parsedIssueData = await parseReportBody(report.body, schema, hardwareInfo)
       return {
         id: report.id,
         title: report.title,
@@ -526,4 +528,37 @@ export const fetchIssueLabels = async (authToken: string | null = null): Promise
   }
 
   return data
+}
+
+/**
+ * Fetches the hardware details list from GitHub or Redis cache.
+ * If the list is available in Redis, it returns the cached version.
+ * Otherwise, it fetches the list from a remote GitHub URL, caches it, and returns it.
+ */
+const fetchHardwareInfo = async (): Promise<HardwareInfo[]> => {
+  const cachedData = await redisLookupHardwareInfo()
+  if (cachedData) {
+    return cachedData
+  }
+
+  const hardwareInfoUrl = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/scripts/config/hardware.json'
+
+  try {
+    logger.info('Fetching GitHub hardware info from URL')
+    const response = await fetch(hardwareInfoUrl)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error(`GitHub raw request failed when fetching hardware info with status ${response.status}: ${errorBody}`)
+      throw new Error('Failed to hardware info from GitHub repository. Non-success response received from GitHub')
+    }
+
+    const info = await response.json()
+    if (info.devices) {
+      await redisCacheHardwareInfo(info.devices)
+    }
+    return info.devices
+  } catch (error) {
+    logger.error('Error fetching or parsing hardware info:', error)
+    throw error // Re-throw the error to be handled by the caller
+  }
 }

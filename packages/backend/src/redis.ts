@@ -2,14 +2,14 @@ import { createClient, SchemaFieldTypes } from 'redis'
 import type { RedisClientType } from 'redis'
 import config from './config'
 import logger from './logger'
-import type {
+import {
   GameReport,
   GameSearchCache,
   GitHubIssueLabel,
   GitHubReportIssueBodySchema,
   GitHubProjectGameDetails,
   SteamStoreAppDetails,
-  SteamGame
+  SteamGame, HardwareInfo
 } from '../../shared/src/game'
 
 // Redis client
@@ -291,6 +291,38 @@ export const redisLookupReportBodySchema = async (): Promise<GitHubReportIssueBo
     }
   } catch (error) {
     logger.error('Redis error while fetching cached GitHub report body schema:', error)
+  }
+  return null
+}
+
+/**
+ * Caches the hardware info from the GitHub repo in Redis.
+ */
+export const redisCacheHardwareInfo = async (data: HardwareInfo[]): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching GitHub hardware info.')
+  }
+  const redisKey = 'github_hardware_info'
+  const cacheTime = config.defaultCacheTime
+
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached GitHub hardware info for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Looks up the hardware info cached in Redis.
+ */
+export const redisLookupHardwareInfo = async (): Promise<HardwareInfo[] | null> => {
+  const redisKey = 'github_hardware_info'
+  try {
+    // Attempt to fetch from Redis cache
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved GitHub hardware info from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached GitHub hardware info:', error)
   }
   return null
 }

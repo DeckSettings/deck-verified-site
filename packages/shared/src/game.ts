@@ -1,3 +1,12 @@
+export interface HardwareInfo {
+  name: string;
+  battery_size_wh: number;
+  max_display_resolution: string;
+  max_refresh_rate: number;
+  supports_vrr: boolean;
+  max_tdp_w: number;
+}
+
 export interface GameImages {
   poster: string | null;
   hero: string | null;
@@ -46,6 +55,8 @@ export interface GameReportData {
   app_id: number;
   launcher: string;
   target_framerate: string;
+  average_battery_power_draw: number | null;
+  calculated_battery_life_minutes: number | null;
   device: string;
   os_version: string;
   undervolt_applied: string | null;

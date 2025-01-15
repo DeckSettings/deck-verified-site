@@ -1,8 +1,9 @@
 import logger from './logger'
-import {
+import type {
+  HardwareInfo,
   GameImages,
   GameReportData,
-  type GitHubReportIssueBodySchema,
+  GitHubReportIssueBodySchema,
   SteamGame,
   SteamStoreAppDetails,
   SteamSuggestApp
@@ -44,13 +45,19 @@ export const extractHeadingValue = async (
   return content.length > 0 ? content : null
 }
 
+const calculatedBatteryLife = async (deviceInfo: HardwareInfo, averagePowerDraw: number): Promise<number> => {
+  // Battery life in minutes = (Battery Size in Wh / Average Power Draw in W) * 60
+  return Math.round((deviceInfo.battery_size_wh / averagePowerDraw) * 60)
+}
+
 /**
  * Parses the body of a GitHub issue report based on a provided schema.
  * Extracts specific heading values from the markdown content.
  */
 export const parseReportBody = async (
   markdown: string,
-  schema: GitHubReportIssueBodySchema
+  schema: GitHubReportIssueBodySchema,
+  hardwareInfo: HardwareInfo[]
 ): Promise<GameReportData> => {
   try {
     const data: Partial<GameReportData> = {}
@@ -79,6 +86,19 @@ export const parseReportBody = async (
 
       // @ts-expect-error: The key is dynamically generated and TypeScript cannot infer its type
       data[snakeCaseHeading] = value
+    }
+
+    // Calculate additional calculated_battery_life_minutes field
+    if (data.average_battery_power_draw && data.average_battery_power_draw > 0) {
+      // Match device info from hardwareInfo
+      const matchedDevice = hardwareInfo.find(
+        (device) => device.name === data.device
+      )
+      if (matchedDevice) {
+        data.calculated_battery_life_minutes = await calculatedBatteryLife(matchedDevice, data.average_battery_power_draw)
+      } else {
+        logger.warn(`No matching device found in the hardwareInfo list for: ${data.device}`)
+      }
     }
 
     // Check for required fields and log warnings for missing ones
