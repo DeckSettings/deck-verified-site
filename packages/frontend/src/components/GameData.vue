@@ -146,32 +146,6 @@ const filteredReports = computed(() => {
   return reports
 })
 
-const getCompatibilityIcon = (compatibility: string) => {
-  switch (compatibility) {
-    case 'Verified':
-      return 'verified_user'
-    case 'Playable':
-      return 'warning'
-    case 'Unsupported':
-      return 'block'
-    default:
-      return ''
-  }
-}
-
-const getCompatibilityColor = (compatibility: string) => {
-  switch (compatibility) {
-    case 'Verified':
-      return 'green'
-    case 'Playable':
-      return 'orange'
-    case 'Unsupported':
-      return 'red'
-    default:
-      return 'grey'
-  }
-}
-
 const initGameData = async (params: RouteParamsGeneric) => {
   if (route.path.startsWith('/app/')) {
     appId.value = params.appId as string
@@ -325,15 +299,6 @@ watch(
                     </q-item-label>
                     <q-item-label caption class="q-mr-lg q-mb-sm">
                       <div class="row items-center">
-                        <q-chip
-                          v-if="issue.data.device_compatibility"
-                          size="sm" square>
-                          <q-avatar
-                            :icon="getCompatibilityIcon(issue.data.device_compatibility)"
-                            :color="getCompatibilityColor(issue.data.device_compatibility)"
-                            text-color="white" />
-                          {{ issue.data.device_compatibility }}
-                        </q-chip>
                         <q-chip
                           v-if="issue.data.device"
                           size="sm" square>

@@ -127,17 +127,6 @@ export default defineComponent({
                 {{ report.data.summary }}
               </q-item-label>
               <q-item-label>
-                <q-icon name="info"
-                        :color="report.data.device_compatibility === 'Verified'
-                          ? 'green'
-                          : report.data.device_compatibility === 'Playable'
-                          ? 'amber'
-                          : 'red'">
-                  <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
-                    {{ report.data.device_compatibility }}
-                  </q-tooltip>
-                </q-icon>
-
                 <q-icon v-if="report.reviewScore"
                         :name="getReviewScoreIcon(report.reviewScore)"
                         :color="getReviewScoreColor(report.reviewScore)">
@@ -149,16 +138,6 @@ export default defineComponent({
             </q-item-section>
 
             <q-item-section v-if="!$q.platform.is.mobile" side top>
-              <q-icon name="info"
-                      :color="report.data.device_compatibility === 'Verified'
-                        ? 'green'
-                        : report.data.device_compatibility === 'Playable'
-                        ? 'amber'
-                        : 'red'">
-                <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
-                  {{ report.data.device_compatibility }}
-                </q-tooltip>
-              </q-icon>
 
               <q-icon v-if="report.reviewScore"
                       :name="getReviewScoreIcon(report.reviewScore)"

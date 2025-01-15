@@ -45,7 +45,6 @@ export interface GameReportData {
   game_name: string;
   app_id: number;
   launcher: string;
-  device_compatibility: string;
   target_framerate: string;
   device: string;
   os_version: string;
