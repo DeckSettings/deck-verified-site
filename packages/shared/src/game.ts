@@ -95,7 +95,7 @@ export interface GitHubReportIssueBodySchema {
   [key: string]: any; // Define the exact schema if known
 }
 
-interface GitHubUser {
+export interface GitHubUser {
   login: string;
   avatar_url: string;
 }

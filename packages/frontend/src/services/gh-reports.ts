@@ -4,13 +4,15 @@ import type {
   GameReportReactions,
   GameSearchResult,
   GameDetails,
-  GitHubIssueLabel
+  GitHubIssueLabel,
+  GitHubUser
 } from '../../../shared/src/game'
 
 export interface Report {
   id: number;
   data: GameReportData;
   reactions: GameReportReactions;
+  user: GitHubUser;
   reviewScore: string;
 }
 
@@ -26,6 +28,7 @@ export const fetchRecentReports = async (): Promise<Report[]> => {
         id: report.id,
         data: report.data,
         reactions: report.reactions,
+        user: report.user,
         reviewScore
       }
     })
@@ -47,6 +50,7 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
         id: report.id,
         data: report.data,
         reactions: report.reactions,
+        user: report.user,
         reviewScore
       }
     })

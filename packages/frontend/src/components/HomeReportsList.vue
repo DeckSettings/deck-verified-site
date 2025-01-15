@@ -1,11 +1,21 @@
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue'
-import { fetchRecentReports } from 'src/services/gh-reports'
+import { fetchPopularReports, fetchRecentReports } from 'src/services/gh-reports'
 import type { Report } from 'src/services/gh-reports'
+import DeviceImage from 'components/elements/DeviceImage.vue'
+
 
 export default defineComponent({
-  setup() {
-    const recentReports = ref([] as Report[])
+  components: { DeviceImage },
+  props: {
+    reportSelection: {
+      type: String,
+      required: true
+    }
+  },
+  setup(props) {
+    const reportsList = ref([] as Report[])
+    const listTitle = ref('')
 
     const getReviewScoreIcon = (reviewScore: string) => {
       switch (reviewScore) {
@@ -33,6 +43,19 @@ export default defineComponent({
       }
     }
 
+    const getReviewScoreString = (reviewScore: string) => {
+      switch (reviewScore) {
+        case 'positive':
+          return 'positively rated'
+        case 'neutral':
+          return 'neutral'
+        case 'negative':
+          return 'negatively rated'
+        default:
+          return 'grey'
+      }
+    }
+
     const getReviewScoreTooltip = (reviewScore: string) => {
       switch (reviewScore) {
         case 'positive':
@@ -47,13 +70,24 @@ export default defineComponent({
     }
 
     onMounted(async () => {
-      recentReports.value = await fetchRecentReports()
+      if (!props.reportSelection) {
+        listTitle.value = ''
+      } else if (props.reportSelection == 'popular') {
+        reportsList.value = await fetchPopularReports()
+        listTitle.value = 'Most Popular Reports'
+      } else if (props.reportSelection == 'recentlyUpdated') {
+        reportsList.value = await fetchRecentReports()
+        listTitle.value = 'Recently Updated Reports'
+      }
     })
 
+
     return {
-      recentReports,
+      listTitle,
+      reportsList,
       getReviewScoreIcon,
       getReviewScoreColor,
+      getReviewScoreString,
       getReviewScoreTooltip
     }
   }
@@ -66,18 +100,19 @@ export default defineComponent({
     class="my-card text-white"
     style="background: radial-gradient(circle, #35a2ff 0%, var(--q-primary) 100%)">
     <q-card-section>
-      <div class="text-h6">Recently Updated Reports</div>
+      <div class="text-h6">{{ listTitle }}</div>
       <div class="text-subtitle2"></div>
     </q-card-section>
 
-    <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile  }">
+    <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
       <div class="q-pa-md-md">
         <q-list padding>
           <q-item
-            v-for="report in recentReports"
+            v-for="report in reportsList"
             :key="report.id"
             clickable
             v-ripple
+            :class="{ 'q-pl-md': $q.platform.is.mobile }"
             :to="report.data.app_id ? `/app/${report.data.app_id}` : `/game/${encodeURIComponent(report.data.game_name)}`"
           >
             <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
@@ -106,43 +141,71 @@ export default defineComponent({
                   :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
                 />
               </div>
+              <q-item-label v-if="$q.platform.is.mobile"
+                            class="absolute-bottom-left q-ml-sm q-mb-lg">
+                <DeviceImage :device="report.data.device" />
+              </q-item-label>
+              <q-item-label v-else
+                            class="absolute-bottom-left device-image">
+                <DeviceImage :device="report.data.device" />
+              </q-item-label>
             </q-item-section>
 
             <q-item-section v-if="!$q.platform.is.mobile" top class="game-info-section">
-              <q-item-label class="text-h6">{{ report.data.game_name }}: {{ report.data.summary }}</q-item-label>
-              <q-item-label caption class="q-pt-sm">
-                <div><b>Target Framerate:</b> {{ report.data.target_framerate }}</div>
-                <div><b>Device:</b> {{ report.data.device }}</div>
-                <div>
-                  <b>Compatibility Tool Version:</b>
-                  {{ report.data.compatibility_tool_version }}
+              <q-item-label lines="1" class="text-h6 q-mb-xs">
+                {{ report.data.game_name }}: <span style="font-weight:300;"> {{ report.data.summary }}</span>
+              </q-item-label>
+              <q-item-label caption lines="2" class="q-pt-sm">
+                <div class="row q-gutter-sm">
+                  <!-- Text Details -->
+                  <div class="col-12">
+                    <b>Device:</b> {{ report.data.device }}
+                  </div>
+                  <div class="col-12">
+                    <b>Target Framerate:</b> {{ report.data.target_framerate }}
+                  </div>
+                  <!--TODO: Add calculated battery life here                    -->
                 </div>
               </q-item-label>
             </q-item-section>
             <q-item-section v-else top class="game-info-section">
               <q-item-label class="text-h6">{{ report.data.game_name }}</q-item-label>
               <q-item-label caption class="q-pt-sm">
-                {{ report.data.summary }}
-              </q-item-label>
-              <q-item-label>
-                <q-icon v-if="report.reviewScore"
-                        :name="getReviewScoreIcon(report.reviewScore)"
-                        :color="getReviewScoreColor(report.reviewScore)">
-                  <q-tooltip v-if="report.reviewScore" anchor="center left" self="center right" :offset="[10, 10]">
-                    {{ getReviewScoreTooltip(report.reviewScore) }}
-                  </q-tooltip>
-                </q-icon>
+                <div class="row q-gutter-sm">
+                  <!-- Text Details -->
+                  <div class="col-12">
+                    <b>Device:</b> {{ report.data.device }}
+                  </div>
+                  <div class="col-12">
+                    <b>Target Framerate:</b> {{ report.data.target_framerate }}
+                  </div>
+                  <!--TODO: Add calculated battery life here                    -->
+                </div>
               </q-item-label>
             </q-item-section>
 
             <q-item-section v-if="!$q.platform.is.mobile" side top>
-              <q-icon v-if="report.reviewScore"
-                      :name="getReviewScoreIcon(report.reviewScore)"
-                      :color="getReviewScoreColor(report.reviewScore)">
+              <q-chip
+                size="sm"
+                color="secondary"
+                text-color="white">
+                <q-avatar color="red" text-color="white">
+                  <img :src="report.user.avatar_url">
+                </q-avatar>
+                {{ report.user.login }}
+              </q-chip>
+              <q-chip
+                v-if="report.reviewScore"
+                size="sm"
+                :name="getReviewScoreIcon(report.reviewScore)"
+                :color="getReviewScoreColor(report.reviewScore)">
+                <q-avatar :icon="getReviewScoreIcon(report.reviewScore)"
+                          :color="getReviewScoreColor(report.reviewScore)" text-color="white" />
+                {{ getReviewScoreString(report.reviewScore) }}
                 <q-tooltip v-if="report.reviewScore" anchor="center left" self="center right" :offset="[10, 10]">
                   {{ getReviewScoreTooltip(report.reviewScore) }}
                 </q-tooltip>
-              </q-icon>
+              </q-chip>
             </q-item-section>
           </q-item>
 
@@ -161,5 +224,10 @@ export default defineComponent({
 
 .report-details {
   margin-top: auto; /* Push the caption to the middle */
+}
+
+.device-image {
+  margin-left: 90px;
+  margin-bottom: 5px;
 }
 </style>
