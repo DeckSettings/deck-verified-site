@@ -159,12 +159,21 @@ export default defineComponent({
                 <div class="row q-gutter-sm">
                   <!-- Text Details -->
                   <div class="col-12">
-                    <b>Device:</b> {{ report.data.device }}
+                    <b>Device: </b>{{ report.data.device }}
                   </div>
                   <div class="col-12">
-                    <b>Target Framerate:</b> {{ report.data.target_framerate }}
+                    <b>Target Framerate: </b>{{ report.data.target_framerate }}
                   </div>
-                  <!--TODO: Add calculated battery life here                    -->
+                  <div class="col-12">
+                    <b>Average Battery Life: </b>
+                    <template v-if="report.data.calculated_battery_life_minutes">
+                      {{ Math.floor(report.data.calculated_battery_life_minutes / 60) }} hours
+                      {{ report.data.calculated_battery_life_minutes % 60 }} mins
+                    </template>
+                    <template v-else>
+                      unknown
+                    </template>
+                  </div>
                 </div>
               </q-item-label>
             </q-item-section>
@@ -174,12 +183,21 @@ export default defineComponent({
                 <div class="row q-gutter-sm">
                   <!-- Text Details -->
                   <div class="col-12">
-                    <b>Device:</b> {{ report.data.device }}
+                    <b>Device: </b>{{ report.data.device }}
                   </div>
                   <div class="col-12">
-                    <b>Target Framerate:</b> {{ report.data.target_framerate }}
+                    <b>Target Framerate: </b>{{ report.data.target_framerate }}
                   </div>
-                  <!--TODO: Add calculated battery life here                    -->
+                  <div class="col-12">
+                    <b>Average Battery Life: </b>
+                    <template v-if="report.data.calculated_battery_life_minutes">
+                      {{ Math.floor(report.data.calculated_battery_life_minutes / 60) }} hours
+                      {{ report.data.calculated_battery_life_minutes % 60 }} mins
+                    </template>
+                    <template v-else>
+                      unknown
+                    </template>
+                  </div>
                 </div>
               </q-item-label>
             </q-item-section>
