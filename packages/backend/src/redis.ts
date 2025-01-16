@@ -232,6 +232,38 @@ export const redisLookupPopularGameReports = async (): Promise<GameReport[] | nu
 }
 
 /**
+ * Caches author game reports from GitHub in Redis.
+ * This data is cached for one day.
+ */
+export const redisCacheAuthorGameReportCount = async (count: number, author: string): Promise<void> => {
+  if (!count) {
+    throw new Error('A number is required for caching GitHub author game report count.')
+  }
+  const redisKey = `github_game_reports_author:${author}`
+  const cacheTime = 60 * 60 * 24 // Cache results in Redis for 1 day
+  await redisClient.set(redisKey, Number(count), { EX: cacheTime })
+  logger.info(`Cached GitHub author game reports for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Looks up author game reports cached in Redis.
+ */
+export const redisLookupAuthorGameReportCount = async (author: string): Promise<number | null> => {
+  const redisKey = `github_game_reports_author:${author}`
+  try {
+    // Attempt to fetch from Redis cache
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info('Retrieved GitHub author game reports from Redis cache')
+      return Number(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached author game reports:', error)
+  }
+  return null
+}
+
+/**
  * Caches the list of issue labels from GitHub in Redis.
  */
 export const redisCacheGitHubIssueLabels = async (data: GitHubIssueLabel[]): Promise<void> => {

@@ -205,7 +205,7 @@ export default defineComponent({
             <q-item-section v-if="!$q.platform.is.mobile" side top>
               <q-chip
                 size="sm"
-                color="secondary"
+                color="brown"
                 text-color="white">
                 <q-avatar color="red" text-color="white">
                   <img :src="report.user.avatar_url">

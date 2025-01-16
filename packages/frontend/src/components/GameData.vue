@@ -5,6 +5,11 @@ import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
 import { marked } from 'marked'
 import type { GameReport, GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
+import DeviceImage from 'components/elements/DeviceImage.vue'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 const route = useRoute()
 const appId = ref<string | null>(null)
@@ -15,6 +20,7 @@ const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
 const githubProjectSearchLink = ref<string | null>(null)
 const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
+const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -82,13 +88,6 @@ const toggleSortOrder = (option: string) => {
   }
 }
 
-
-// Toggle show/hide logic for each report
-const showIssueBody = ref<boolean[]>([])
-const toggleConfigVisibility = (index: number) => {
-  showIssueBody.value[index] = !showIssueBody.value[index]
-}
-
 const hasSystemConfig = (report: GameReport) => {
   return (
     report.data.undervolt_applied ||
@@ -145,6 +144,12 @@ const filteredReports = computed(() => {
 
   return reports
 })
+
+const lastUpdated = (dateString: string | null): string => {
+  if (!dateString) return 'Unknown'
+  const updatedAt = dayjs(dateString)
+  return updatedAt.isValid() ? `${updatedAt.fromNow()}` : 'Unknown'
+}
 
 const initGameData = async (params: RouteParamsGeneric) => {
   if (route.path.startsWith('/app/')) {
@@ -291,178 +296,268 @@ watch(
 
               <q-list separator>
                 <q-item
-                  v-for="(issue, index) in filteredReports" :key="index"
-                  class="game-data-item q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
-                  <q-item-section class="report">
-                    <q-item-label class="q-mr-lg q-my-sm">
-                      {{ issue.data.summary }}
-                    </q-item-label>
-                    <q-item-label caption class="q-mr-lg q-mb-sm">
-                      <div class="row items-center">
-                        <q-chip
-                          v-if="issue.data.device"
-                          size="sm" square>
-                          <q-avatar color="blue" text-color="white">
-                            <q-icon name="img:src/assets/icons/handheld.svg" color="white" />
-                          </q-avatar>
-                          {{ issue.data.device }}
-                        </q-chip>
-                        <!--<q-chip
-                          v-if="issue.data.steam_play_compatibility_tool_used"
-                          size="sm" square>
-                          <q-avatar icon="gamepad" color="orange" text-color="white" />
-                          {{ issue.data.steam_play_compatibility_tool_used }}:
-                          {{ issue.data.compatibility_tool_version }}
-                        </q-chip>-->
-                        <q-chip
-                          v-if="issue.data.target_framerate"
-                          size="sm" square>
-                          <q-avatar icon="speed" color="teal" text-color="white" />
-                          Target FPS: {{ issue.data.target_framerate }}
-                        </q-chip>
-                        <q-chip
-                          v-if="issue.data.launcher"
-                          size="sm" square>
-                          <q-avatar icon="rocket_launch" color="purple" text-color="white" />
-                          Launcher: {{ issue.data.launcher }}
-                        </q-chip>
-                        <q-chip
-                          v-if="issue.data.os_version"
-                          size="sm" square>
-                          <q-avatar icon="fab fa-steam" color="red" text-color="white" />
-                          OS: {{ issue.data.os_version }}
-                        </q-chip>
-                      </div>
-                    </q-item-label>
+                  v-for="(report, index) in filteredReports" :key="index"
+                  class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
+                  <q-expansion-item dense
+                                    expand-icon-class="self-end"
+                                    header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs"
+                                    class="full-width">
+                    <template v-slot:header>
+                      <q-item-section class="gt-xs">
+                        <!-- Wrapper for the layout -->
+                        <div class="row items-center q-gutter-sm">
+                          <!-- Avatar Section -->
+                          <div class="col-auto q-ml-md">
+                            <q-avatar>
+                              <DeviceImage :device="report.data.device" />
+                            </q-avatar>
+                          </div>
+                          <!-- Report Summary Section -->
+                          <div class="col q-ml-md">
+                            <q-item-label class="text-secondary">
+                              {{ report.data.summary }}
+                            </q-item-label>
+                          </div>
+                          <!-- Reporter-->
+                          <div class="col-auto">
+                            <q-item-label>
+                              <q-chip size="sm"
+                                      color="brown"
+                                      text-color="white">
+                                <q-avatar color="red" text-color="white">
+                                  <img :src="report.user.avatar_url">
+                                </q-avatar>
+                                {{ report.user.login }}
+                              </q-chip>
+                            </q-item-label>
+                          </div>
+                        </div>
+                        <!-- Report Description Section -->
+                        <div class="row">
+                          <div class="col-4">
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Device: </b>{{ report.data.device }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-4">
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>OS: </b>{{ report.data.os_version }}
+                            </q-item-label>
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Launcher: </b>{{ report.data.launcher }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-4">
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Target Framerate: </b>{{ report.data.target_framerate }}
+                            </q-item-label>
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Average Battery Life: </b>
+                              <template v-if="report.data.calculated_battery_life_minutes">
+                                {{ Math.floor(report.data.calculated_battery_life_minutes / 60) }} hours
+                                {{ report.data.calculated_battery_life_minutes % 60 }} mins
+                              </template>
+                              <template v-else>
+                                unknown
+                              </template>
+                            </q-item-label>
+                          </div>
+                        </div>
+                      </q-item-section>
+                      <q-item-section class="lt-sm">
+                        <!-- Wrapper for the layout -->
+                        <div class="row items-center">
+                          <!-- Avatar Section -->
+                          <div class="col-auto">
+                            <q-avatar>
+                              <DeviceImage :device="report.data.device" />
+                            </q-avatar>
+                          </div>
+                          <!-- Report Summary Section -->
+                          <div class="col q-ml-md">
+                            <q-item-label class="text-secondary">
+                              {{ report.data.summary }}
+                            </q-item-label>
+                          </div>
+                        </div>
+                        <!-- Report Description Section -->
+                        <div class="row q-pt-sm">
+                          <div class="col-12 q-mt-xs">
+                            <q-item-label caption lines="1">
+                              <b>Device: </b>{{ report.data.device }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-12 q-mt-xs">
+                            <q-item-label caption lines="1">
+                              <b>OS: </b>{{ report.data.os_version }}
+                            </q-item-label>
+                            <q-item-label caption lines="1">
+                              <b>Launcher: </b>{{ report.data.launcher }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-12 q-mt-xs">
+                            <q-item-label caption lines="1">
+                              <b>Target Framerate: </b>{{ report.data.target_framerate }}
+                            </q-item-label>
+                            <q-item-label caption lines="1">
+                              <b>Average Battery Life: </b>
+                              <template v-if="report.data.calculated_battery_life_minutes">
+                                {{ Math.floor(report.data.calculated_battery_life_minutes / 60) }} hours
+                                {{ report.data.calculated_battery_life_minutes % 60 }} mins
+                              </template>
+                              <template v-else>
+                                unknown
+                              </template>
+                            </q-item-label>
+                          </div>
+                        </div>
+                      </q-item-section>
+                    </template>
 
-                    <!-- Toggle Button (Top Right) -->
-                    <div class="top-right">
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        :icon="showIssueBody[index] ? 'expand_more' : 'chevron_right'"
-                        :text-color="showIssueBody[index] ? 'primary' : 'white'"
-                        @click="toggleConfigVisibility(index)"
-                        :class="showIssueBody[index] ? 'rotate-down' : 'rotate-right'"
-                      />
-                    </div>
-
-                    <!-- Config and Performance Cards -->
-                    <transition name="expand">
-                      <div v-show="showIssueBody[index]" class="game-config q-mt-md">
-                        <div class="row q-col-gutter-md">
-                          <!-- System Configuration Card -->
-                          <div class="col-xs-12 col-md-6">
-                            <q-card v-if="hasSystemConfig(issue)" class="config-card">
-                              <q-card-section>
-                                <div class="text-h6">System Configuration</div>
-                              </q-card-section>
-                              <q-separator />
-                              <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div class="config-list">
-                                  <div v-if="issue.data.undervolt_applied" class="config-item">
-                                    <span>Undervolt Applied:</span>
-                                    <span>{{ issue.data.undervolt_applied }}</span>
-                                  </div>
-                                  <div
-                                    v-if="issue.data.steam_play_compatibility_tool_used && issue.data.compatibility_tool_version"
-                                    class="config-item">
-                                    <span>Compatibility Tool:</span>
-                                    <span>
-                                    {{ issue.data.steam_play_compatibility_tool_used
-                                      }}: {{ issue.data.compatibility_tool_version }}
+                    <div class="report q-mt-md">
+                      <div class="row q-col-gutter-md">
+                        <!-- System Configuration Card -->
+                        <div class="col-xs-12 col-md-6">
+                          <q-card v-if="hasSystemConfig(report)" class="config-card">
+                            <q-card-section>
+                              <div class="text-h6">System Configuration</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                              <div class="config-list">
+                                <div v-if="report.data.undervolt_applied" class="config-item">
+                                  <span>Undervolt Applied:</span>
+                                  <span>{{ report.data.undervolt_applied }}</span>
+                                </div>
+                                <div
+                                  v-if="report.data.steam_play_compatibility_tool_used && report.data.compatibility_tool_version"
+                                  class="config-item">
+                                  <span>Compatibility Tool:</span>
+                                  <span>
+                                    {{ report.data.steam_play_compatibility_tool_used
+                                    }}: {{ report.data.compatibility_tool_version }}
                                   </span>
-                                  </div>
-                                  <div v-if="issue.data.custom_launch_options" class="config-item">
-                                    <span>Launch Options:</span>
-                                    <span>{{ issue.data.custom_launch_options }}</span>
-                                  </div>
                                 </div>
-                              </q-card-section>
-                            </q-card>
-                          </div>
-                          <!-- Performance Settings Card -->
-                          <div class="col-xs-12 col-md-6">
-                            <q-card v-if="hasPerformanceSettings(issue)" class="config-card">
-                              <q-card-section>
-                                <div class="text-h6">Performance Settings</div>
-                              </q-card-section>
-                              <q-separator />
-                              <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div class="config-list">
-                                  <div v-if="issue.data.frame_limit" class="config-item">
-                                    <span>Frame Limit:</span>
-                                    <span>{{ issue.data.frame_limit }}</span>
-                                  </div>
-                                  <div v-if="issue.data.allow_tearing" class="config-item">
-                                    <span>Allow Tearing:</span>
-                                    <span>{{ issue.data.allow_tearing }}</span>
-                                  </div>
-                                  <div v-if="issue.data.half_rate_shading" class="config-item">
-                                    <span>Half Rate Shading:</span>
-                                    <span>{{ issue.data.half_rate_shading }}</span>
-                                  </div>
-                                  <div v-if="issue.data.tdp_limit" class="config-item">
-                                    <span>TDP Limit:</span>
-                                    <span>{{ issue.data.tdp_limit }}W</span>
-                                  </div>
-                                  <div v-if="issue.data.manual_gpu_clock" class="config-item">
-                                    <span>Manual GPU Clock:</span>
-                                    <span>{{ issue.data.manual_gpu_clock }}MHz</span>
-                                  </div>
-                                  <div v-if="issue.data.scaling_mode" class="config-item">
-                                    <span>Scaling Mode:</span>
-                                    <span>{{ issue.data.scaling_mode }}</span>
-                                  </div>
-                                  <div v-if="issue.data.scaling_filter" class="config-item">
-                                    <span>Scaling Filter:</span>
-                                    <span>{{ issue.data.scaling_filter }}</span>
-                                  </div>
+                                <div v-if="report.data.custom_launch_options" class="config-item">
+                                  <span>Launch Options:</span>
+                                  <span>{{ report.data.custom_launch_options }}</span>
                                 </div>
-                              </q-card-section>
-                            </q-card>
-                          </div>
+                              </div>
+                            </q-card-section>
+                          </q-card>
                         </div>
-                        <div class="row q-ma-none q-pa-none">
-                          <div class="col q-ma-none q-pa-none">
-                            <q-card v-if="issue.data.game_display_settings"
-                                    class="config-card q-mt-md q-ma-none q-pa-none">
-                              <q-card-section>
-                                <div class="text-h6">Game Display Settings</div>
-                              </q-card-section>
-                              <q-separator />
-                              <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.game_display_settings)"
-                                     class="markdown q-ml-xs-none q-ml-md-sm"></div>
-                              </q-card-section>
-                            </q-card>
-                            <q-card v-if="issue.data.game_graphics_settings"
-                                    class="config-card q-mt-md q-ma-none q-pa-none">
-                              <q-card-section>
-                                <div class="text-h6">Game Graphics Settings</div>
-                              </q-card-section>
-                              <q-separator />
-                              <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.game_graphics_settings)"
-                                     class="markdown q-ml-md-sm"></div>
-                              </q-card-section>
-                            </q-card>
-                            <q-card v-if="issue.data.additional_notes" class="config-card q-mt-md q-ma-none q-pa-none">
-                              <q-card-section>
-                                <div class="text-h6">Additional Notes</div>
-                              </q-card-section>
-                              <q-separator />
-                              <q-card-section class="q-pa-sm q-pa-sm-md">
-                                <div v-html="marked(issue.data.additional_notes)" class="markdown q-ml-md-sm"></div>
-                              </q-card-section>
-                            </q-card>
-                          </div>
-
+                        <!-- Performance Settings Card -->
+                        <div class="col-xs-12 col-md-6">
+                          <q-card v-if="hasPerformanceSettings(report)" class="config-card">
+                            <q-card-section>
+                              <div class="text-h6">Performance Settings</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                              <div class="config-list">
+                                <div v-if="report.data.frame_limit" class="config-item">
+                                  <span>Frame Limit:</span>
+                                  <span>{{ report.data.frame_limit }}</span>
+                                </div>
+                                <div v-if="report.data.allow_tearing" class="config-item">
+                                  <span>Allow Tearing:</span>
+                                  <span>{{ report.data.allow_tearing }}</span>
+                                </div>
+                                <div v-if="report.data.half_rate_shading" class="config-item">
+                                  <span>Half Rate Shading:</span>
+                                  <span>{{ report.data.half_rate_shading }}</span>
+                                </div>
+                                <div v-if="report.data.tdp_limit" class="config-item">
+                                  <span>TDP Limit:</span>
+                                  <span>{{ report.data.tdp_limit }}W</span>
+                                </div>
+                                <div v-if="report.data.manual_gpu_clock" class="config-item">
+                                  <span>Manual GPU Clock:</span>
+                                  <span>{{ report.data.manual_gpu_clock }}MHz</span>
+                                </div>
+                                <div v-if="report.data.scaling_mode" class="config-item">
+                                  <span>Scaling Mode:</span>
+                                  <span>{{ report.data.scaling_mode }}</span>
+                                </div>
+                                <div v-if="report.data.scaling_filter" class="config-item">
+                                  <span>Scaling Filter:</span>
+                                  <span>{{ report.data.scaling_filter }}</span>
+                                </div>
+                              </div>
+                            </q-card-section>
+                          </q-card>
                         </div>
                       </div>
-                    </transition>
-                  </q-item-section>
+                      <div class="row q-ma-none q-pa-none">
+                        <div class="col q-ma-none q-pa-none">
+                          <q-card v-if="report.data.game_display_settings"
+                                  class="config-card q-mt-md q-ma-none q-pa-none">
+                            <q-card-section>
+                              <div class="text-h6">Game Display Settings</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                              <div v-html="marked(report.data.game_display_settings)"
+                                   class="markdown q-ml-xs-none q-ml-md-sm"></div>
+                            </q-card-section>
+                          </q-card>
+                          <q-card v-if="report.data.game_graphics_settings"
+                                  class="config-card q-mt-md q-ma-none q-pa-none">
+                            <q-card-section>
+                              <div class="text-h6">Game Graphics Settings</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                              <div v-html="marked(report.data.game_graphics_settings)"
+                                   class="markdown q-ml-md-sm"></div>
+                            </q-card-section>
+                          </q-card>
+                          <q-card v-if="report.data.additional_notes"
+                                  class="config-card q-mt-md q-ma-none q-pa-none">
+                            <q-card-section>
+                              <div class="text-h6">Additional Notes</div>
+                            </q-card-section>
+                            <q-separator />
+                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                              <div v-html="marked(report.data.additional_notes)"
+                                   class="markdown q-ml-md-sm"></div>
+                            </q-card-section>
+                          </q-card>
+                        </div>
+                      </div>
+                      <div class="row items-center q-mt-lg q-mb-md q-pa-none">
+                        <!-- Author Section -->
+                        <div class="col-auto">
+                          <q-item clickable
+                                  v-ripple
+                                  tag="a"
+                                  :href="`${githubListReportsLink}+author%3A${report.user.login}`"
+                                  target="_blank"
+                                  class="q-ma-none q-pa-none q-pl-xs">
+                            <q-item-section side>
+                              <q-avatar rounded size="48px">
+                                <img :src="report.user.avatar_url" />
+                              </q-avatar>
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label>{{ report.user.login }}</q-item-label>
+                              <q-item-label caption>{{ report.user.report_count }} reports</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </div>
+                        <!-- Last Updated Section -->
+                        <div class="col text-right">
+                          <q-item class="q-ma-none q-pa-none q-pr-xs">
+                            <q-item-section>
+                              <q-item-label caption>
+                                <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </div>
+                      </div>
+                    </div>
+                  </q-expansion-item>
                 </q-item>
               </q-list>
             </div>
@@ -501,6 +596,7 @@ watch(
   left: 0;
   width: 100%;
   height: 800px;
+  z-index: 0;
 }
 
 .hero-container {
@@ -702,6 +798,20 @@ watch(
 
 /* -sm- */
 @media (min-width: 600px) {
+  .background-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: /* Top fade */ linear-gradient(to bottom, transparent 20%, rgba(0, 0, 0, 0.6) 50%, var(--q-dark) 100%),
+      /* Left fade */ linear-gradient(to right, var(--q-dark) 0%, transparent 30%, transparent 70%, var(--q-dark) 100%),
+      /* Right fade */ linear-gradient(to left, var(--q-dark) 0%, transparent 30%, transparent 70%, var(--q-dark) 100%);
+    mix-blend-mode: darken; /* Ensures darker areas blend naturally with the image */
+    z-index: 1; /* Place it above the background image */
+  }
+
   .game-image-container {
     max-width: 400px;
   }

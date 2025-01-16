@@ -39,7 +39,7 @@ export interface GameReport {
     color: string;
     description: string;
   }[];
-  user: GitHubUser;
+  user: GameReportUser;
   created_at: string; // ISO 8601 formatted date string
   updated_at: string; // ISO 8601 formatted date string
 }
@@ -76,6 +76,10 @@ export interface GameReportData {
   game_display_settings: string;
   game_graphics_settings: string;
   additional_notes: string;
+}
+
+export interface GameReportUser extends GitHubUser {
+  report_count: number | null;
 }
 
 export interface GameDetails {

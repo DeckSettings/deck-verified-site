@@ -2,11 +2,20 @@ import logfmt from 'logfmt'
 import config from './config'
 import logger from './logger'
 import {
-  redisCacheGitHubIssueLabels, redisCacheGitHubProjectDetails, redisCacheHardwareInfo,
-  redisCachePopularGameReports, redisCacheRecentGameReports,
-  redisCacheReportBodySchema, redisLookupGitHubIssueLabels,
-  redisLookupGitHubProjectDetails, redisLookupHardwareInfo, redisLookupPopularGameReports,
-  redisLookupRecentGameReports, redisLookupReportBodySchema,
+  redisCacheAuthorGameReportCount,
+  redisCacheGitHubIssueLabels,
+  redisCacheGitHubProjectDetails,
+  redisCacheHardwareInfo,
+  redisCachePopularGameReports,
+  redisCacheRecentGameReports,
+  redisCacheReportBodySchema,
+  redisLookupAuthorGameReportCount,
+  redisLookupGitHubIssueLabels,
+  redisLookupGitHubProjectDetails,
+  redisLookupHardwareInfo,
+  redisLookupPopularGameReports,
+  redisLookupRecentGameReports,
+  redisLookupReportBodySchema,
   storeGameInRedis
 } from './redis'
 import type {
@@ -22,15 +31,27 @@ import { parseGameProjectBody, parseReportBody } from './helpers'
  * Filters and sorts issues based on specified criteria.
  */
 export const fetchReports = async (
-  repoOwner: string = 'DeckSettings',
   repoName: string = 'game-reports-steamos',
-  state: 'open' | 'closed' | 'all' = 'open',
+  filterState: 'open' | 'closed' | 'all' = 'open',
+  filterAuthor: string | null = null,
   sort: 'reactions-+1' | 'created' | 'updated' | 'comments' = 'updated',
   direction: 'asc' | 'desc' = 'desc',
-  limit: number | null = null
+  limit: number | null = null,
+  excludeInvalid: boolean = true
 ): Promise<GithubIssuesSearchResult | null> => {
+  const repoOwner = 'DeckSettings'
   const encodedSort = encodeURIComponent(sort)
-  let url = `https://api.github.com/search/issues?q=repo:${repoOwner}/${repoName}+state:${state}+is:issue&sort=${encodedSort}&order=${direction}`
+  let query = `repo:${repoOwner}/${repoName}+is:issue`
+  if (filterState) {
+    query += `+state:${filterState}`
+  }
+  if (filterAuthor) {
+    query += `+author:${filterAuthor}`
+  }
+  if (excludeInvalid) {
+    query += '+-label:invalid:template-incomplete'
+  }
+  let url = `https://api.github.com/search/issues?q=${query}&sort=${encodedSort}&order=${direction}`
   if (limit !== null) {
     url += `&per_page=${limit}`
   }
@@ -128,7 +149,8 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
       })),
       user: {
         login: issue.user.login,
-        avatar_url: issue.user.avatar_url
+        avatar_url: issue.user.avatar_url,
+        report_count: await fetchAuthorReportCount(issue.user.login)
       },
       created_at: issue.created_at,
       updated_at: issue.updated_at
@@ -164,7 +186,8 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         })),
         user: {
           login: report.user.login,
-          avatar_url: report.user.avatar_url
+          avatar_url: report.user.avatar_url,
+          report_count: null
         },
         created_at: report.created_at,
         updated_at: report.updated_at
@@ -186,7 +209,7 @@ export const fetchRecentReports = async (): Promise<GameReport[]> => {
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, undefined, 'open', 'updated', 'desc', 5)
+    const reports = await fetchReports(undefined, 'open', null, 'updated', 'desc', 5)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       // Store the transformed data in the Redis cache
@@ -219,7 +242,7 @@ export const fetchPopularReports = async (): Promise<GameReport[]> => {
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, undefined, 'open', 'reactions-+1', 'desc', 5)
+    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', 5)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       // Store the transformed data in the Redis cache
@@ -235,6 +258,35 @@ export const fetchPopularReports = async (): Promise<GameReport[]> => {
     // Cache an empty response for a short period of time
     await redisCachePopularGameReports([])
     return []
+  }
+}
+
+/**
+ * Retrieves a count of game reports for a given author.
+ */
+export const fetchAuthorReportCount = async (author: string): Promise<number> => {
+  try {
+    const cachedData = await redisLookupAuthorGameReportCount(author)
+    if (cachedData) {
+      logger.info('Serving count of author reports from Redis cache')
+      return cachedData
+    }
+
+    const reports = await fetchReports(undefined, 'open', author, 'updated', 'desc')
+    if (reports && reports?.items?.length > 0) {
+      // Store the transformed data in the Redis cache
+      await redisCacheAuthorGameReportCount(reports.items.length, author)
+      return reports.items.length
+    }
+
+    logger.info('No reports found.')
+    return 0
+  } catch (error) {
+    logger.error('Error fetching count of author reports:', error)
+
+    // Cache an empty response for a short period of time
+    await redisCacheAuthorGameReportCount(0, author)
+    return 0
   }
 }
 
