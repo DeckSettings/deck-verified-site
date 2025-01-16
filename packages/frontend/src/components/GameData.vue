@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
@@ -10,6 +10,10 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 dayjs.extend(relativeTime)
+
+interface ExtendedGameReport extends GameReport {
+  reportVisible: boolean;
+}
 
 const route = useRoute()
 const appId = ref<string | null>(null)
@@ -108,42 +112,62 @@ const hasPerformanceSettings = (report: GameReport) => {
   )
 }
 
-// Generate a filtered/sorted list
-const filteredReports = computed(() => {
-  if (!gameData.value || !gameData.value.reports) {
-    return []
-  }
+// Reactive reports list with `reportVisible`
+const filteredReports = reactive<ExtendedGameReport[]>([])
 
-  let reports: GameReport[] = gameData.value.reports
-
-  // Filter by device selector
-  if (selectedDevice.value !== 'all' && selectedDevice.value) {
-    reports = reports.filter(report => report.labels.some(label => label.name === selectedDevice.value))
-  }
-  // Filter by launcher selector
-  if (selectedLauncher.value !== 'all' && selectedLauncher.value) {
-    reports = reports.filter(report => report.labels.some(label => label.name === selectedLauncher.value))
-  }
-
-  if (sortOrder.value !== 'off') {
-    if (sortOption.value === 'reactions') {
-      reports = reports.sort((a, b) => {
-        const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-        const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-        return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes // Ascending or descending
-      })
-    } else if (sortOption.value === 'updated') {
-      reports = reports.sort((a, b) => {
-        const aUpdated = new Date(a.updated_at).getTime()
-        const bUpdated = new Date(b.updated_at).getTime()
-        return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated // Ascending or descending
-      })
+// Watch gameData and other filters to update filteredReports
+watch(
+  [gameData, selectedDevice, selectedLauncher, sortOption, sortOrder],
+  ([newGameData, device, launcher, sortOpt, sortOrd]) => {
+    if (!newGameData || !newGameData.reports) {
+      filteredReports.splice(0, filteredReports.length) // Clear the array
+      return
     }
-  }
-  console.log(reports)
 
-  return reports
-})
+    const expandedId = parseInt(route.query.expandedId as string, 10)
+    let reports: ExtendedGameReport[] = newGameData.reports.map((report) => ({
+      ...report,
+      reportVisible: expandedId === report.id
+    }))
+
+    // Filter by device selector
+    if (device !== 'all' && device) {
+      reports = reports.filter(report =>
+        report.labels.some(label => label.name === device)
+      )
+    }
+
+    // Filter by launcher selector
+    if (launcher !== 'all' && launcher) {
+      reports = reports.filter(report =>
+        report.labels.some(label => label.name === launcher)
+      )
+    }
+
+    // Sort logic
+    if (sortOrd !== 'off') {
+      if (sortOpt === 'reactions') {
+        reports = reports.sort((a, b) => {
+          const aLikes =
+            a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+          const bLikes =
+            b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+          return sortOrd === 'asc' ? aLikes - bLikes : bLikes - aLikes
+        })
+      } else if (sortOpt === 'updated') {
+        reports = reports.sort((a, b) => {
+          const aUpdated = new Date(a.updated_at).getTime()
+          const bUpdated = new Date(b.updated_at).getTime()
+          return sortOrd === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
+        })
+      }
+    }
+
+    // Update the reactive array
+    filteredReports.splice(0, filteredReports.length, ...reports)
+  },
+  { immediate: true } // Trigger immediately on initialization
+)
 
 const lastUpdated = (dateString: string | null): string => {
   if (!dateString) return 'Unknown'
@@ -169,7 +193,6 @@ const initGameData = async (params: RouteParamsGeneric) => {
       githubProjectSearchLink.value = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
     }
     if (gameData.value.metadata) {
-      console.log(gameData.value.metadata)
       gameBackground.value = gameData.value.metadata.hero
       gamePoster.value = gameData.value.metadata.poster
       // TODO: Add header image in place of poster image on larger screens
@@ -179,16 +202,31 @@ const initGameData = async (params: RouteParamsGeneric) => {
   }
 }
 
-onMounted(async () => {
-  await initGameData(route.params)
-})
+//watch(
+//  () => filteredReports.map(report => report.reportVisible), // Watch `reportVisible` states
+//  () => {
+//    const expandedReport = filteredReports.find(report => report.reportVisible)
+//    const query = { ...route.query }
+//
+//    if (expandedReport) {
+//      query.expandedId = expandedReport.id.toString()
+//    } else {
+//      delete query.expandedId
+//    }
+//    router.replace({ query })
+//  }
+//)
 
 watch(
-  () => route.params, // Watch route.params
+  () => route.params,
   async (newParams) => {
     await initGameData(newParams)
   }
 )
+
+onMounted(async () => {
+  await initGameData(route.params)
+})
 </script>
 
 <template>
@@ -296,12 +334,12 @@ watch(
 
               <q-list separator>
                 <q-item
-                  v-for="(report, index) in filteredReports" :key="index"
+                  v-for="report in filteredReports" :key="report.id"
                   class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
-                  <q-expansion-item dense
+                  <q-expansion-item v-model="report.reportVisible"
+                                    dense class="full-width"
                                     expand-icon-class="self-end"
-                                    header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs"
-                                    class="full-width">
+                                    header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs">
                     <template v-slot:header>
                       <q-item-section class="gt-xs">
                         <!-- Wrapper for the layout -->

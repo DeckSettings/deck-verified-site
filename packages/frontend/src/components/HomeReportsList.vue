@@ -113,7 +113,7 @@ export default defineComponent({
             clickable
             v-ripple
             :class="{ 'q-pl-md': $q.platform.is.mobile }"
-            :to="report.data.app_id ? `/app/${report.data.app_id}` : `/game/${encodeURIComponent(report.data.game_name)}`"
+            :to="report.data.app_id ? `/app/${report.data.app_id}?expandedId=${report.id}` : `/game/${encodeURIComponent(report.data.game_name)}?expandedId=${report.id}`"
           >
             <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
               <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
