@@ -1,15 +1,16 @@
 import logfmt from 'logfmt'
+import YAML from 'yaml'
 import config from './config'
 import logger from './logger'
 import {
-  redisCacheAuthorGameReportCount,
+  redisCacheAuthorGameReportCount, redisCacheGameReportTemplate,
   redisCacheGitHubIssueLabels,
   redisCacheGitHubProjectDetails,
   redisCacheHardwareInfo,
   redisCachePopularGameReports,
   redisCacheRecentGameReports,
   redisCacheReportBodySchema,
-  redisLookupAuthorGameReportCount,
+  redisLookupAuthorGameReportCount, redisLookupGameReportTemplate,
   redisLookupGitHubIssueLabels,
   redisLookupGitHubProjectDetails,
   redisLookupHardwareInfo,
@@ -19,12 +20,13 @@ import {
   storeGameInRedis
 } from './redis'
 import type {
-  GameReport, GitHubIssueLabel,
+  GameReport, GameReportForm, GitHubIssueLabel,
   GithubIssuesSearchResult,
   GitHubProjectDetails, GitHubProjectGameDetails,
   GitHubReportIssueBodySchema, HardwareInfo
 } from '../../shared/src/game'
 import { parseGameProjectBody, parseReportBody } from './helpers'
+import { GitHubIssueTemplate } from '../../shared/src/game'
 
 /**
  * Fetches reports from a GitHub repository using the search API.
@@ -509,7 +511,7 @@ export const fetchProject = async (
  * If the schema is available in Redis, it returns the cached version.
  * Otherwise, it fetches the schema from a remote GitHub URL, caches it, and returns it.
  */
-const fetchReportBodySchema = async (): Promise<GitHubReportIssueBodySchema> => {
+export const fetchReportBodySchema = async (): Promise<GitHubReportIssueBodySchema> => {
   const cachedData = await redisLookupReportBodySchema()
   if (cachedData) {
     return cachedData
@@ -587,7 +589,7 @@ export const fetchIssueLabels = async (authToken: string | null = null): Promise
  * If the list is available in Redis, it returns the cached version.
  * Otherwise, it fetches the list from a remote GitHub URL, caches it, and returns it.
  */
-const fetchHardwareInfo = async (): Promise<HardwareInfo[]> => {
+export const fetchHardwareInfo = async (): Promise<HardwareInfo[]> => {
   const cachedData = await redisLookupHardwareInfo()
   if (cachedData) {
     return cachedData
@@ -611,6 +613,40 @@ const fetchHardwareInfo = async (): Promise<HardwareInfo[]> => {
     return info.devices
   } catch (error) {
     logger.error('Error fetching or parsing hardware info:', error)
+    throw error // Re-throw the error to be handled by the caller
+  }
+}
+
+/**
+ * Fetches the game report template from GitHub or Redis cache.
+ * This will also parse the YAML and return an object
+ */
+export const fetchGameReportTemplate = async (): Promise<GitHubIssueTemplate> => {
+  const cachedData = await redisLookupGameReportTemplate()
+  if (cachedData) {
+    return cachedData
+  }
+
+  const gameReportTemplate = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/ISSUE_TEMPLATE/GAME-REPORT.yml'
+
+  try {
+    logger.info('Fetching GitHub game report template from URL')
+    const response = await fetch(gameReportTemplate)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error(`GitHub raw request failed when fetching game report template with status ${response.status}: ${errorBody}`)
+      throw new Error('Failed to game report template from GitHub repository. Non-success response received from GitHub')
+    }
+
+    // Parse the response text as YAML
+    const responseText = await response.text()
+    const info = YAML.parse(responseText)
+    if (info) {
+      await redisCacheGameReportTemplate(info)
+    }
+    return info
+  } catch (error) {
+    logger.error('Error fetching or parsing game report template:', error)
     throw error // Re-throw the error to be handled by the caller
   }
 }

@@ -5,7 +5,7 @@ import type {
   GameSearchResult,
   GameDetails,
   GitHubIssueLabel,
-  GitHubUser
+  GitHubUser, GameReportForm
 } from '../../../shared/src/game'
 
 export interface Report {
@@ -114,6 +114,25 @@ export const searchGames = async (searchString: string | null, includeExternal: 
       throw new Error('Failed to fetch project data')
     }
     return await response.json() as GameSearchResult[]
+  } catch (error) {
+    console.error('Error fetching project data:', error)
+    throw error
+  }
+}
+
+export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
+  try {
+    const response = await fetch('/deck-verified/api/v1/report_form')
+    if (response.status === 204) {
+      // 204 - No Content
+      console.log('No results found')
+      return null
+    } else if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
+      throw new Error('Failed to fetch project data')
+    }
+    return await response.json() as GameReportForm
   } catch (error) {
     console.error('Error fetching project data:', error)
     throw error

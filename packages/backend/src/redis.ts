@@ -2,14 +2,14 @@ import { createClient, SchemaFieldTypes } from 'redis'
 import type { RedisClientType } from 'redis'
 import config from './config'
 import logger from './logger'
-import {
+import type {
   GameReport,
   GameSearchCache,
   GitHubIssueLabel,
   GitHubReportIssueBodySchema,
   GitHubProjectGameDetails,
   SteamStoreAppDetails,
-  SteamGame, HardwareInfo
+  SteamGame, HardwareInfo, GitHubIssueTemplate
 } from '../../shared/src/game'
 
 // Redis client
@@ -355,6 +355,38 @@ export const redisLookupHardwareInfo = async (): Promise<HardwareInfo[] | null> 
     }
   } catch (error) {
     logger.error('Redis error while fetching cached GitHub hardware info:', error)
+  }
+  return null
+}
+
+/**
+ * Caches the game report template from the GitHub repo in Redis.
+ */
+export const redisCacheGameReportTemplate = async (data: GitHubIssueTemplate): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching GitHub game report template.')
+  }
+  const redisKey = 'github_game_report_template'
+  const cacheTime = config.defaultCacheTime
+
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached GitHub game report template for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Looks up the game report template cached in Redis.
+ */
+export const redisLookupGameReportTemplate = async (): Promise<GitHubIssueTemplate | null> => {
+  const redisKey = 'github_game_report_template'
+  try {
+    // Attempt to fetch from Redis cache
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved GitHub game report template from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached GitHub game report template:', error)
   }
   return null
 }

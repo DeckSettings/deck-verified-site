@@ -8,6 +8,7 @@ import type { GameReport, GameDetails, GitHubIssueLabel } from '../../../shared/
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import ReportForm from 'components/ReportForm.vue'
 
 dayjs.extend(relativeTime)
 
@@ -17,14 +18,15 @@ interface ExtendedGameReport extends GameReport {
 
 const route = useRoute()
 const appId = ref<string | null>(null)
-const gameName = ref<string | null>(null)
+const gameName = ref<string>('')
 const gameData = ref<GameDetails | null>(null)
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
 const githubProjectSearchLink = ref<string | null>(null)
-const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29')
+const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800')
 const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
+const submitReportDialog = ref<boolean>(false)
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -276,11 +278,19 @@ onMounted(async () => {
                    :href="`https://www.protondb.com/app/${appId}`" target="_blank" color="white">
               <q-tooltip>View on ProtonDB</q-tooltip>
             </q-btn>
-            <q-btn v-if="gameName" class="q-ma-md" round flat icon="fas fa-file-invoice"
-                   :href="githubSubmitReportLink"
-                   target="_blank" color="white">
-              <q-tooltip>Submit Report</q-tooltip>
-            </q-btn>
+          </div>
+          <div class="row justify-center">
+            <q-btn color="secondary" glossy
+                   icon="fas fa-file-invoice"
+                   label="Submit Report"
+                   :href="githubSubmitReportLink" target="_blank" />
+            <!--<q-btn color="secondary" glossy
+                   icon="fas fa-file-invoice"
+                   label="Submit Report"
+                   @click="submitReportDialog = true" />-->
+            <q-dialog v-model="submitReportDialog">
+              <ReportForm :gameName="gameName" />
+            </q-dialog>
           </div>
         </div>
       </div>

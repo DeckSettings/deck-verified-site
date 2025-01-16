@@ -12,10 +12,10 @@ import {
 import {
   fetchIssueLabels, fetchPopularReports,
   fetchProjectsByAppIdOrGameName, fetchRecentReports,
-  updateGameIndex
+  fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema
 } from './github'
 import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails, generateImageLinksFromAppId } from './helpers'
-import type { GameDetails, GameMetadata, GameSearchResult } from '../../shared/src/game'
+import { GameDetails, GameMetadata, GameReportForm, GameSearchResult } from '../../shared/src/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -337,6 +337,40 @@ app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Respons
       return res.status(204).json([])
     }
     return res.json(labels)
+  } catch (error) {
+    logger.error('Error:', error)
+    return res.status(500).json({ error: 'Failed to fetch labels' })
+  }
+})
+
+/**
+ * Get the report form schema from the GitHub repository.
+ *
+ * @returns {object} 200 - An array of label objects.
+ * @returns {object} 500 - Internal server error.
+ */
+app.get('/deck-verified/api/v1/report_form', async (_req: Request, res: Response) => {
+  try {
+    const template = await fetchGameReportTemplate()
+    if (!template) {
+      return res.status(204).json({})
+    }
+    const hardware = await fetchHardwareInfo()
+    if (!hardware) {
+      return res.status(204).json({})
+    }
+    const schema = await fetchReportBodySchema()
+    if (!schema) {
+      return res.status(204).json({})
+    }
+
+    const reportFormDetails: GameReportForm = {
+      template: template,
+      hardware: hardware,
+      schema: schema
+    }
+
+    return res.json(reportFormDetails)
   } catch (error) {
     logger.error('Error:', error)
     return res.status(500).json({ error: 'Failed to fetch labels' })

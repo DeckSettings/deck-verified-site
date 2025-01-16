@@ -82,6 +82,12 @@ export interface GameReportUser extends GitHubUser {
   report_count: number | null;
 }
 
+export interface GameReportForm {
+  template: GitHubIssueTemplate;
+  hardware: HardwareInfo[];
+  schema: GitHubReportIssueBodySchema;
+}
+
 export interface GameDetails {
   gameName: string;
   appId: number | null;
@@ -122,6 +128,66 @@ export interface GitHubProjectDetails {
   readme: string;
   metadata: GameMetadata;
   issues: GitHubIssue[];
+}
+
+export interface GitHubIssueTemplate {
+  name: string;
+  description: string;
+  title: string;
+  body: GitHubIssueTemplateBody[];
+}
+
+export type GitHubIssueTemplateBody =
+  GitHubIssueTemplateBodyMarkdown
+  | GitHubIssueTemplateBodyInput
+  | GitHubIssueTemplateBodyDropdown
+  | GitHubIssueTemplateBodyTextarea;
+
+
+interface GitHubIssueTemplateBodyMarkdown {
+  type: 'markdown';
+  attributes: {
+    value: string;
+  };
+}
+
+interface GitHubIssueTemplateBodyInput {
+  type: 'input';
+  id: string;
+  attributes: {
+    label: string;
+    description: string;
+    value?: string;
+  };
+  validations?: {
+    required?: boolean;
+  };
+}
+
+interface GitHubIssueTemplateBodyDropdown {
+  type: 'dropdown';
+  id: string;
+  attributes: {
+    label: string;
+    description: string;
+    options: string[];
+    default?: number;
+  };
+  validations?: {
+    required?: boolean;
+  };
+}
+
+interface GitHubIssueTemplateBodyTextarea {
+  type: 'textarea';
+  id: string;
+  attributes: {
+    label: string;
+    description: string;
+  };
+  validations?: {
+    required?: boolean;
+  };
 }
 
 export interface GitHubIssue {
