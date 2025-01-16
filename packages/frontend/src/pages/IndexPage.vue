@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeHero from 'components/HomeHero.vue'
+import ScrollToTop from 'components/elements/ScrollToTop.vue'
 </script>
 
 <template>
-  <q-page class="bg-dark text-white">
+  <q-page class="bg-dark text-white q-pb-xl">
     <HomeHero />
 
     <section class="reports-section q-pa-md">
@@ -17,6 +18,8 @@ import HomeHero from 'components/HomeHero.vue'
         </div>
       </div>
     </section>
+
+    <ScrollToTop />
   </q-page>
 </template>
 
