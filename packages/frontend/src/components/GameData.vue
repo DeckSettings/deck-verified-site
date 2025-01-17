@@ -600,6 +600,15 @@ onMounted(async () => {
                           <q-item class="q-ma-none q-pa-none q-pr-xs">
                             <q-item-section>
                               <q-item-label caption>
+                                <a :href="report.html_url" target="_blank" rel="noopener noreferrer"
+                                   style="text-decoration: none;">
+                                  <q-chip square clickable class="q-ma-none q-pr-xs">
+                                    <q-avatar icon="fab fa-github" text-color="white" />
+                                    source
+                                  </q-chip>
+                                </a>
+                              </q-item-label>
+                              <q-item-label caption class="q-pr-xs">
                                 <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
                               </q-item-label>
                             </q-item-section>
