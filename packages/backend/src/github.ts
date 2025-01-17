@@ -134,6 +134,13 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
   }
 
   for (const issue of project.issues) {
+    // Check if the issue has the "invalid:template-incomplete" label
+    const hasInvalidLabel = issue.labels.some(
+      (label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete'
+    )
+    if (hasInvalidLabel) {
+      continue
+    }
     const parsedIssueData = await parseReportBody(issue.body, reportBodySchema, hardwareInfo)
     projectDetails.reports.push({
       id: issue.id,
