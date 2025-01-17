@@ -165,6 +165,9 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
   if (!searchString) {
     return res.status(400).json({ error: 'Missing search parameter' })
   }
+  if (searchString.trim().length < 3) {
+    return res.status(400).json({ error: 'Search parameter must be at least 3 characters long' })
+  }
 
   try {
     if (includeExternal) {
