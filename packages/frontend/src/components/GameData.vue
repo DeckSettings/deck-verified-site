@@ -100,6 +100,7 @@ const hasSystemConfig = (report: GameReport) => {
   return (
     report.data.undervolt_applied ||
     report.data.compatibility_tool_version ||
+    report.data.game_resolution ||
     report.data.custom_launch_options
   )
 }
@@ -107,6 +108,8 @@ const hasSystemConfig = (report: GameReport) => {
 const hasPerformanceSettings = (report: GameReport) => {
   return (
     report.data.frame_limit ||
+    report.data.disable_frame_limit ||
+    report.data.enable_vrr ||
     report.data.allow_tearing ||
     report.data.half_rate_shading ||
     report.data.tdp_limit ||
@@ -488,6 +491,10 @@ onMounted(async () => {
                                     }}: {{ report.data.compatibility_tool_version }}
                                   </span>
                                 </div>
+                                <div v-if="report.data.game_resolution" class="config-item">
+                                  <span>Game Resolution:</span>
+                                  <span>{{ report.data.game_resolution }}</span>
+                                </div>
                                 <div v-if="report.data.custom_launch_options" class="config-item">
                                   <span>Launch Options:</span>
                                   <span>{{ report.data.custom_launch_options }}</span>
@@ -508,6 +515,14 @@ onMounted(async () => {
                                 <div v-if="report.data.frame_limit" class="config-item">
                                   <span>Frame Limit:</span>
                                   <span>{{ report.data.frame_limit }}</span>
+                                </div>
+                                <div v-if="report.data.disable_frame_limit" class="config-item">
+                                  <span>Disable Frame Limit:</span>
+                                  <span>{{ report.data.disable_frame_limit }}</span>
+                                </div>
+                                <div v-if="report.data.enable_vrr" class="config-item">
+                                  <span>Enable VRR:</span>
+                                  <span>{{ report.data.enable_vrr }}</span>
                                 </div>
                                 <div v-if="report.data.allow_tearing" class="config-item">
                                   <span>Allow Tearing:</span>
