@@ -90,7 +90,7 @@ export const escapeRedisKey = (input: string): string => {
  * NOTE:  Special characters in the search string are escaped. Without this,
  *        we are unable to search on these special characters.
  */
-export const storeGameInRedis = async (gameName: string, appId: string | null = null, banner: string | null = null): Promise<void> => {
+export const storeGameInRedis = async (gameName: string, appId: string | null = null, banner: string | null = null, poster: string | null = null): Promise<void> => {
   if (!gameName) {
     throw new Error('Game name is required.')
   }
@@ -104,7 +104,8 @@ export const storeGameInRedis = async (gameName: string, appId: string | null = 
       appsearch: escapedSearchString, // Add string used for searches
       appname: gameName,              // Use gameName for the appname
       appid: appId || '',             // Store appid, use empty string if null
-      appbanner: banner || ''         // Store poster, use empty string if null
+      appbanner: banner || '',        // Store banner, use empty string if null
+      appposter: poster || ''         // Store poster, use empty string if null
     })
     logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
   } catch (error) {
@@ -159,7 +160,8 @@ export const searchGamesInRedis = async (searchTerm: string | null = null, appId
     return results.documents.map((doc): GameSearchCache => ({
       name: typeof doc.value.appname === 'string' ? doc.value.appname : '',
       appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
-      banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null
+      banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null,
+      poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null
     }))
   } catch (error) {
     logger.error('Error during search:', error)

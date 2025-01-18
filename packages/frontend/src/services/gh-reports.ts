@@ -1,6 +1,7 @@
 import type {
   GameReport,
   GameReportData,
+  GameMetadata,
   GameReportReactions,
   GameSearchResult,
   GameDetails,
@@ -11,6 +12,7 @@ import type {
 export interface Report {
   id: number;
   data: GameReportData;
+  metadata: GameMetadata;
   reactions: GameReportReactions;
   user: GitHubUser;
   reviewScore: string;
@@ -27,6 +29,7 @@ export const fetchRecentReports = async (): Promise<Report[]> => {
       return {
         id: report.id,
         data: report.data,
+        metadata: report.metadata,
         reactions: report.reactions,
         user: report.user,
         reviewScore
@@ -49,6 +52,7 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
       return {
         id: report.id,
         data: report.data,
+        metadata: report.metadata,
         reactions: report.reactions,
         user: report.user,
         reviewScore

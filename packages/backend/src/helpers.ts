@@ -177,8 +177,8 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
 
       // Also cache in search results
       if (appDetails.name) {
-        const headerImage = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
-        await storeGameInRedis(appDetails.name, appId, headerImage)
+        const gameImages = await generateImageLinksFromAppId(appId)
+        await storeGameInRedis(appDetails.name, appId, gameImages.banner, gameImages.poster)
       }
 
       return appDetails

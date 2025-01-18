@@ -20,6 +20,7 @@ export interface GameSearchCache {
   name: string;
   appId: string | null;
   banner: string | null;
+  poster: string | null;
 }
 
 export interface GameSearchResult {
@@ -33,6 +34,7 @@ export interface GameReport {
   title: string;
   html_url: string;
   data: GameReportData;
+  metadata: GameMetadata;
   reactions: GameReportReactions;
   labels: {
     name: string;

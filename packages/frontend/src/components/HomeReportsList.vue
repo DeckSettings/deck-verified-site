@@ -118,7 +118,23 @@ export default defineComponent({
             <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
               <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
                 <q-img
-                  v-if="report.data.app_id"
+                  v-if="report.metadata.poster"
+                  class="game-poster"
+                  :src="report.metadata.poster"
+                  alt="Game Image"
+                  :ratio="2/3"
+                  :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
+                >
+                  <template v-slot:error>
+                    <img
+                      src="~/assets/poster-placeholder.png"
+                      alt="Placeholder"
+                      :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
+                    />
+                  </template>
+                </q-img>
+                <q-img
+                  v-else-if="report.data.app_id"
                   class="game-poster"
                   :src="`https://steamcdn-a.akamaihd.net/steam/apps/${report.data.app_id}/library_600x900.jpg`"
                   alt="Game Image"

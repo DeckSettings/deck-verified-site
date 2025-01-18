@@ -177,8 +177,8 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
         for (const result of steamResults) {
           logger.info(`Storing project ${result.name}, appId ${result.appId} in RedisSearch`)
           if (result.name && result.appId) {
-            const headerImage = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${result.appId}/header.jpg`
-            await storeGameInRedis(result.name, result.appId, headerImage)
+            const gameImages = await generateImageLinksFromAppId(result.appId)
+            await storeGameInRedis(result.name, result.appId, gameImages.banner, gameImages.poster)
           }
         }
       }

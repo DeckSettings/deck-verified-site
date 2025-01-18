@@ -16,16 +16,17 @@ import {
   redisLookupHardwareInfo,
   redisLookupPopularGameReports,
   redisLookupRecentGameReports,
-  redisLookupReportBodySchema,
+  redisLookupReportBodySchema, searchGamesInRedis,
   storeGameInRedis
 } from './redis'
-import type {
+import {
+  GameMetadata,
   GameReport, GameReportForm, GitHubIssueLabel,
   GithubIssuesSearchResult,
   GitHubProjectDetails, GitHubProjectGameDetails,
   GitHubReportIssueBodySchema, HardwareInfo
 } from '../../shared/src/game'
-import { parseGameProjectBody, parseReportBody } from './helpers'
+import { generateImageLinksFromAppId, parseGameProjectBody, parseReportBody } from './helpers'
 import { GitHubIssueTemplate } from '../../shared/src/game'
 
 /**
@@ -85,7 +86,7 @@ export const updateGameIndex = async (): Promise<void> => {
         const parsedProject = await parseProjectDetails(project)
         logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(parsedProject.gameName, String(parsedProject.appId), parsedProject.metadata.banner || '')
+          await storeGameInRedis(parsedProject.gameName, String(parsedProject.appId), parsedProject.metadata.banner || '', parsedProject.metadata.poster || '')
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
@@ -147,6 +148,7 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
       title: issue.title,
       html_url: issue.html_url,
       data: parsedIssueData,
+      metadata: projectDetails.metadata,
       reactions: {
         reactions_thumbs_up: issue.reactions['+1'] || 0,
         reactions_thumbs_down: issue.reactions['-1'] || 0
@@ -174,16 +176,37 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
  * to populate the `data` field of each GameReport.
  */
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
-  const schema = await fetchReportBodySchema()
-  const hardwareInfo = await fetchHardwareInfo()
-  return await Promise.all(
+  const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
+  return Promise.all(
     reports.items.map(async (report) => {
       const parsedIssueData = await parseReportBody(report.body, schema, hardwareInfo)
+      let metadata: Partial<GameMetadata> = {
+        banner: null,
+        poster: null,
+        hero: null,
+        background: null
+      }
+      if (parsedIssueData.app_id) {
+        const gameImages = await generateImageLinksFromAppId(String(parsedIssueData.app_id))
+        metadata = { ...metadata, ...gameImages }
+      } else if (parsedIssueData.game_name) {
+        const games = await searchGamesInRedis(null, null, parsedIssueData.game_name)
+        if (games.length > 0) {
+          const redisResult = games[0]
+          metadata = {
+            banner: metadata.banner ?? redisResult.banner,
+            poster: metadata.poster ?? redisResult.poster,
+            hero: metadata.hero,
+            background: metadata.background
+          }
+        }
+      }
       return {
         id: report.id,
         title: report.title,
         html_url: report.html_url,
         data: parsedIssueData,
+        metadata: metadata as GameMetadata,
         reactions: {
           reactions_thumbs_up: report.reactions['+1'] || 0,
           reactions_thumbs_down: report.reactions['-1'] || 0
