@@ -513,8 +513,10 @@ onMounted(async () => {
                             <q-card-section class="q-pa-sm q-pa-sm-md">
                               <div class="config-list">
                                 <div v-if="report.data.frame_limit" class="config-item">
-                                  <span>Frame Limit:</span>
-                                  <span>{{ report.data.frame_limit }}</span>
+                                  <span v-if="report.data.disable_frame_limit === 'On'">Refresh Rate:</span>
+                                  <span v-else>Frame Limit:</span>
+                                  <span v-if="report.data.disable_frame_limit === 'On'">{{ report.data.frame_limit }}Hz</span>
+                                  <span v-else>{{ report.data.frame_limit }}FPS</span>
                                 </div>
                                 <div v-if="report.data.disable_frame_limit" class="config-item">
                                   <span>Disable Frame Limit:</span>
