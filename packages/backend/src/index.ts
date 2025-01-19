@@ -178,7 +178,13 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
           logger.info(`Storing project ${result.name}, appId ${result.appId} in RedisSearch`)
           if (result.name && result.appId) {
             const gameImages = await generateImageLinksFromAppId(result.appId)
-            await storeGameInRedis(result.name, result.appId, gameImages.banner, gameImages.poster)
+            const appId = result.appId && result.appId.trim() !== '' ? result.appId : null
+            await storeGameInRedis({
+              gameName: result.name,
+              appId: appId,
+              banner: gameImages.banner,
+              poster: gameImages.poster
+            })
           }
         }
       }
@@ -208,7 +214,8 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
           return {
             gameName: game.name,
             appId: Number(game.appId),
-            metadata: metadata as GameMetadata
+            metadata: metadata as GameMetadata,
+            reportCount: game.reportCount ?? 0
           }
         })
       )

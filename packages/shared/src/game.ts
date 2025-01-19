@@ -21,12 +21,14 @@ export interface GameSearchCache {
   appId: string | null;
   banner: string | null;
   poster: string | null;
+  reportCount: number | null;
 }
 
 export interface GameSearchResult {
   gameName: string;
   appId: number;
-  metadata: GameMetadata
+  metadata: GameMetadata;
+  reportCount: number;
 }
 
 export interface GameReport {

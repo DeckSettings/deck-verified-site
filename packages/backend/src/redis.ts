@@ -90,23 +90,33 @@ export const escapeRedisKey = (input: string): string => {
  * NOTE:  Special characters in the search string are escaped. Without this,
  *        we are unable to search on these special characters.
  */
-export const storeGameInRedis = async (gameName: string, appId: string | null = null, banner: string | null = null, poster: string | null = null): Promise<void> => {
+export const storeGameInRedis = async (options: {
+  gameName: string;
+  appId?: string | null;
+  banner?: string | null;
+  poster?: string | null;
+  reportCount?: number | null;
+}): Promise<void> => {
+  const { gameName, appId = null, banner = null, poster = null, reportCount = null } = options
   if (!gameName) {
     throw new Error('Game name is required.')
   }
 
-  const gameId = appId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
-  const searchString = appId ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
+  const gameId = (appId && appId.trim() !== '') ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
+  const searchString =  (appId && appId.trim() !== '') ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
   const escapedSearchString = escapeRedisKey(searchString)
 
   try {
-    await redisClient.hSet(gameId, {
-      appsearch: escapedSearchString, // Add string used for searches
-      appname: gameName,              // Use gameName for the appname
-      appid: appId || '',             // Store appid, use empty string if null
-      appbanner: banner || '',        // Store banner, use empty string if null
-      appposter: poster || ''         // Store poster, use empty string if null
-    })
+    const existingData = await redisClient.hGetAll(gameId)
+    const updatedData = {
+      appsearch: escapedSearchString,
+      appname: gameName,
+      appid: appId ?? existingData.appid ?? '',
+      appbanner: banner ?? existingData.appbanner ?? '',
+      appposter: poster ?? existingData.appposter ?? '',
+      reportcount: reportCount !== null ? reportCount.toString() : existingData.reportcount ?? ''
+    }
+    await redisClient.hSet(gameId, updatedData)
     logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
   } catch (error) {
     logger.error('Failed to store game in Redis:', error)
@@ -117,7 +127,11 @@ export const storeGameInRedis = async (gameName: string, appId: string | null = 
  * Searches for games in Redis based on the provided search term.
  * Uses RedisSearch to match the term against indexed game data.
  */
-export const searchGamesInRedis = async (searchTerm: string | null = null, appId: string | null = null, gameName: string | null = null): Promise<GameSearchCache[]> => {
+export const searchGamesInRedis = async (
+  searchTerm: string | null = null,
+  appId: string | null = null,
+  gameName: string | null = null
+): Promise<GameSearchCache[]> => {
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
   }
@@ -161,7 +175,8 @@ export const searchGamesInRedis = async (searchTerm: string | null = null, appId
       name: typeof doc.value.appname === 'string' ? doc.value.appname : '',
       appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
       banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null,
-      poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null
+      poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null,
+      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null
     }))
   } catch (error) {
     logger.error('Error during search:', error)

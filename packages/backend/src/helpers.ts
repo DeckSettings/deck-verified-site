@@ -178,7 +178,12 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
       // Also cache in search results
       if (appDetails.name) {
         const gameImages = await generateImageLinksFromAppId(appId)
-        await storeGameInRedis(appDetails.name, appId, gameImages.banner, gameImages.poster)
+        await storeGameInRedis({
+          gameName: appDetails.name,
+          appId: String(appId),
+          banner: gameImages.banner || null,
+          poster: gameImages.poster || null
+        })
       }
 
       return appDetails
@@ -256,4 +261,12 @@ export const generateImageLinksFromAppId = async (appId: string): Promise<GameIm
     background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
     banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
   }
+}
+
+export const isValidNumber = (value: unknown): value is number => {
+  return (
+    typeof value === 'number' &&
+    !isNaN(value) &&
+    value > 0
+  )
 }

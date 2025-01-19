@@ -26,8 +26,8 @@ import {
   GitHubProjectDetails, GitHubProjectGameDetails,
   GitHubReportIssueBodySchema, HardwareInfo
 } from '../../shared/src/game'
-import { generateImageLinksFromAppId, parseGameProjectBody, parseReportBody } from './helpers'
-import { GitHubIssueTemplate } from '../../shared/src/game'
+import { generateImageLinksFromAppId, isValidNumber, parseGameProjectBody, parseReportBody } from './helpers'
+import type { GitHubIssueTemplate } from '../../shared/src/game'
 
 /**
  * Fetches reports from a GitHub repository using the search API.
@@ -86,7 +86,13 @@ export const updateGameIndex = async (): Promise<void> => {
         const parsedProject = await parseProjectDetails(project)
         logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
         try {
-          await storeGameInRedis(parsedProject.gameName, String(parsedProject.appId), parsedProject.metadata.banner || '', parsedProject.metadata.poster || '')
+          await storeGameInRedis({
+            gameName: parsedProject.gameName,
+            appId: typeof parsedProject.appId === 'number' ? String(parsedProject.appId) : null,
+            banner: parsedProject.metadata.banner || null,
+            poster: parsedProject.metadata.poster || null,
+            reportCount: parsedProject.reports.length
+          })
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
         }
@@ -111,10 +117,11 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
   const hardwareInfo = await fetchHardwareInfo()
 
   const parsedTitle = logfmt.parse(project.title)
+
   const projectDetails: GitHubProjectGameDetails = {
     projectNumber: project.number,
     gameName: parsedTitle.name ? String(parsedTitle.name) : '',
-    appId: parsedTitle.appid ? Number(parsedTitle.appid) : null,
+    appId: isValidNumber(Number(parsedTitle.appid)) ? Number(parsedTitle.appid) : null,
     shortDescription: project.shortDescription,
     readme: project.readme,
     metadata: {
