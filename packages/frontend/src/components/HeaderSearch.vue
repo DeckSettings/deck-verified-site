@@ -22,7 +22,9 @@ const performSearch = async () => {
   isSearching.value = true
   try {
     const initialResults = await searchGames(searchQuery.value, false)
-    searchResults.value = initialResults || []
+    searchResults.value = (initialResults || []).sort((a, b) =>
+      a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' })
+    )
     searchTimeout = setTimeout(async () => {
       isSearching.value = true
       try {
@@ -33,7 +35,12 @@ const performSearch = async () => {
           }
           const existingAppIds = new Set(searchResults.value.map(result => result.appId))
           const newResults = additionalResults.filter(result => !existingAppIds.has(result.appId))
-          searchResults.value = [...searchResults.value, ...newResults]
+          searchResults.value = [
+            ...searchResults.value,
+            ...newResults
+          ].sort((a, b) =>
+            a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' })
+          )
         }
       } catch (error) {
         console.error('Error running extended search for games:', error)
@@ -52,10 +59,10 @@ const scrollAreaStyle = computed(() => {
   if (!searchResults.value) {
     return {}
   }
-  const itemHeight = 62.73 // Height of each list item
+  const itemHeight = 62.74 // Height of each list item
   const maxHeight = window.innerHeight * ($q.screen.lt.sm ? 0.7 : 0.8) // 70% on mobile, 80% otherwise
   if (!isSearching.value && searchResults.value.length > 0) {
-    const totalHeight = searchResults.value.length * itemHeight
+    const totalHeight = (searchResults.value.length * itemHeight) + 5
     return {
       height: `${Math.min(totalHeight, maxHeight)}px`
     }
@@ -152,7 +159,12 @@ onUnmounted(() => {
             </q-item-section>
             <q-item-section>
               <q-item-label>{{ result.gameName }}</q-item-label>
-              <q-item-label caption>App ID: {{ result.appId }}</q-item-label>
+              <q-item-label caption>
+                ({{ result.reportCount }} reports)
+                <template v-if="result.appId && Number(result.appId) > 0">
+                  | App ID: {{ result.appId }}
+                </template>
+              </q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
