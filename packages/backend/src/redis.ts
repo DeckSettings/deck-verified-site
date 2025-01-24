@@ -11,6 +11,7 @@ import type {
   SteamStoreAppDetails,
   SteamGame, HardwareInfo, GitHubIssueTemplate
 } from '../../shared/src/game'
+import { isValidNumber } from './helpers'
 
 // Redis client
 export const redisClient: RedisClientType = createClient({
@@ -102,14 +103,17 @@ export const storeGameInRedis = async (options: {
     throw new Error('Game name is required.')
   }
 
-  const gameId = (appId && appId.trim() !== '') ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
-  const searchString =  (appId && appId.trim() !== '') ? `${appId}_${gameName.toLowerCase()}` : `${gameName.toLowerCase()}`
-  const escapedSearchString = escapeRedisKey(searchString)
+  // Ensure that the provided App ID is valid
+  const validAppId = !!(appId && appId.trim() !== '' && isValidNumber(Number(appId)))
+
+  // NOTE: The gameId is stored as a url encoded lowercase string if the game name is all that is available.
+  const gameId = validAppId ? `game:${appId}` : `game:${encodeURIComponent(gameName.toLowerCase())}`
+  const searchString = validAppId ? `${appId}_${gameName}` : `0_${gameName}`
 
   try {
     const existingData = await redisClient.hGetAll(gameId)
     const updatedData = {
-      appsearch: escapedSearchString,
+      appsearch: escapeRedisKey(searchString),
       appname: gameName,
       appid: appId ?? existingData.appid ?? '',
       appbanner: banner ?? existingData.appbanner ?? '',
@@ -117,6 +121,7 @@ export const storeGameInRedis = async (options: {
       reportcount: reportCount !== null ? reportCount.toString() : existingData.reportcount ?? ''
     }
     await redisClient.hSet(gameId, updatedData)
+    await redisClient.expire(gameId, (60 * 60 * 24 * 7)) // Cache search results in Redis for 1 week
     logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
   } catch (error) {
     logger.error('Failed to store game in Redis:', error)
@@ -130,7 +135,9 @@ export const storeGameInRedis = async (options: {
 export const searchGamesInRedis = async (
   searchTerm: string | null = null,
   appId: string | null = null,
-  gameName: string | null = null
+  gameName: string | null = null,
+  from: number | null = null,
+  limit: number | null = null
 ): Promise<GameSearchCache[]> => {
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
@@ -148,7 +155,7 @@ export const searchGamesInRedis = async (
   try {
     let query = ''
     if (searchTerm) {
-      logger.info(`Searching cached games list for '${searchTerm}'`)
+      logger.info(`Searching cached games list for term '${searchTerm}'`)
       query = `@appsearch:*${escapeRedisKey(searchTerm)}*`
     } else if (appId) {
       logger.info(`Searching cached games list by AppID '${appId}'`)
@@ -158,11 +165,15 @@ export const searchGamesInRedis = async (
       query = `@appsearch:*_${escapeRedisKey(gameName)}`
     }
 
+    // Validate and default `from` and `limit` parameters
+    const validatedFrom = typeof from === 'number' && from >= 0 ? from : 0
+    const validatedLimit = typeof limit === 'number' && limit > 0 ? limit : 100
+
     const results = await redisClient.ft.search(
       'games_idx',
       query,
       {
-        LIMIT: { from: 0, size: 10 }
+        LIMIT: { from: validatedFrom, size: validatedLimit }
       }
     )
 

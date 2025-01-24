@@ -403,7 +403,7 @@ const startServer = async () => {
     const noScheduledTasks = process.argv.includes('--no-scheduled-tasks')
     if (!noScheduledTasks) {
       // Schedule updateGameIndex to run every hour
-      logger.info('Starting scheduled tasks')
+      logger.info(`Starting scheduled tasks to run every ${3600 * 1000} milliseconds`)
       setInterval(updateGameIndex, 3600 * 1000)
       // Optionally run on start also
       if (config.runScheduledTaskOnStart) {

@@ -38,7 +38,6 @@ jobs:
             echo "docker_tag=staging" >> $GITHUB_OUTPUT
           fi
 
-
       - name: Log into registry ${{ vars.REGISTRY }}
         if: github.event_name != 'pull_request'
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 #v3.3.0
