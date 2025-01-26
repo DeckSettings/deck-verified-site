@@ -3,12 +3,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
-import { marked } from 'marked'
 import type { GameReport, GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
+import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 
 dayjs.extend(relativeTime)
 
@@ -515,8 +515,12 @@ onMounted(async () => {
                                 <div v-if="report.data.frame_limit" class="config-item">
                                   <span v-if="report.data.disable_frame_limit === 'On'">Refresh Rate:</span>
                                   <span v-else>Frame Limit:</span>
-                                  <span v-if="report.data.disable_frame_limit === 'On'">{{ report.data.frame_limit }}Hz</span>
-                                  <span v-else>{{ report.data.frame_limit }}FPS</span>
+                                  <span v-if="report.data.disable_frame_limit === 'On'">
+                                    {{ report.data.frame_limit }}Hz
+                                  </span>
+                                  <span v-else>
+                                    {{ report.data.frame_limit }}FPS
+                                  </span>
                                 </div>
                                 <div v-if="report.data.disable_frame_limit" class="config-item">
                                   <span>Disable Frame Limit:</span>
@@ -564,8 +568,7 @@ onMounted(async () => {
                             </q-card-section>
                             <q-separator />
                             <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(report.data.game_display_settings)"
-                                   class="markdown q-ml-xs-none q-ml-md-sm"></div>
+                              <GameReportMarkdown :markdown="report.data.game_display_settings" />
                             </q-card-section>
                           </q-card>
                           <q-card v-if="report.data.game_graphics_settings"
@@ -575,8 +578,7 @@ onMounted(async () => {
                             </q-card-section>
                             <q-separator />
                             <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(report.data.game_graphics_settings)"
-                                   class="markdown q-ml-md-sm"></div>
+                              <GameReportMarkdown :markdown="report.data.game_graphics_settings" />
                             </q-card-section>
                           </q-card>
                           <q-card v-if="report.data.additional_notes"
@@ -586,8 +588,7 @@ onMounted(async () => {
                             </q-card-section>
                             <q-separator />
                             <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <div v-html="marked(report.data.additional_notes)"
-                                   class="markdown q-ml-md-sm"></div>
+                              <GameReportMarkdown :markdown="report.data.additional_notes" />
                             </q-card-section>
                           </q-card>
                         </div>
@@ -799,79 +800,6 @@ onMounted(async () => {
   transition: all 0.3s ease-in-out;
 }
 
-::v-deep(.report h1),
-::v-deep(.report h2),
-::v-deep(.report h3),
-::v-deep(.report h4),
-::v-deep(.report h5),
-::v-deep(.report h6) {
-  font-size: inherit;
-  font-weight: bold;
-}
-
-::v-deep(.report h1) {
-  font-size: 2rem;
-}
-
-::v-deep(.report h2) {
-  font-size: 1.75rem;
-}
-
-::v-deep(.report h3) {
-  font-size: 1.25rem;
-}
-
-::v-deep(.report h4) {
-  font-size: 1rem;
-}
-
-::v-deep(.report h5) {
-  font-size: 0.9rem;
-}
-
-::v-deep(.report h6) {
-  font-size: 0.8rem;
-}
-
-::v-deep(.report p) {
-  font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-::v-deep(.markdown h1),
-::v-deep(.markdown h2),
-::v-deep(.markdown h3),
-::v-deep(.markdown h4),
-::v-deep(.markdown h5),
-::v-deep(.markdown h6) {
-  line-height: inherit;
-}
-
-/* Custom formatting for markdown lists */
-::v-deep(.markdown ul) {
-  list-style: none;
-  padding: 0;
-}
-
-::v-deep(.markdown ul li) {
-  padding: 12px 5px;
-  display: flex;
-  justify-content: space-between;
-  text-align: right;
-}
-
-::v-deep(.markdown ul li strong) {
-  display: block;
-  text-align: left;
-  margin-right: 5px;
-  min-width: 60px;
-}
-
-::v-deep(.markdown ul li:not(:last-child)) {
-  border-bottom: 1px solid #ddd;
-}
-
 /* -sm- */
 @media (min-width: 600px) {
   .background-container::before {
@@ -897,10 +825,6 @@ onMounted(async () => {
   }
 
   .config-card .config-item {
-    padding: 12px 16px;
-  }
-
-  ::v-deep(.markdown ul li) {
     padding: 12px 16px;
   }
 }
