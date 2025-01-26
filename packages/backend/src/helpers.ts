@@ -89,13 +89,13 @@ export const parseReportBody = async (
     }
 
     // Calculate additional calculated_battery_life_minutes field
-    if (data.average_battery_power_draw && data.average_battery_power_draw > 0) {
+    if (data.average_battery_power_draw && isValidNumber(Number(data.average_battery_power_draw)) && Number(data.average_battery_power_draw) > 0) {
       // Match device info from hardwareInfo
       const matchedDevice = hardwareInfo.find(
         (device) => device.name === data.device
       )
       if (matchedDevice) {
-        data.calculated_battery_life_minutes = await calculatedBatteryLife(matchedDevice, data.average_battery_power_draw)
+        data.calculated_battery_life_minutes = await calculatedBatteryLife(matchedDevice, Number(data.average_battery_power_draw))
       } else {
         logger.warn(`No matching device found in the hardwareInfo list for: ${data.device}`)
       }
