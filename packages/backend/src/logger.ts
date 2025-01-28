@@ -21,6 +21,7 @@ const logger = winston.createLogger({
 export const logMetric = (metricName: string, metricValue: any, additionalData: Record<string, any> = {}) => {
   const metricData = {
     log_type: 'METRIC',
+    source_project: 'deck-verified-api',
     metric_name: metricName,
     metric_value: metricValue,
     metric_timestamp: new Date().toISOString(),
