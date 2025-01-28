@@ -54,24 +54,32 @@ export const connectToRedis = async (): Promise<void> => {
 export const createRedisSearchIndex = async (): Promise<void> => {
   try {
     // Check if the index already exists
-    const indexExists = await redisClient.ft.info('games_idx').catch(() => null)
+    const indexExists = await redisClient.ft.info('games_idx').catch((error) => {
+      logger.warn('Index check failed. Assuming index does not exist.', error)
+      return null
+    })
 
-    if (!indexExists) {
-      logger.info('Creating RedisSearch index...')
-
-      // Create the index with a game name (TEXT) and appid (NUMERIC)
-      await redisClient.ft.create(
-        'games_idx',
-        {
-          appsearch: { type: SchemaFieldTypes.TEXT, SORTABLE: true }
-        },
-        {
-          ON: 'HASH',
-          PREFIX: 'game:'
-        }
-      )
-      logger.info('RedisSearch index created.')
+    if (indexExists) {
+      logger.info('RedisSearch index already exists. Skipping creation.')
+      return
     }
+
+    logger.info('Creating RedisSearch index...')
+
+    // Create the index with the specified fields
+    await redisClient.ft.create(
+      'games_idx',
+      {
+        appsearch: { type: SchemaFieldTypes.TEXT, SORTABLE: true },
+        reportcount: { type: SchemaFieldTypes.NUMERIC, SORTABLE: true }
+      },
+      {
+        ON: 'HASH',
+        PREFIX: 'game:'
+      }
+    )
+
+    logger.info('RedisSearch index created successfully.')
   } catch (error) {
     logger.error('Error creating RedisSearch index:', error)
   }
@@ -112,17 +120,24 @@ export const storeGameInRedis = async (options: {
 
   try {
     const existingData = await redisClient.hGetAll(gameId)
+
+    // Ensure reportCount is a valid number
+    const existingReportCount = existingData.reportcount ? parseInt(existingData.reportcount, 10) : 0
+    const validReportCount = isNaN(existingReportCount) ? 0 : existingReportCount
+    const newReportCount = reportCount !== null ? reportCount : validReportCount
+
     const updatedData = {
       appsearch: escapeRedisKey(searchString),
       appname: gameName,
       appid: appId ?? existingData.appid ?? '',
       appbanner: banner ?? existingData.appbanner ?? '',
       appposter: poster ?? existingData.appposter ?? '',
-      reportcount: reportCount !== null ? reportCount.toString() : existingData.reportcount ?? ''
+      reportcount: newReportCount.toString() // Always store as a string for Redis
     }
+
     await redisClient.hSet(gameId, updatedData)
     await redisClient.expire(gameId, (60 * 60 * 24 * 7)) // Cache search results in Redis for 1 week
-    logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'})`)
+    logger.info(`Stored game: ${gameName} (appid: ${appId ?? 'null'}, banner: ${banner ?? 'null'}, reports: ${newReportCount})`)
   } catch (error) {
     logger.error('Failed to store game in Redis:', error)
   }
@@ -191,6 +206,42 @@ export const searchGamesInRedis = async (
     }))
   } catch (error) {
     logger.error('Error during search:', error)
+    return []
+  }
+}
+
+/**
+ * Retrieves all games stored in Redis with a reportcount greater than 0,
+ * ordered by the most reports first.
+ */
+export const getGamesWithReports = async (
+  from: number = 0,
+  limit: number = 100
+): Promise<GameSearchCache[]> => {
+  try {
+    const results = await redisClient.ft.search(
+      'games_idx',
+      '@reportcount:[1 +inf]',
+      {
+        SORTBY: { BY: 'reportcount', DIRECTION: 'DESC' },
+        LIMIT: { from, size: limit }
+      }
+    )
+
+    if (results.total === 0) {
+      logger.info('No games with reports found.')
+      return []
+    }
+
+    return results.documents.map((doc): GameSearchCache => ({
+      name: typeof doc.value.appname === 'string' ? doc.value.appname : '',
+      appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
+      banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null,
+      poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null,
+      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null
+    }))
+  } catch (error) {
+    logger.error('Error retrieving games with reports:', error)
     return []
   }
 }

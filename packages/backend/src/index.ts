@@ -7,7 +7,7 @@ import logger, { logMetric } from './logger'
 import {
   connectToRedis,
   storeGameInRedis,
-  searchGamesInRedis
+  searchGamesInRedis, getGamesWithReports
 } from './redis'
 import {
   fetchIssueLabels, fetchPopularReports,
@@ -137,6 +137,84 @@ app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Resp
 })
 
 /**
+ * Fetch a paginated list of games with reports from the database.
+ *
+ * This endpoint retrieves a filtered list of games that have at least one report,
+ * sorted by the number of reports in descending order. Supports pagination
+ * through `from` and `limit` query parameters.
+ *
+ * @queryParam from {number} - The number to fetch from for pagination.
+ * @queryParam limit {number} - The max number of reports to return for pagination.
+ *
+ * @returns {object[]} 200 - An array of game objects.
+ * @returns {array} 204 - No games found
+ * @returns {object} 400 - Bad request, missing or invalid search term.
+ * @returns {object} 500 - Internal server error.
+ *
+ * @example
+ * [
+ *   {
+ *     "gameName": "Horizon Zero Dawn™ Complete Edition",
+ *     "appId": 1151640,
+ *     "metadata": {
+ *       "banner": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/header.jpg",
+ *       "poster": "https://steamcdn-a.akamaihd.net/steam/apps/1151640/library_600x900.jpg",
+ *       "hero": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/library_hero.jpg",
+ *       "background": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/page_bg_generated_v6b.jpg"
+ *     },
+ *     "reportCount": 2
+ *   }
+ * ]
+ */
+app.get('/deck-verified/api/v1/games_with_reports', async (req: Request, res: Response) => {
+  const from = parseInt(req.query['from'] as string, 10) || 0
+  const limit = Math.min(parseInt(req.query['limit'] as string, 10) || 100, 500)
+  if (from < 0 || limit <= 0) {
+    return res.status(400).json({ error: 'Invalid pagination parameters' })
+  }
+
+  try {
+    const gamesWithReports = await getGamesWithReports(from, limit)
+    console.log(from, limit)
+    if (gamesWithReports.length > 0) {
+      const results: GameSearchResult[] = await Promise.all(
+        gamesWithReports.map(async (game) => {
+          const metadata: GameMetadata = {
+            banner: game.banner || null,
+            poster: game.poster || null,
+            hero: null,
+            background: null
+          }
+
+          if (game.appId) {
+            const gameImages = await generateImageLinksFromAppId(String(game.appId))
+            metadata.banner = metadata.banner ?? gameImages.banner
+            metadata.poster = metadata.poster ?? gameImages.poster
+            metadata.hero = gameImages.hero
+            metadata.background = gameImages.background
+          }
+
+          return {
+            gameName: game.name,
+            appId: Number(game.appId),
+            metadata,
+            reportCount: game.reportCount ?? 0
+          }
+        })
+      )
+
+      return res.json(results)
+    }
+
+    return res.status(204).json([])
+  } catch (error) {
+    logger.error('Error retrieving games with reports:', error)
+    return res.status(500).json({ error: 'Failed to retrieve games with reports' })
+  }
+})
+
+
+/**
  * Search for games in the database.
  *
  * @queryParam term {string} - The search term to use.
@@ -151,10 +229,14 @@ app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Resp
  * [
  *   {
  *     "gameName": "Horizon Zero Dawn™ Complete Edition",
- *     "appId": "1151640",
+ *     "appId": 1151640,
  *     "metadata": {
- *       "banner": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/header.jpg"
- *     }
+ *       "banner": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/header.jpg",
+ *       "poster": "https://steamcdn-a.akamaihd.net/steam/apps/1151640/library_600x900.jpg",
+ *       "hero": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/library_hero.jpg",
+ *       "background": "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1151640/page_bg_generated_v6b.jpg"
+ *     },
+ *     "reportCount": 2
  *   }
  * ]
  */
