@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import config from './config'
 import { generalLimiter } from './rateLimiter'
-import logger from './logger'
+import logger, { logMetric } from './logger'
 import {
   connectToRedis,
   storeGameInRedis,
@@ -258,6 +258,8 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   const appId = req.query['appid'] as string | null
   const gameName = req.query['name'] as string | null
   const includeExternal = req.query['include_external'] === 'true'
+  const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
+  const userAgent = req.headers['user-agent'] || 'Unknown'
   let returnData: GameDetails | null = null
 
   if (!appId && !gameName) {
@@ -320,6 +322,17 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         logger.info('Using Steam store API data for game details result')
       }
     }
+
+    // Log the metric for the game details lookup
+    const metricName = 'game_details'
+    const metricValue = appId || gameName
+    logMetric(metricName, metricValue, {
+      request_ip: requestIp,
+      user_agent: userAgent,
+      game_name: returnData?.gameName,
+      app_id: returnData?.appId,
+      report_count: returnData?.reports?.length || 0
+    })
 
     if (!returnData) {
       logger.info(`No results found for appId "${appId}" or gameName "${gameName}".`)
