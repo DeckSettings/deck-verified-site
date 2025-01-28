@@ -329,8 +329,8 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     logMetric(metricName, metricValue, {
       request_ip: requestIp,
       user_agent: userAgent,
-      game_name: returnData?.gameName,
-      app_id: returnData?.appId,
+      game_name: returnData?.gameName || gameName,
+      app_id: returnData?.appId || appId,
       report_count: returnData?.reports?.length || 0
     })
 
