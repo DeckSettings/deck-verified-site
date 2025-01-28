@@ -194,7 +194,9 @@ export default defineComponent({
               </q-item-label>
             </q-item-section>
             <q-item-section v-else top class="game-info-section">
-              <q-item-label class="text-h6">{{ report.data.game_name }}</q-item-label>
+              <q-item-label lines="2" class="text-h6">
+                {{ report.data.game_name }}
+              </q-item-label>
               <q-item-label caption class="q-pt-sm">
                 <div class="row q-gutter-sm">
                   <!-- Text Details -->
