@@ -95,6 +95,26 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
   }
 }
 
+export const fetchGamesWithReports = async (from: number, limit: number): Promise<GameSearchResult[] | null> => {
+  const url = `/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}`
+  try {
+    const response = await fetch(url)
+    if (response.status === 204) {
+      // 204 - No Content
+      console.log('No results found')
+      return []
+    } else if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
+      throw new Error('Failed to fetch project data')
+    }
+    return await response.json() as GameSearchResult[]
+  } catch (error) {
+    console.error('Error fetching project data:', error)
+    throw error
+  }
+}
+
 export const searchGames = async (searchString: string | null, includeExternal: boolean = false): Promise<GameSearchResult[] | null> => {
   let url = '/deck-verified/api/v1/search_games'
   if (searchString) {

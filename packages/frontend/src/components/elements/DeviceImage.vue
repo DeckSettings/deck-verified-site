@@ -7,27 +7,32 @@ export default defineComponent({
     device: {
       type: String,
       required: true
+    },
+    shadow: {
+      type: Boolean,
+      required: false,
+      default: false
     }
   },
   setup(props) {
-    const placeholderImage = '~/assets/devices/device-placeholder.png'
+    const placeholderImage = props.shadow ? 'devices/device-placeholder-shadow.png' : 'devices/device-placeholder.png'
 
     const imageSource = computed(() => {
       switch (props.device) {
         case 'Steam Deck LCD (64GB)':
-          return '~/assets/devices/valve-steam-deck.png'
+          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
         case 'Steam Deck LCD (256GB/512GB)':
-          return '~/assets/devices/asus-rog-ally.png'
+          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
         case 'Steam Deck OLED':
-          return '~/assets/devices/asus-rog-ally.png'
+          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
         case 'ROG Ally Z1':
-          return '~/assets/devices/asus-rog-ally.png'
+          return props.shadow ? 'devices/asus-rog-ally-shadow.png' : 'devices/asus-rog-ally.png'
         case 'ROG Ally Z1 Extreme':
-          return '~/assets/devices/asus-rog-ally.png'
+          return props.shadow ? 'devices/asus-rog-ally-shadow.png' : 'devices/asus-rog-ally.png'
         case 'ROG Ally X':
-          return '~/assets/devices/asus-rog-ally-x.png'
+          return props.shadow ? 'devices/asus-rog-ally-x-shadow.png' : 'devices/asus-rog-ally-x.png'
         case 'Legion Go':
-          return '~/assets/devices/lenovo-legion-go.png'
+          return props.shadow ? 'devices/lenovo-legion-go-shadow.png' : 'devices/lenovo-legion-go.png'
         default:
           return placeholderImage
       }
@@ -38,7 +43,11 @@ export default defineComponent({
     })
 
     const computedStyle = computed(() => {
-      return 'width: 60px;'
+      let style = 'width: 80px;'
+      if (props.shadow) {
+        style = 'width: 100px; margin-left: -5px; margin-bottom: -15px;'
+      }
+      return style
     })
 
     return {
@@ -54,57 +63,10 @@ export default defineComponent({
 
 <template>
   <q-img
-    v-if="device === 'Steam Deck LCD (64GB)' || device === 'Steam Deck LCD (256GB/512GB)' || device === 'Steam Deck OLED'"
-    src="~/assets/devices/valve-steam-deck.png"
+    :src="imageSource"
     :alt="altText"
     :style="computedStyle"
   />
-  <q-img
-    v-else-if="device === 'ROG Ally Z1' || device === 'ROG Ally Z1 Extreme'"
-    src="~/assets/devices/asus-rog-ally.png"
-    :alt="altText"
-    :style="computedStyle"
-  />
-  <q-img
-    v-else-if="device === 'ROG Ally X'"
-    src="~/assets/devices/asus-rog-ally-x.png"
-    :alt="altText"
-    :style="computedStyle"
-  />
-  <q-img
-    v-else-if="device === 'Legion Go'"
-    src="~/assets/devices/lenovo-legion-go.png"
-    :alt="altText"
-    :style="computedStyle"
-  />
-  <q-img
-    v-else
-    src="~/assets/devices/device-placeholder.png"
-    alt="Placeholder Image"
-    :style="computedStyle"
-  />
-
-  <!--                    <q-img
-                        v-if="report.data.app_id"
-                        :src="consoleImage(report.data.device)"
-                        alt="Game Image"
-                        :ratio="2/3"
-                        :style="$q.platform.is.mobile ? 'height: 20px;' : 'height: 30px;'"
-                      >
-                        <template v-slot:error>
-                          <img
-                            src="~/assets/banner-placeholder.png"
-                            alt="Placeholder"
-                            :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-                          />
-                        </template>
-                      </q-img>
-                      <img
-                        v-else
-                        src="~/assets/banner-placeholder.png"
-                        alt="Placeholder"
-                        :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-                      />-->
 </template>
 
 <style scoped>

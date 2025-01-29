@@ -159,11 +159,11 @@ export default defineComponent({
               </div>
               <q-item-label v-if="$q.platform.is.mobile"
                             class="absolute-bottom-left q-ml-sm q-mb-lg">
-                <DeviceImage :device="report.data.device" />
+                <DeviceImage :device="report.data.device" :shadow="true" />
               </q-item-label>
               <q-item-label v-else
                             class="absolute-bottom-left device-image">
-                <DeviceImage :device="report.data.device" />
+                <DeviceImage :device="report.data.device" :shadow="true" />
               </q-item-label>
             </q-item-section>
 
@@ -258,12 +258,13 @@ export default defineComponent({
   height: 150px; /* Set a fixed height for the item section */
 }
 
-.report-details {
-  margin-top: auto; /* Push the caption to the middle */
-}
-
 .device-image {
   margin-left: 90px;
-  margin-bottom: 5px;
+  margin-bottom: 7px;
+}
+
+.game-poster {
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 3px 3px 10px black;
 }
 </style>

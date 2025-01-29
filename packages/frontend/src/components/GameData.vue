@@ -239,10 +239,10 @@ onMounted(async () => {
 <template>
   <div class="background-container"
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
-  <div class="hero-container">
+  <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
       <div class="col-xs-12 col-md-12 text-center q-pa-md">
-        <div v-if="!$q.platform.is.mobile" class="game-title">
+        <div v-if="!$q.platform.is.mobile" class="text-h4 game-title">
           {{ gameName }}
         </div>
       </div>
@@ -367,7 +367,7 @@ onMounted(async () => {
                           </div>
                           <!-- Report Summary Section -->
                           <div class="col q-ml-md">
-                            <q-item-label class="text-secondary">
+                            <q-item-label class="text-h6 text-secondary">
                               {{ report.data.summary }}
                             </q-item-label>
                           </div>
@@ -676,7 +676,7 @@ onMounted(async () => {
   z-index: 0;
 }
 
-.hero-container {
+.page-content-container {
   position: relative;
 }
 
