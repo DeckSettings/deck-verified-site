@@ -54,7 +54,7 @@ const router = useRouter()
     <div class="full-width row justify-center q-mb-lg q-px-md">
       <q-btn
         :class="{'full-width': $q.screen.lt.sm}"
-        size="lg"
+        :size="$q.screen.lt.sm ? 'md': 'lg'"
         icon="view_kanban"
         label="View All Games With Reports"
         color="secondary"
