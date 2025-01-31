@@ -95,8 +95,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  * @returns {object} 500 - Internal server error.
  */
 app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
-  res.status(200).send('OK')
-  res.status(204).json({
+  res.status(200).json({
     status: 'OK',
     request_ip: req.ip
   })
