@@ -97,7 +97,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
-    request_ip: req.ip
+    remote_ip: req.ip,
+    protocol: req.protocol,
+    x_forwarded_for: req.headers['x-forwarded-for'] || '',
+    x_forwarded_proto: req.headers['x-forwarded-proto'] || '',
+    x_forwarded_host: req.headers['x-forwarded-host'] || '',
+    method: req.method,
+    path: req.originalUrl,
+    referer: req.headers['referer'] || '-',
+    user_agent: req.headers['user-agent'] || ''
   })
 })
 
@@ -496,7 +504,8 @@ app.get('/deck-verified/api/v1/report_form', async (_req: Request, res: Response
  */
 app.get('/sitemap.xml', async (req: Request, res: Response) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`
+    const proto = req.headers['x-forwarded-proto'] || req.protocol
+    const baseUrl = `${proto}://${req.get('host')}`
     const lastModDate = format(new Date(), 'yyyy-MM-dd') // Current date for lastmod
     const staticPages = [
       { loc: `${baseUrl}/`, priority: '1.0' },
@@ -539,7 +548,8 @@ ${[...staticPages, ...gamePages]
  * @returns {string} - Robots.txt content.
  */
 app.get('/robots.txt', (req: Request, res: Response) => {
-  const baseUrl = `${req.protocol}://${req.get('host')}`
+  const proto = req.headers['x-forwarded-proto'] || req.protocol
+  const baseUrl = `${proto}://${req.get('host')}`
   const robotsTxt = `User-agent: *
 Disallow:
 
