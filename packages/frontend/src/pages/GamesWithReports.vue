@@ -2,19 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { fetchGamesWithReports } from 'src/services/gh-reports'
 import type { GameSearchResult } from '../../../shared/src/game'
-import { useRouter } from 'vue-router'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
 
-const router = useRouter()
-
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
-const gameBackground = ref('~/assets/hero-image.png')
-
-const goToGamePage = async (e: Event, path: string) => {
-  e.preventDefault()
-  await router.push(path)
-}
+const gameBackground = ref('hero-background2.jpg')
 
 const fetchGames = async () => {
   gamesWithReports.value = await fetchGamesWithReports(0, 100)
@@ -47,43 +39,42 @@ onMounted(fetchGames)
             class="q-hoverable full-height game-result"
             clickable
             v-ripple>
-            <div
-              v-ripple
-              class="cursor-pointer relative-position column full-height"
-              @click="(e) => goToGamePage(e, game.appId ? `/app/${game.appId}` : `/game/${encodeURIComponent(game.gameName)}`)">
+            <router-link
+              :to="game.appId ? `/app/${game.appId}` : `/game/${encodeURIComponent(game.gameName)}`"
+              class="no-decoration ">
+              <div class="cursor-pointer relative-position column full-height">
+                <q-img
+                  v-if="game.metadata.poster"
+                  class="game-image"
+                  :src="game.metadata.poster"
+                  alt="Game Banner"
+                  :ratio="2/3">
+                  <template v-slot:error>
+                    <img
+                      src="~/assets/banner-placeholder.png"
+                      alt="Placeholder" />
+                  </template>
+                </q-img>
+                <q-img
+                  v-else
+                  class="game-image"
+                  src="~/assets/banner-placeholder.png"
+                  alt="Game Image Placeholder"
+                  :ratio="2/3" />
 
-              <q-img
-                v-if="game.metadata.poster"
-                class="game-image"
-                :src="game.metadata.poster"
-                alt="Game Banner"
-                :ratio="2/3">
-                <template v-slot:error>
-                  <img
-                    src="~/assets/banner-placeholder.png"
-                    alt="Placeholder" />
-                </template>
-              </q-img>
-              <q-img
-                v-else
-                class="game-image"
-                src="~/assets/banner-placeholder.png"
-                alt="Game Image Placeholder"
-                :ratio="2/3" />
-
-              <q-card-section class="text-center">
-                <q-item-label lines="2" class="text-h6">
-                  {{ game.gameName }}
-                </q-item-label>
-                <q-item-label caption class="text-primary q-pt-sm self-baseline">
-                  App ID: {{ game.appId }}
-                </q-item-label>
-                <q-item-label caption class="text-secondary">
-                  {{ game.reportCount }} reports
-                </q-item-label>
-              </q-card-section>
-
-            </div>
+                <q-card-section class="text-center">
+                  <q-item-label lines="2" class="text-h6">
+                    {{ game.gameName }}
+                  </q-item-label>
+                  <q-item-label caption class="text-primary q-pt-sm self-baseline">
+                    App ID: {{ game.appId }}
+                  </q-item-label>
+                  <q-item-label caption class="text-secondary">
+                    {{ game.reportCount }} reports
+                  </q-item-label>
+                </q-card-section>
+              </div>
+            </router-link>
           </q-card>
         </div>
       </div>
@@ -127,5 +118,15 @@ onMounted(fetchGames)
 .game-result {
   background-color: rgba(255, 255, 255, 0.1);
   box-shadow: 5px 5px 10px black;
+}
+
+.no-decoration {
+  text-decoration: none; /* Removes underline from the link itself */
+  color: inherit; /* Ensures the text color stays normal */
+  display: block; /* Ensures it behaves like a block element */
+}
+
+.no-decoration * {
+  text-decoration: none !important; /* Removes underline from all child elements */
 }
 </style>
