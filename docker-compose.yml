@@ -22,7 +22,7 @@ services:
 
   # --- BACKEND API ---
   api:
-    image: ghcr.io/decksettings/deck-verified-api:latest
+    #image: ghcr.io/decksettings/deck-verified-api:latest
     build:
       context: .
       dockerfile: ./packages/backend/docker/Dockerfile
@@ -43,13 +43,19 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Missing Redis Password}
+    healthcheck:
+      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9022/deck-verified/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     #volumes:
     # NOTE: Ensure you run 'npm install' first due to the ./backend volume mounted into the container.
     #  - ./:/app/
 
   # --- FRONTEND ---
   web:
-    image: ghcr.io/decksettings/deck-verified-web:latest
+    #image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
       dockerfile: ./packages/frontend/docker/Dockerfile
@@ -59,6 +65,12 @@ services:
       - api
     networks:
       - private-net
+    healthcheck:
+      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9021/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     #volumes:
     # NOTE: Ensure you run 'npm install && npm run build' first due to the ./dist/spa volume mounted into the container.
     #  - ./dist/spa:/usr/share/nginx/html/deck-verified
