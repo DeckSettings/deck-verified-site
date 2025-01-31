@@ -232,8 +232,6 @@ services:
 
         #### -- Main Service
         - "traefik.http.services.deck-verified-web.loadbalancer.server.port=9021"
-        - "traefik.http.services.deck-verified-web.loadbalancer.healthcheck.path=/health"
-        - "traefik.http.services.deck-verified-web.loadbalancer.healthcheck.interval=10s"
         - "traefik.http.routers.deck-verified-web.entrypoints=web"
         # Configure router domain
         - "traefik.http.routers.deck-verified-web.rule=${TRAEFIK_ROUTE_RULE_WEB}"
@@ -247,12 +245,6 @@ services:
     networks:
       - swarm-public
       - private-net
-    healthcheck:
-      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9021/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
     logging:
       driver: fluentd
       options:
