@@ -28,7 +28,7 @@ process.on('SIGINT', () => {
 const app = express()
 
 // Trust the first reverse proxy
-app.set('trust proxy', 1)
+app.set('trust proxy', true)
 
 // Apply some production security hardening
 if (config.nodeEnv === 'production') {
@@ -68,6 +68,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       duration_in_ms: timeTaken.toFixed(3),
       message: message,
       x_forwarded_for: req.headers['x-forwarded-for'] || '',
+      x_forwarded_proto: req.headers['x-forwarded-proto'] || '',
       method: req.method,
       path: req.originalUrl,
       status: res.statusCode,
