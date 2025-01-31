@@ -28,7 +28,9 @@ process.on('SIGINT', () => {
 const app = express()
 
 // Trust the first reverse proxy
-app.set('trust proxy', true)
+if (config.proxyCount > 0) {
+  app.set('trust proxy', config.proxyCount)
+}
 
 // Apply some production security hardening
 if (config.nodeEnv === 'production') {
@@ -92,8 +94,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  * @returns {object[]} 200 - Service is healthy.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/health', async (_req: Request, res: Response) => {
+app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
   res.status(200).send('OK')
+  res.status(204).json({
+    status: 'OK',
+    request_ip: req.ip
+  })
 })
 
 /**

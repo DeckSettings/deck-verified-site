@@ -28,6 +28,7 @@ const config = {
   redisPort: parseInt(process.env.REDIS_PORT || '6379', 10),
   redisPassword: process.env.REDIS_PASSWORD || 'mySecretPassword',
   defaultCacheTime: parseInt(process.env.DEFAULT_CACHE_TIME || '600', 10),
+  proxyCount: parseInt(process.env.REVERSE_PROXY_COUNT || '0', 10),
   enableRateLimiter: (process.env.DISABLE_RATE_LIMITER !== 'true'),
   runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true')
 }
