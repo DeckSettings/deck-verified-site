@@ -67,7 +67,7 @@
 
 <style scoped>
 .background-container {
-  background-image: linear-gradient(to top, var(--q-dark) 50%, transparent), url('hero-background2.jpg');
+  background-image: linear-gradient(to top, var(--q-dark) 50%, transparent), url('/hero-background2.jpg');
   background-size: cover;
   background-position: center;
   position: fixed;
