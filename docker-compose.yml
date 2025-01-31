@@ -14,23 +14,23 @@ services:
     networks:
       - private-net
     ports:
-      - '6379:6379/tcp'
+      - "6379:6379/tcp"
     environment:
       REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?Missing Redis Password} --protected-mode yes
     volumes:
       - redis-cache:/data
 
   # --- BACKEND API ---
-  # NOTE: Ensure you run 'npm install' first due to the ./backend volume mounted into the container.
   api:
     image: ghcr.io/decksettings/deck-verified-api:latest
     build:
       context: .
       dockerfile: ./packages/backend/docker/Dockerfile
-    user: '1000:1000'
-    command: npm run watch:backend
+    user: "1000:1000"
+    #command: npm run watch:backend
+    command: npm run serve
     ports:
-      - '9022:9022'
+      - "9022:9022"
     depends_on:
       - redis
     networks:
@@ -43,21 +43,22 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Missing Redis Password}
-    volumes:
-      - ./:/app/
+    #volumes:
+    # NOTE: Ensure you run 'npm install' first due to the ./backend volume mounted into the container.
+    #  - ./:/app/
 
   # --- FRONTEND ---
-  # NOTE: Ensure you run 'npm install && npm run build' first due to the ./dist/spa volume mounted into the container.
   web:
     image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
       dockerfile: ./packages/frontend/docker/Dockerfile
     ports:
-      - '9021:9021'
+      - "9021:9021"
     depends_on:
       - api
     networks:
       - private-net
-    volumes:
-      - ./dist/spa:/usr/share/nginx/html/deck-verified
+    #volumes:
+    # NOTE: Ensure you run 'npm install && npm run build' first due to the ./dist/spa volume mounted into the container.
+    #  - ./dist/spa:/usr/share/nginx/html/deck-verified

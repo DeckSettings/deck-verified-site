@@ -17,6 +17,7 @@ interface ExtendedGameReport extends GameReport {
 }
 
 const route = useRoute()
+
 const appId = ref<string | null>(null)
 const gameName = ref<string>('')
 const gameData = ref<GameDetails | null>(null)

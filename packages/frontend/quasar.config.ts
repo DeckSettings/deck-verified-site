@@ -49,7 +49,7 @@ export default defineConfig((ctx) => {
         // extendTsConfig (tsConfig) {}
       },
 
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
+      vueRouterMode: 'history', // available values: 'hash', 'history'
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -103,7 +103,7 @@ export default defineConfig((ctx) => {
           // Environments:
           //  - Local: 'http://localhost:9022'
           //  - Prod: 'https://deckverified.games'
-          target: 'https://deckverified.games',
+          target: 'http://localhost:9022',
           changeOrigin: true,   // Modify the origin to match the target's origin (required to fetch from CDN)
           secure: false         // Disable SSL certificate validation (as cert will not be "localhost")
         }
@@ -129,7 +129,9 @@ export default defineConfig((ctx) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: []
+      plugins: [
+        'Meta'
+      ]
     },
 
     // animations: 'all', // --- includes all animations

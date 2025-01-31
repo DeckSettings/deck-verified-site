@@ -1,4 +1,5 @@
 import express from 'express'
+import { format } from 'date-fns'
 import type { Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import config from './config'
@@ -480,6 +481,65 @@ app.get('/deck-verified/api/v1/report_form', async (_req: Request, res: Response
     logger.error('Error:', error)
     return res.status(500).json({ error: 'Failed to fetch labels' })
   }
+})
+
+/**
+ * Generate sitemap.xml dynamically based on games with reports.
+ *
+ * @returns {string} XML - Sitemap content.
+ */
+app.get('/sitemap.xml', async (req: Request, res: Response) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    const lastModDate = format(new Date(), 'yyyy-MM-dd') // Current date for lastmod
+    const staticPages = [
+      { loc: `${baseUrl}/`, priority: '1.0' },
+      { loc: `${baseUrl}/deck-verified/games-with-reports`, priority: '0.8' }
+    ]
+
+    // Fetch all games with reports from RedisSearch
+    const gamesWithReports = await getGamesWithReports(0, 500) // Limit 500
+    const gamePages = gamesWithReports
+      .filter((game) => game.appId) // Ensure appId exists
+      .map((game) => ({
+        loc: `${baseUrl}/deck-verified/app/${game.appId}`,
+        priority: '0.7'
+      }))
+
+    // Construct XML sitemap
+    const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${[...staticPages, ...gamePages]
+      .map(
+        (page) => `  <url>
+    <loc>${page.loc}</loc>
+    <lastmod>${lastModDate}</lastmod>
+    <priority>${page.priority}</priority>
+  </url>`
+      )
+      .join('\n')}
+</urlset>`
+
+    res.header('Content-Type', 'application/xml').send(sitemapXml)
+  } catch (error) {
+    logger.error('Error generating sitemap.xml:', error)
+    res.status(500).send('Failed to generate sitemap.xml')
+  }
+})
+
+/**
+ * Generate robots.txt dynamically.
+ *
+ * @returns {string} - Robots.txt content.
+ */
+app.get('/robots.txt', (req: Request, res: Response) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`
+  const robotsTxt = `User-agent: *
+Disallow:
+
+Sitemap: ${baseUrl}/sitemap.xml`
+
+  res.header('Content-Type', 'text/plain').send(robotsTxt)
 })
 
 // Custom 404 response

@@ -1,7 +1,7 @@
 {
   "name": "deck-verified-web",
   "version": "0.0.1",
-  "description": "A site for sharing deck settings",
+  "description": "Deck Verified is an open-source, community-driven database of performance reports, settings, and tweaks for handheld gaming PCs like the Steam Deck, ROG Ally, and Legion Go.",
   "productName": "Deck Verified",
   "author": "Josh Sunnex <josh@wisealpha.com>",
   "type": "module",
