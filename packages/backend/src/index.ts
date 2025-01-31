@@ -95,10 +95,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  * @returns {object} 500 - Internal server error.
  */
 app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol
+  const baseUrl = `${proto}://${req.get('host')}`
   res.status(200).json({
     status: 'OK',
+    baseUrl: baseUrl,
     remote_ip: req.ip,
     protocol: req.protocol,
+    proto: req.headers['x-forwarded-proto'] || req.protocol,
     x_forwarded_for: req.headers['x-forwarded-for'] || '',
     x_forwarded_proto: req.headers['x-forwarded-proto'] || '',
     x_forwarded_host: req.headers['x-forwarded-host'] || '',
@@ -547,7 +551,7 @@ ${[...staticPages, ...gamePages]
  *
  * @returns {string} - Robots.txt content.
  */
-app.get('/robots.txt', (req: Request, res: Response) => {
+app.get('/robots.txt', async (req: Request, res: Response) => {
   const proto = req.headers['x-forwarded-proto'] || req.protocol
   const baseUrl = `${proto}://${req.get('host')}`
   const robotsTxt = `User-agent: *
