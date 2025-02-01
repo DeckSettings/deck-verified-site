@@ -7,7 +7,7 @@ import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
 
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
-const gameBackground = ref('hero-background2.jpg')
+const gameBackground = ref(`${import.meta.env.BASE_URL}/hero-background2.jpg`)
 
 const fetchGames = async () => {
   gamesWithReports.value = await fetchGamesWithReports(0, 100)

@@ -15,24 +15,24 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const placeholderImage = props.shadow ? 'devices/device-placeholder-shadow.png' : 'devices/device-placeholder.png'
+    const placeholderImage = props.shadow ? `${import.meta.env.BASE_URL}/devices/device-placeholder-shadow.png` : `${import.meta.env.BASE_URL}/devices/device-placeholder.png`
 
     const imageSource = computed(() => {
       switch (props.device) {
         case 'Steam Deck LCD (64GB)':
-          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
         case 'Steam Deck LCD (256GB/512GB)':
-          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
         case 'Steam Deck OLED':
-          return props.shadow ? 'devices/valve-steam-deck-shadow.png' : 'devices/valve-steam-deck.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
         case 'ROG Ally Z1':
-          return props.shadow ? 'devices/asus-rog-ally-shadow.png' : 'devices/asus-rog-ally.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally.png`
         case 'ROG Ally Z1 Extreme':
-          return props.shadow ? 'devices/asus-rog-ally-shadow.png' : 'devices/asus-rog-ally.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally.png`
         case 'ROG Ally X':
-          return props.shadow ? 'devices/asus-rog-ally-x-shadow.png' : 'devices/asus-rog-ally-x.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-x-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally-x.png`
         case 'Legion Go':
-          return props.shadow ? 'devices/lenovo-legion-go-shadow.png' : 'devices/lenovo-legion-go.png'
+          return props.shadow ? `${import.meta.env.BASE_URL}/devices/lenovo-legion-go-shadow.png` : `${import.meta.env.BASE_URL}/devices/lenovo-legion-go.png`
         default:
           return placeholderImage
       }
