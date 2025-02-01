@@ -9,6 +9,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
 import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
+import { useMeta } from 'quasar'
 
 dayjs.extend(relativeTime)
 
@@ -234,6 +235,112 @@ watch(
 
 onMounted(async () => {
   await initGameData(route.params)
+})
+
+/*METADATA*/
+const metaTitle = computed(() => `${gameName.value || 'Game Report'}`)
+const metaDescription = computed(() => `Community reports for ${gameName.value} with settings and optimizations for handheld gaming PCs such as the Steam Deck, ROG Ally, and more.`)
+const metaLink = computed(() => `https://deckverified.games/${appId.value ? `app/${appId.value}` : `game/${encodeURIComponent(gameName.value)}`}`)
+const metaLogo = ref('https://deckverified.games/deck-verified/logo2.png')
+const metaImage = ref('')
+const metaAlt = ref('')
+const metaImageType = ref('')
+const metaImageWidth = ref('')
+const metaImageHeight = ref('')
+
+// Function to update image properties dynamically
+function updateImageProperties(url: string) {
+  const img = new Image()
+  img.onload = () => {
+    metaImageWidth.value = String(img.naturalWidth)
+    metaImageHeight.value = String(img.naturalHeight)
+
+    // Determine the MIME type from the URL's extension (as a simple heuristic)
+    if (url.match(/\.(jpe?g)$/i)) {
+      metaImageType.value = 'image/jpeg'
+    } else if (url.match(/\.png$/i)) {
+      metaImageType.value = 'image/png'
+    } else if (url.match(/\.webp$/i)) {
+      metaImageType.value = 'image/webp'
+    } else if (url.match(/\.gif$/i)) {
+      metaImageType.value = 'image/gif'
+    } else {
+      metaImageType.value = '' // Fallback if you cannot determine it
+    }
+  }
+  img.onerror = () => {
+    // Handle errors (set defaults, log error, etc.)
+    metaImageWidth.value = ''
+    metaImageHeight.value = ''
+    metaImageType.value = ''
+  }
+  img.src = url
+}
+
+// Watch for changes to the gameBanner URL
+watch(gameBanner, (newUrl) => {
+  if (newUrl) {
+    metaImage.value = newUrl
+    metaAlt.value = `${gameName.value} - Game Banner`
+    updateImageProperties(newUrl)
+  }
+})
+
+useMeta(() => {
+  return {
+    title: metaTitle.value,
+    titleTemplate: title => `${title} - Deck Verified`,
+    meta: {
+      description: { name: 'description', content: metaDescription.value },
+      keywords: {
+        name: 'keywords',
+        content: `${gameName.value}, Steam Deck, ROG Ally, performance, settings, compatibility, optimization`
+      },
+      equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
+
+      // Open Graph (Facebook, Discord, etc.)
+      ogTitle: { property: 'og:title', content: `${metaTitle.value} - Deck Verified` },
+      ogType: { property: 'og:type', content: 'website' },
+      ogImage: { property: 'og:image', content: metaImage.value },
+      ogImageType: { property: 'og:image:type', content: metaImageType.value },
+      ogImageAlt: { property: 'og:image:alt', content: metaAlt.value },
+      ogImageWidth: { property: 'og:image:width', content: metaImageWidth.value },
+      ogImageHeight: { property: 'og:image:height', content: metaImageHeight.value },
+      ogUrl: { property: 'og:url', content: metaLink.value },
+      ogDescription: { property: 'og:description', content: metaDescription.value },
+
+      // Twitter Card (X)
+      twitterCard: { name: 'twitter:card', content: 'summary_large_image' },
+      twitterSite: { name: 'twitter:site', content: '@jsunnex' },
+      twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
+      twitterDescription: { name: 'twitter:description', content: metaDescription.value },
+      twitterImage: { name: 'twitter:image', content: metaImage.value }
+    },
+
+    link: { canonical: { rel: 'canonical', href: metaLink.value } },
+
+    script: {
+      ldJson: {
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          'name': 'Deck Verified',
+          'url': metaLink.value,
+          'description': metaDescription.value,
+          'image': metaImage.value,
+          'publisher': {
+            '@type': 'Organization',
+            'name': 'Deck Verified',
+            'logo': {
+              '@type': 'ImageObject',
+              'url': metaLogo.value
+            }
+          }
+        })
+      }
+    }
+  }
 })
 </script>
 
