@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 
+const baseUrl = ref(`${import.meta.env.BASE_URL}`)
 </script>
 
 <template>
 
   <div class="background-container"
-       :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark) 50%, transparent), url('${import.meta.env.BASE_URL}/hero-background2.jpg')` }"></div>
+       :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark) 50%, transparent), url('${baseUrl}/hero-background2.jpg')` }"></div>
   <div class="background-container"></div>
   <div class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
     <div class="col-xs-12 col-md-6 text-left q-pt-md q-px-md q-pb-none">
@@ -50,7 +52,7 @@
       </div>
     </div>
     <div class="col-xs-12 col-md-6 q-pa-md q-pb-none flex flex-center gt-sm">
-      <img :src="`${import.meta.env.BASE_URL}/hero-image.png`" alt="Hero Image" class="hero-image">
+      <img :src="`${baseUrl}/hero-image.png`" alt="Hero Image" class="hero-image">
     </div>
     <div class="full-width row justify-center q-mb-lg q-px-md">
       <q-btn

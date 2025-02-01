@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, computed } from 'vue'
+import { defineComponent, computed, ref } from 'vue'
 
 
 export default defineComponent({
@@ -15,24 +15,25 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const placeholderImage = props.shadow ? `${import.meta.env.BASE_URL}/devices/device-placeholder-shadow.png` : `${import.meta.env.BASE_URL}/devices/device-placeholder.png`
+    const baseUrl = ref(`${import.meta.env.BASE_URL}`)
+    const placeholderImage = props.shadow ? `${baseUrl.value}/devices/device-placeholder-shadow.png` : `${baseUrl.value}/devices/device-placeholder.png`
 
     const imageSource = computed(() => {
       switch (props.device) {
         case 'Steam Deck LCD (64GB)':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
+          return props.shadow ? `${baseUrl.value}/devices/valve-steam-deck-shadow.png` : `${baseUrl.value}/devices/valve-steam-deck.png`
         case 'Steam Deck LCD (256GB/512GB)':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
+          return props.shadow ? `${baseUrl.value}/devices/valve-steam-deck-shadow.png` : `${baseUrl.value}/devices/valve-steam-deck.png`
         case 'Steam Deck OLED':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/valve-steam-deck-shadow.png` : `${import.meta.env.BASE_URL}/devices/valve-steam-deck.png`
+          return props.shadow ? `${baseUrl.value}/devices/valve-steam-deck-shadow.png` : `${baseUrl.value}/devices/valve-steam-deck.png`
         case 'ROG Ally Z1':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally.png`
+          return props.shadow ? `${baseUrl.value}/devices/asus-rog-ally-shadow.png` : `${baseUrl.value}/devices/asus-rog-ally.png`
         case 'ROG Ally Z1 Extreme':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally.png`
+          return props.shadow ? `${baseUrl.value}/devices/asus-rog-ally-shadow.png` : `${baseUrl.value}/devices/asus-rog-ally.png`
         case 'ROG Ally X':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/asus-rog-ally-x-shadow.png` : `${import.meta.env.BASE_URL}/devices/asus-rog-ally-x.png`
+          return props.shadow ? `${baseUrl.value}/devices/asus-rog-ally-x-shadow.png` : `${baseUrl.value}/devices/asus-rog-ally-x.png`
         case 'Legion Go':
-          return props.shadow ? `${import.meta.env.BASE_URL}/devices/lenovo-legion-go-shadow.png` : `${import.meta.env.BASE_URL}/devices/lenovo-legion-go.png`
+          return props.shadow ? `${baseUrl.value}/devices/lenovo-legion-go-shadow.png` : `${baseUrl.value}/devices/lenovo-legion-go.png`
         default:
           return placeholderImage
       }
