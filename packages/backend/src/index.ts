@@ -15,7 +15,12 @@ import {
   fetchProjectsByAppIdOrGameName, fetchRecentReports,
   fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema
 } from './github'
-import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails, generateImageLinksFromAppId } from './helpers'
+import {
+  fetchJosh5Avatar,
+  fetchSteamGameSuggestions,
+  fetchSteamStoreGameDetails,
+  generateImageLinksFromAppId
+} from './helpers'
 import { GameDetails, GameMetadata, GameReportForm, GameSearchResult } from '../../shared/src/game'
 
 // Log shutdown requests
@@ -107,6 +112,40 @@ app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
     referer: req.headers['referer'] || '-',
     user_agent: req.headers['user-agent'] || ''
   })
+})
+
+/**
+ * Fetch an image, log a metric, and return the image.
+ *
+ * @route GET /deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg
+ * @param {string} pluginName - The name of the plugin being tracked.
+ *
+ * @returns {image} 200 - Returns the requested image.
+ * @returns {object} 500 - Internal server error.
+ */
+app.get('/deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg', async (req: Request, res: Response) => {
+  const { pluginName } = req.params
+  const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
+  const userAgent = req.headers['user-agent'] || 'Unknown'
+
+  // Log the metric
+  logMetric('plugin_viewed', pluginName, {
+    request_ip: requestIp,
+    user_agent: userAgent
+  })
+
+  try {
+    const imageBuffer = await fetchJosh5Avatar()
+    if (!imageBuffer) {
+      return res.status(500).json({ error: 'Failed to fetch image' })
+    }
+    logger.info(`Serving image for plugin: ${pluginName}`)
+    res.setHeader('Content-Type', 'image/jpeg')
+    return res.send(imageBuffer)
+  } catch (error) {
+    logger.error('Error fetching image:', error)
+    return res.status(500).json({ error: 'Failed to fetch image' })
+  }
 })
 
 /**

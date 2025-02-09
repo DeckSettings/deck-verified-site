@@ -14,6 +14,42 @@ import {
   redisLookupSteamAppDetails,
   redisLookupSteamSearchSuggestions, storeGameInRedis
 } from './redis'
+import NodeCache from 'node-cache'
+
+/**
+ * TODO: Fill in this
+ */
+const imageCache = new NodeCache({ stdTTL: 3600 })
+export const fetchJosh5Avatar = async (): Promise<Buffer | null> => {
+  const image_url = 'https://avatars.githubusercontent.com/u/8370197'
+  logger.info(`Fetching image from GitHub`)
+  try {
+    // Check if image is in cache
+    const cachedImage = imageCache.get<Buffer>('avatar_image')
+    if (cachedImage) {
+      logger.info(`Serving cached image`)
+      return cachedImage
+    }
+
+    // Fetch image using native fetch()
+    logger.info(`Fetching image from GitHub`)
+    const response = await fetch(image_url)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+
+    // Cache the image in memory
+    imageCache.set('avatar_image', buffer)
+
+    // Return buffer
+    return buffer
+  } catch (error) {
+    logger.error('Error fetching image:', error)
+    return null
+  }
+}
 
 /**
  * Extracts the value associated with a specific heading from a markdown-like text.
