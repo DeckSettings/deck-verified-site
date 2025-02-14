@@ -388,7 +388,7 @@ useMeta(() => {
               <q-tooltip>View on Steam</q-tooltip>
             </q-btn>
             <q-btn v-if="appId" class="q-ma-md" round flat icon="fas fa-atom"
-                   :href="`https://www.protondb.com/app/${appId}`" target="_blank" color="white">
+                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`" target="_blank" color="white">
               <q-tooltip>View on ProtonDB</q-tooltip>
             </q-btn>
           </div>
