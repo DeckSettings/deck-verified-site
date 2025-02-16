@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -12,7 +12,35 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const parsedMarkdown = marked(props.markdown)
+    const youTubeVideoId = ref('')
+
+    function extractYouTubeId(url: string): string | null {
+      const regex = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&\n?#]+)/
+      const match = url.match(regex)
+      return match && match[1] !== undefined ? match[1] : null
+    }
+
+    // Create a custom renderer for marked
+    const renderer = new marked.Renderer()
+
+    // Override the default link behavior. Use this to extract custom link data for handling outside of marked
+    renderer.link = function({ href, title, tokens }): string {
+      // Extract the text content from tokens
+      const text = tokens?.reduce((acc, token) => acc + ('text' in token ? token.text : ''), '') || ''
+      // Check if the URL is a YouTube link
+      if (/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(href)) {
+        const videoId = extractYouTubeId(href)
+        if (videoId) {
+          youTubeVideoId.value = videoId
+          return ''
+        }
+      }
+      // Fallback for regular links
+      const titleAttr = title ? ` title="${title}"` : ''
+      return `<a href="${href}"${titleAttr}>${text}</a>`
+    }
+
+    const parsedMarkdown = marked(props.markdown, { renderer })
     const sanitisedParsedMarkdown = DOMPurify.sanitize(String(parsedMarkdown), {
       ALLOWED_TAGS: [
         'div',
@@ -41,7 +69,8 @@ export default defineComponent({
 
     return {
       parsedMarkdown,
-      sanitisedParsedMarkdown
+      sanitisedParsedMarkdown,
+      youTubeVideoId
     }
   }
 })
@@ -51,6 +80,13 @@ export default defineComponent({
 <template>
   <div>
     <div v-html="sanitisedParsedMarkdown" class="report-markdown q-ml-md-sm"></div>
+    <iframe v-if="youTubeVideoId"
+            style="width: 100%; max-width: 800px; aspect-ratio: 16 / 9;"
+            :src="`https://www.youtube.com/embed/${youTubeVideoId}`" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+      <a :href="`https://youtu.be/${youTubeVideoId}`">https://youtu.be/{{ youTubeVideoId }}</a>
+    </iframe>
   </div>
 </template>
 
