@@ -1,6 +1,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { marked } from 'marked'
+import type { Token, Tokens } from 'marked'
 import DOMPurify from 'dompurify'
 
 export default defineComponent({
@@ -24,9 +25,20 @@ export default defineComponent({
     const renderer = new marked.Renderer()
 
     // Override the default link behavior. Use this to extract custom link data for handling outside of marked
-    renderer.link = function({ href, title, tokens }): string {
+    const defaultLinkRenderer = renderer.link
+    renderer.link = function(link: Tokens.Link): string {
+      const { href, title, tokens } = link
       // Extract the text content from tokens
       const text = tokens?.reduce((acc, token) => acc + ('text' in token ? token.text : ''), '') || ''
+      // If any token has raw content with "shields.io", return default link rendering
+      if (
+        tokens.some((token: Token) =>
+          (token.raw && token.raw.includes('shields.io')) ||
+          (token.type === 'image' && token.href && token.href.includes('shields.io'))
+        )
+      ) {
+        return defaultLinkRenderer.call(this, link)
+      }
       // Check if the URL is a YouTube link
       if (/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(href)) {
         const videoId = extractYouTubeId(href)
@@ -85,7 +97,7 @@ export default defineComponent({
             :src="`https://www.youtube.com/embed/${youTubeVideoId}`" frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen>
-      <a :href="`https://youtu.be/${youTubeVideoId}`">https://youtu.be/{{ youTubeVideoId }}</a>
+      Loading embedded YT player for link https://youtu.be/{{ youTubeVideoId }}
     </iframe>
   </div>
 </template>
