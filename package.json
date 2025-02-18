@@ -6,6 +6,9 @@
     "packages/*"
   ],
   "scripts": {
+    "clean": "npm run clean:backend && npm run clean:frontend && rm -rf ./node_modules",
+    "clean:backend": "cd packages/backend && rm -rf ./dist ./node_modules",
+    "clean:frontend": "cd packages/frontend && rm -rf ./dist ./node_modules",
     "watch:backend": "cd packages/backend && npm run watch",
     "watch:frontend": "cd packages/frontend && npm run dev",
     "build": "npm run build:backend && npm run build:frontend",

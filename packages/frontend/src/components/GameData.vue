@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
-import type { GameReport, GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
+import type { GameReport, GameDetails, GitHubIssueLabel, GameReportData } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -22,6 +22,7 @@ const route = useRoute()
 const appId = ref<string | null>(null)
 const gameName = ref<string>('')
 const gameData = ref<GameDetails | null>(null)
+const highestRatedGameReport = ref<GameReportData | null>(null)
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
@@ -151,6 +152,18 @@ watch(
       reports = reports.filter(report =>
         report.labels.some(label => label.name === launcher)
       )
+    }
+
+    // Extract the data from the highest rated report
+    const popularReport = reports.sort((a, b) => {
+      const aLikes =
+        a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+      const bLikes =
+        b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+      return aLikes - bLikes
+    })
+    if (popularReport && popularReport.length > 0 && popularReport[0] !== undefined) {
+      highestRatedGameReport.value = popularReport[0].data
     }
 
     // Sort logic
@@ -401,8 +414,16 @@ useMeta(() => {
                    icon="fas fa-file-invoice"
                    label="Submit Report"
                    @click="submitReportDialog = true" />
-            <q-dialog v-model="submitReportDialog">
-              <ReportForm :gameName="gameName" />
+            <q-dialog class="q-ma-none q-pa-none report-dialog"
+                      full-height
+                      :full-width="$q.screen.lt.md"
+                      :maximized="$q.screen.lt.md"
+                      v-model="submitReportDialog">
+              <ReportForm :gameName="gameName"
+                          :appId="appId ? appId : ''"
+                          :gameBanner="gameBanner ? gameBanner : ''"
+                          :gameBackground="gameBackground ? gameBackground : ''"
+                          :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}" />
             </q-dialog>
           </div>
         </div>

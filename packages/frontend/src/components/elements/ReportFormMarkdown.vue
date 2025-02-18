@@ -1,6 +1,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 
 export default defineComponent({
@@ -13,8 +14,36 @@ export default defineComponent({
   },
   setup(props) {
     const parsedMarkdown = marked(props.markdown)
+    const sanitisedParsedMarkdown = DOMPurify.sanitize(String(parsedMarkdown), {
+      ALLOWED_TAGS: [
+        'div',
+        'span',
+        'code',
+        'p',
+        'strong',
+        'del',
+        'em',
+        'sup',
+        'mark',
+        'b',
+        'a',
+        'img',
+        'ul',
+        'li',
+        'ol',
+        'h4',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6'
+      ],
+      ALLOWED_ATTR: ['class', 'src', 'href', 'alt']
+    })
     return {
-      parsedMarkdown
+      parsedMarkdown,
+      sanitisedParsedMarkdown
     }
   }
 })
@@ -23,7 +52,7 @@ export default defineComponent({
 
 <template>
   <div>
-    <div v-html="parsedMarkdown" class="form-markdown q-ml-md-sm" />
+    <div v-html="sanitisedParsedMarkdown" class="form-markdown q-ml-md-sm" />
   </div>
 </template>
 
@@ -38,6 +67,7 @@ export default defineComponent({
   font-size: inherit;
   font-weight: bold;
   line-height: inherit;
+  margin-top: 0;
 }
 
 ::v-deep(.form-markdown h1) {
