@@ -123,16 +123,18 @@ export interface GitHubReportIssueBodySchema {
   description: string;
   type: 'object';
   properties: {
-    [key: string]: {
-      description: string;
-      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-      minLength?: number;
-      maxLength?: number;
-      enum?: string[];
-      exclusiveMinimum?: number;
-    };
+    [key: string]: GitHubReportIssueBodySchemaProperty;
   };
   required?: string[];
+}
+
+export interface GitHubReportIssueBodySchemaProperty {
+  description: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  minLength?: number;
+  maxLength?: number;
+  enum?: string[];
+  exclusiveMinimum?: number;
 }
 
 export interface GitHubUser {

@@ -1,7 +1,12 @@
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue'
 import { gameReportTemplate } from 'src/services/gh-reports'
-import type { GameReportForm, GitHubIssueTemplateBody } from '../../../shared/src/game'
+import type {
+  GameReportForm,
+  GitHubIssueTemplateBody,
+  GitHubReportIssueBodySchema,
+  GitHubReportIssueBodySchemaProperty
+} from '../../../shared/src/game'
 import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
 import { useQuasar } from 'quasar'
@@ -71,7 +76,6 @@ export default defineComponent({
             const options = field.attributes.options || []
             if (field.attributes.default !== undefined && options.length > 0) {
               formValues.value[field.id] = String(options[field.attributes.default]) || String(options[0])
-              console.log(String(options[field.attributes.default]))
             }
           }
           // Add additional data
@@ -159,13 +163,93 @@ export default defineComponent({
       return required ? `${label} *` : label
     }
 
-    const getFieldRules = (validations: { required?: boolean } | undefined) => {
+    const runFieldRules = (field: GitHubIssueTemplateBody): Array<(value: string | number | null) => true | string> => {
       const rules: Array<(value: string | number | null) => true | string> = []
-
-      if (validations?.required) {
-        rules.push((value) => !!value || `(THIS FIELD IS REQUIRED)`)
+      if (!formData.value || !formData.value.schema) {
+        return rules
       }
 
+      // Schema defined on GitHub
+      const schema = formData.value.schema as GitHubReportIssueBodySchema
+
+      // Additional Regex rules
+      const customRegexRules: Record<string, RegExp> = {
+        // undervolt_applied should either be blank or match "number/number/number"
+        undervolt_applied: /^$|^\d+\/\d+\/\d+$/
+      }
+
+      // Only validate non-markdown fields that have an id.
+      if (field.type !== 'markdown' && field.id) {
+        // Use the field label if available, otherwise fallback to field.id.
+        const label = field.attributes && field.attributes.label ? field.attributes.label : field.id
+
+        // TODO: First add custom rules before evaluating the others
+        const regexRule = customRegexRules[field.id]
+        if (regexRule) {
+          rules.push(value => {
+            // Allow blank values.
+            if (value === null || value === undefined || String(value).trim() === '') {
+              return true
+            }
+            return regexRule.test(String(value)) || `${label} must be in the specified format.`
+          })
+        }
+
+        // Lookup the corresponding schema using the label.
+        const schemaProp = schema.properties[label] as GitHubReportIssueBodySchemaProperty | undefined
+        if (!schemaProp) {
+          return rules // No schema defined for this field.
+        }
+
+        if (schemaProp.type === 'string') {
+          const minLength = schemaProp.minLength
+          if (minLength) {
+            let minLengthRuleMessage = `${label} must be at least ${minLength} characters long.`
+            if (gameSettingsFields.includes(field.id) && field.id in gameSettingsUpdates.value) {
+              minLengthRuleMessage = `${label} must contain at least one option.`
+            }
+            rules.push(value =>
+              String(value).length >= minLength ||
+              minLengthRuleMessage
+            )
+          }
+          const maxLength = schemaProp.maxLength
+          if (maxLength) {
+            rules.push(value =>
+              String(value).length <= maxLength ||
+              `${label} must not exceed ${maxLength} characters.`
+            )
+          }
+          const propEnum = schemaProp.enum
+          if (propEnum) {
+            rules.push(value =>
+              propEnum.includes(String(value)) ||
+              `${label} must be one of ${propEnum.join(', ')}.`
+            )
+          }
+        } else if (schemaProp.type === 'number') {
+          rules.push(value => {
+            const num = Number(value)
+            return !isNaN(num) || `${label} must be a valid number.`
+          })
+          const exclusiveMinimum = schemaProp.exclusiveMinimum
+          if (exclusiveMinimum !== undefined) {
+            rules.push(value => {
+              const num = Number(value)
+              return num > exclusiveMinimum ||
+                `${label} must be greater than ${exclusiveMinimum}.`
+            })
+          }
+          const propEnum = schemaProp.enum
+          if (propEnum) {
+            rules.push(value => {
+              const num = Number(value)
+              return propEnum.includes(String(num)) ||
+                `${label} must be one of ${propEnum.join(', ')}.`
+            })
+          }
+        }
+      }
       return rules
     }
 
@@ -174,41 +258,30 @@ export default defineComponent({
         return true
       }
       const errors: Record<string, string>[] = []
-      const schema = formData.value.schema
-      const properties = schema.properties
-      const requiredFields: string[] = schema.required || []
 
-      // For each property in the schema, if it is required then check formValues.
-      Object.entries(properties).forEach(([propName, propSchema]) => {
-        if (requiredFields.includes(propName)) {
-          // Convert the property name to the expected field id (e.g. "Game Name" -> "game_name")
-          const fieldId = propName.toLowerCase().replace(/\s+/g, '_')
-          // Get the corresponding value from formValues.
-          let value = formValues.value[fieldId]
-          let isGameSettings = 'false'
-          // Check if this was for game settings. If it is, update value from that
-          if (gameSettingsFields.includes(fieldId) && fieldId in gameSettingsUpdates.value) {
-            value = gameSettingsUpdates.value[fieldId]
-            console.log(value)
-            isGameSettings = 'true'
-          }
-          if (value === null || value === undefined || String(value).trim() === '') {
-            errors.push({
-              isGameSettings: isGameSettings,
-              message: `${propName} is required.`
-            })
-          } else if (
-            propSchema.type === 'string' &&
-            propSchema.minLength &&
-            String(value).length < propSchema.minLength
-          ) {
-            errors.push({
-              isGameSettings: isGameSettings,
-              message: `${propName} must be at least ${propSchema.minLength} characters long.`
+      if (formData.value && formData.value.template && formData.value.template.body) {
+        formData.value.template.body.forEach(field => {
+          if (field.type !== 'markdown' && field.id) {
+            // Retrieve the field's value.
+            const fieldId = field.id
+            let value = formValues.value[fieldId]
+            let isGameSettings = 'false'
+            if (gameSettingsFields.includes(fieldId) && fieldId in gameSettingsUpdates.value) {
+              value = gameSettingsUpdates.value[fieldId]
+              isGameSettings = 'true'
+            }
+            // Get the rules for this field.
+            const rules = runFieldRules(field)
+            // Run each rule and collect errors.
+            rules.forEach(rule => {
+              const result = rule(value ?? '')
+              if (result !== true) {
+                errors.push({ isGameSettings, message: result })
+              }
             })
           }
-        }
-      })
+        })
+      }
 
       gameSettingsInvalid.value = false
       if (errors.length > 0) {
@@ -293,7 +366,7 @@ export default defineComponent({
       gameSettingsFields,
       getSections,
       getLabelWithAsterisk,
-      getFieldRules,
+      runFieldRules,
       gameSettingsInvalid,
       handleGameSettingsUpdate,
       reportForm,
@@ -436,7 +509,7 @@ export default defineComponent({
                         v-model="formValues[field.id]"
                         :type="fieldInputTypes[field.attributes.label] == 'number' ? 'number' : 'text'"
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
-                        :rules="getFieldRules(field.validations)"
+                        :rules="runFieldRules(field)"
                       />
                     </template>
                     <!-- Render dropdown fields -->
@@ -473,7 +546,7 @@ export default defineComponent({
                         style="width: 100%"
                         v-model="formValues[field.id]"
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
-                        :rules="getFieldRules(field.validations)"
+                        :rules="runFieldRules(field)"
                       />
                     </template>
                   </div>
@@ -482,6 +555,7 @@ export default defineComponent({
                       <GameSettingsFields
                         :fieldData="field"
                         :previousData="previousSubmission?.[field.id] || ''"
+                        :invalidData="gameSettingsInvalid"
                         @update="handleGameSettingsUpdate(field.id, $event)"
                       />
                     </div>
