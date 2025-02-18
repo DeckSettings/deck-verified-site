@@ -138,13 +138,15 @@ export const parseReportBody = async (
     }
 
     // Check for required fields and log warnings for missing ones
-    for (const requiredField of schema.required) {
-      const snakeCaseField = requiredField
-        .toLowerCase()
-        .replace(/\s+/g, '_')
-        .replace(/[^\w_]/g, '')
-      if (!(snakeCaseField in data)) {
-        logger.warn(`Missing required field: ${requiredField}`)
+    if (schema.required) {
+      for (const requiredField of schema.required) {
+        const snakeCaseField = requiredField
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^\w_]/g, '')
+        if (!(snakeCaseField in data)) {
+          logger.warn(`Missing required field: ${requiredField}`)
+        }
       }
     }
 

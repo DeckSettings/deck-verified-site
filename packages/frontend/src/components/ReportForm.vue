@@ -183,7 +183,7 @@ export default defineComponent({
         // Use the field label if available, otherwise fallback to field.id.
         const label = field.attributes && field.attributes.label ? field.attributes.label : field.id
 
-        // TODO: First add custom rules before evaluating the others
+        // First add custom rules before evaluating the others
         const regexRule = customRegexRules[field.id]
         if (regexRule) {
           rules.push(value => {
