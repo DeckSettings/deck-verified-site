@@ -4,6 +4,7 @@ import { gameReportTemplate } from 'src/services/gh-reports'
 import type { GameReportForm, GitHubIssueTemplateBody } from '../../../shared/src/game'
 import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
+import { useQuasar } from 'quasar'
 
 
 export default defineComponent({
@@ -31,10 +32,14 @@ export default defineComponent({
     }
   },
   setup(props) {
+    const $q = useQuasar()
+
+    const reportForm = ref()
     const formData = ref<GameReportForm | null>(null)
     const formValues = ref<Record<string, string | number | null>>({})
     const fieldInputTypes = ref<Record<string, string>>({})
     //const gameDisplaySettings = ref<string | null>(null)
+    const gameSettingsInvalid = ref<boolean>(false)
 
     // List of field ids whose values should be overwritten from previousSubmission
     const initOverwriteFields = ['launcher']
@@ -124,6 +129,32 @@ export default defineComponent({
       return sections
     }
 
+    const gameSettingsUpdates = ref<Record<string, string>>({})
+    const handleGameSettingsUpdate = (
+      fieldId: string,
+      newValue: { title: string; items: { key: string; value: string }[] }[]
+    ) => {
+      gameSettingsUpdates.value[fieldId] = newValue
+        // Only include sections that have at least one item
+        .filter(section => section.items.length > 0)
+        .map(section => {
+          const itemsMarkdown = section.items
+            .filter(item => item.key && item.key.trim() !== '' && item.value && item.value.trim() !== '')
+            .map(item => `- **${item.key}:** ${item.value}`)
+            .join('\n')
+          // If no items were found, return an empty string
+          if (itemsMarkdown.trim() === '') {
+            return ''
+          }
+          // If the section title is non-empty, prepend it as a level-4 header.
+          // Otherwise, just return the items' markdown.
+          return section.title.trim() !== ''
+            ? `#### ${section.title}\n\n${itemsMarkdown}\n\n`
+            : itemsMarkdown
+        })
+        .join('\n')
+    }
+
     const getLabelWithAsterisk = (label: string, required: boolean | undefined): string => {
       return required ? `${label} *` : label
     }
@@ -138,29 +169,77 @@ export default defineComponent({
       return rules
     }
 
+    const validateForm = (): boolean => {
+      if (!formData.value || !formData.value.schema) {
+        return true
+      }
+      const errors: Record<string, string>[] = []
+      const schema = formData.value.schema
+      const properties = schema.properties
+      const requiredFields: string[] = schema.required || []
 
-    const gameSettingsUpdates = ref<Record<string, string>>({})
-    const handleGameSettingsUpdate = (
-      fieldId: string,
-      newValue: { title: string; items: { key: string; value: string }[] }[]
-    ) => {
-      gameSettingsUpdates.value[fieldId] = newValue
-        // Only include sections that have at least one item
-        .filter(section => section.items.length > 0)
-        .map(section => {
-          const itemsMarkdown = section.items
-            .map(item => `- **${item.key}:** ${item.value}`)
-            .join('\n')
-          // If the section title is non-empty, prepend it as a level-4 header.
-          // Otherwise, just return the items markdown.
-          return section.title.trim() !== ''
-            ? `#### ${section.title}\n\n${itemsMarkdown}`
-            : itemsMarkdown
+      // For each property in the schema, if it is required then check formValues.
+      Object.entries(properties).forEach(([propName, propSchema]) => {
+        if (requiredFields.includes(propName)) {
+          // Convert the property name to the expected field id (e.g. "Game Name" -> "game_name")
+          const fieldId = propName.toLowerCase().replace(/\s+/g, '_')
+          // Get the corresponding value from formValues.
+          let value = formValues.value[fieldId]
+          let isGameSettings = 'false'
+          // Check if this was for game settings. If it is, update value from that
+          if (gameSettingsFields.includes(fieldId) && fieldId in gameSettingsUpdates.value) {
+            value = gameSettingsUpdates.value[fieldId]
+            console.log(value)
+            isGameSettings = 'true'
+          }
+          if (value === null || value === undefined || String(value).trim() === '') {
+            errors.push({
+              isGameSettings: isGameSettings,
+              message: `${propName} is required.`
+            })
+          } else if (
+            propSchema.type === 'string' &&
+            propSchema.minLength &&
+            String(value).length < propSchema.minLength
+          ) {
+            errors.push({
+              isGameSettings: isGameSettings,
+              message: `${propName} must be at least ${propSchema.minLength} characters long.`
+            })
+          }
+        }
+      })
+
+      gameSettingsInvalid.value = false
+      if (errors.length > 0) {
+        // You might use $q.notify for a nicer UX; here we just use alert.
+        errors.forEach(error => {
+          if (error.isGameSettings === 'true') {
+            gameSettingsInvalid.value = true
+          }
+          console.error(`Validation error: ${error.message}`)
+          $q.notify({
+            type: 'negative',
+            message: error.message as string
+          })
         })
-        .join('\n\n')
+        return false
+      }
+      return true
     }
 
     const submitForm = () => {
+      // First trigger QForm validation styling:
+      if (!reportForm.value.validate() || !validateForm()) {
+        // QForm.validate() will mark invalid fields with error styling.
+        return
+      }
+
+      // Validate the form values against the schema.
+      if (!validateForm()) {
+        return
+      }
+
       // Build an array to accumulate markdown sections.
       const sections: string[] = []
 
@@ -172,7 +251,6 @@ export default defineComponent({
           if (field.type !== 'markdown' && field.id) {
             // Use the field label if available, otherwise default to the id.
             const label = field.attributes && field.attributes.label ? field.attributes.label : field.id
-
             // Get the corresponding value from formValues.
             let value = formValues.value[field.id]
             // Check if this was for game settings. If it is, update value from that
@@ -216,7 +294,9 @@ export default defineComponent({
       getSections,
       getLabelWithAsterisk,
       getFieldRules,
+      gameSettingsInvalid,
       handleGameSettingsUpdate,
+      reportForm,
       submitForm
     }
   }
@@ -286,135 +366,139 @@ export default defineComponent({
     <q-card-section style="max-height: 90vh; overflow-y: auto;" class="scroll">
       <q-spinner v-if="!formData" />
       <div v-else>
-        <div v-for="(section, sIndex) in getSections()" :key="sIndex">
-          <div class="row">
-            <div class="col-md-4">
-              <template v-if="section.markdown && section.markdown.includes('## In-Game Settings')">
-                <div class="in-game-settings-head">
-                  <h2>In-Game Settings</h2>
-                  <p>
-                    Add your game settings options here.
-                    Match the in-game format as closely as possible.
+        <q-form ref="reportForm" @submit.prevent="submitForm">
+          <div v-for="(section, sIndex) in getSections()" :key="sIndex">
+            <div class="row">
+              <div class="col-md-4">
+                <template v-if="section.markdown && section.markdown.includes('## In-Game Settings')">
+                  <div class="in-game-settings-head">
+                    <h2>In-Game Settings</h2>
+                    <p>
+                      Add your game settings options here.
+                      Match the in-game format as closely as possible.
 
-                    <br />
-                    <br />
-                    Organize your options into sections by clicking the
-                    <q-btn
-                      dense
-                      size="xs"
-                      :ripple="false"
-                      color="primary"
-                      class="q-ma-none cursor-inherit">
-                      <q-icon left size="3em" name="add_circle" />
-                      <div>ADD SECTION</div>
-                    </q-btn>
-                    “ADD SECTION” button.
-                    <br />
-                    <br />
-                    You can reorder options or move them between sections by dragging the
-                    <q-icon name="drag_handle" color="secondary" size="16px" inline />
-                    icon.
-                    <br />
-                    <br />
-                    Use the
-                    <q-btn
-                      dense
-                      size="xs"
-                      :ripple="false"
-                      color="primary"
-                      class="q-ma-none cursor-inherit">
-                      <q-icon left size="3em" name="add_circle" />
-                      <div>ADD OPTION</div>
-                    </q-btn>
-                    “ADD OPTION” button to insert new settings.
-                    <br />
-                    <br />
-                    If the game lacks <strong>"Display"</strong> or <strong>"Graphics"</strong> options,
-                    list resolution details under the <strong>Game Display Settings</strong> section.
-                    If settings aren't separated, include all details under the Display section below.
-                  </p>
-                </div>
-              </template>
-              <template v-else>
-                <ReportFormMarkdown :markdown="section.markdown" />
-              </template>
-            </div>
-            <div class="col-12 col-md-8">
-              <div v-for="(field, fIndex) in section.fields" :key="fIndex" class="q-mb-md q-ml-lg">
-                <div v-if="'id' in field && !gameSettingsFields.includes(field.id)">
-                  <!-- Render input fields -->
-                  <template v-if="field.type === 'input'">
-                    <div class="text-h6">
-                      {{ field.attributes.label }}
+                      <br />
+                      <br />
+                      Organize your options into sections by clicking the
+                      <q-btn
+                        dense
+                        size="xs"
+                        :ripple="false"
+                        color="primary"
+                        class="q-ma-none cursor-inherit">
+                        <q-icon left size="3em" name="add_circle" />
+                        <div>ADD SECTION</div>
+                      </q-btn>
+                      “ADD SECTION” button.
+                      <br />
+                      <br />
+                      You can reorder options or move them between sections by dragging the
+                      <q-icon name="drag_handle" color="secondary" size="16px" inline />
+                      icon.
+                      <br />
+                      <br />
+                      Use the
+                      <q-btn
+                        dense
+                        size="xs"
+                        :ripple="false"
+                        color="primary"
+                        class="q-ma-none cursor-inherit">
+                        <q-icon left size="3em" name="add_circle" />
+                        <div>ADD OPTION</div>
+                      </q-btn>
+                      “ADD OPTION” button to insert new settings.
+                      <br />
+                      <br />
+                      If the game lacks <strong>"Display"</strong> or <strong>"Graphics"</strong> options,
+                      list resolution details under the <strong>Game Display Settings</strong> section.
+                      If settings aren't separated, include all details under the Display section below.
+                    </p>
+                  </div>
+                </template>
+                <template v-else>
+                  <ReportFormMarkdown :markdown="section.markdown" />
+                </template>
+              </div>
+              <div class="col-12 col-md-8">
+                <div v-for="(field, fIndex) in section.fields" :key="fIndex" class="q-mb-md q-ml-lg">
+                  <div v-if="'id' in field && !gameSettingsFields.includes(field.id)">
+                    <!-- Render input fields -->
+                    <template v-if="field.type === 'input'">
+                      <div class="text-h6">
+                        {{ field.attributes.label }}
+                      </div>
+                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                        {{ field.attributes.description || '' }}
+                      </div>
+                      <q-input
+                        outlined filled
+                        v-model="formValues[field.id]"
+                        :type="fieldInputTypes[field.attributes.label] == 'number' ? 'number' : 'text'"
+                        :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
+                        :rules="getFieldRules(field.validations)"
+                      />
+                    </template>
+                    <!-- Render dropdown fields -->
+                    <template v-else-if="field.type === 'dropdown'">
+                      <div class="text-h6">
+                        {{ field.attributes.label }}
+                      </div>
+                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                        {{ field.attributes.description || '' }}
+                      </div>
+                      <q-select
+                        outlined filled
+                        v-model="formValues[field.id]"
+                        :options="field.attributes.options || []"
+                        :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
+                        emit-value
+                        map-options
+                      />
+                    </template>
+                    <!-- Render textarea fields -->
+                    <template v-else-if="field.type === 'textarea'">
+                      <div class="text-h6">
+                        {{ field.attributes.label }}
+                      </div>
+                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                        {{ field.attributes.description || '' }}
+                      </div>
+                      <q-input
+                        outlined filled
+                        type="textarea"
+                        autogrow
+                        class="full-width"
+                        input-class="full-width"
+                        style="width: 100%"
+                        v-model="formValues[field.id]"
+                        :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
+                        :rules="getFieldRules(field.validations)"
+                      />
+                    </template>
+                  </div>
+                  <div v-else-if="'id' in field && gameSettingsFields.includes(field.id)">
+                    <div :style="gameSettingsInvalid && field.validations?.required ? 'border: thin solid red;' : '' ">
+                      <GameSettingsFields
+                        :fieldData="field"
+                        :previousData="previousSubmission?.[field.id] || ''"
+                        @update="handleGameSettingsUpdate(field.id, $event)"
+                      />
                     </div>
-                    <div v-if="field.attributes.description" class="text-caption q-my-sm">
-                      {{ field.attributes.description || '' }}
-                    </div>
-                    <q-input
-                      outlined filled
-                      v-model="formValues[field.id]"
-                      :type="fieldInputTypes[field.attributes.label] == 'number' ? 'number' : 'text'"
-                      :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
-                      :rules="getFieldRules(field.validations)"
-                    />
-                  </template>
-                  <!-- Render dropdown fields -->
-                  <template v-else-if="field.type === 'dropdown'">
-                    <div class="text-h6">
-                      {{ field.attributes.label }}
-                    </div>
-                    <div v-if="field.attributes.description" class="text-caption q-my-sm">
-                      {{ field.attributes.description || '' }}
-                    </div>
-                    <q-select
-                      outlined filled
-                      v-model="formValues[field.id]"
-                      :options="field.attributes.options || []"
-                      :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
-                      emit-value
-                      map-options
-                    />
-                  </template>
-                  <!-- Render textarea fields -->
-                  <template v-else-if="field.type === 'textarea'">
-                    <div class="text-h6">
-                      {{ field.attributes.label }}
-                    </div>
-                    <div v-if="field.attributes.description" class="text-caption q-my-sm">
-                      {{ field.attributes.description || '' }}
-                    </div>
-                    <q-input
-                      outlined filled
-                      type="textarea"
-                      autogrow
-                      class="full-width"
-                      input-class="full-width"
-                      style="width: 100%"
-                      v-model="formValues[field.id]"
-                      :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : 'test'"
-                      :rules="getFieldRules(field.validations)"
-                    />
-                  </template>
-                </div>
-                <div v-else-if="'id' in field && gameSettingsFields.includes(field.id)">
-                  <GameSettingsFields
-                    :fieldData="field"
-                    :previousData="previousSubmission?.[field.id] || ''"
-                    @update="handleGameSettingsUpdate(field.id, $event)"
-                  />
-                </div>
-                <div v-else>
-                  <!-- Render unsupported fields warning -->
-                  <q-banner type="warning">
-                    Unsupported field type: {{ field.type }}
-                  </q-banner>
+                  </div>
+                  <div v-else>
+                    <!-- Render unsupported fields warning -->
+                    <q-banner type="warning">
+                      Unsupported field type: {{ field.type }}
+                    </q-banner>
+                  </div>
                 </div>
               </div>
             </div>
+            <!-- Add a separator between sections (except after the last section) -->
+            <q-separator v-if="sIndex < getSections().length - 1" class="q-my-lg" />
           </div>
-          <!-- Add a separator between sections (except after the last section) -->
-          <q-separator v-if="sIndex < getSections().length - 1" class="q-my-lg" />
-        </div>
+        </q-form>
       </div>
     </q-card-section>
 

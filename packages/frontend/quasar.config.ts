@@ -130,7 +130,8 @@ export default defineConfig((ctx) => {
 
       // Quasar plugins
       plugins: [
-        'Meta'
+        'Meta',
+        'Notify'
       ]
     },
 

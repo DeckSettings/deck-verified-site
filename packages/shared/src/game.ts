@@ -117,7 +117,22 @@ export interface GitHubIssueLabel {
 }
 
 export interface GitHubReportIssueBodySchema {
-  [key: string]: any; // Define the exact schema if known
+  $schema: string;
+  $id: string;
+  title: string;
+  description: string;
+  type: 'object';
+  properties: {
+    [key: string]: {
+      description: string;
+      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+      minLength?: number;
+      maxLength?: number;
+      enum?: string[];
+      exclusiveMinimum?: number;
+    };
+  };
+  required?: string[];
 }
 
 export interface GitHubUser {
