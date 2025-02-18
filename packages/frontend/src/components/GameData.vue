@@ -30,7 +30,7 @@ const githubProjectSearchLink = ref<string | null>(null)
 const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800')
 const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
 
-const useLocalReportForm = ref<boolean>(false)
+const useLocalReportForm = ref<boolean>(route.query.newForm === "true")
 const submitReportDialog = ref<boolean>(false)
 
 const selectedDevice = ref('all')
