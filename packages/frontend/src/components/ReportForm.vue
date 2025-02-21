@@ -355,6 +355,9 @@ export default defineComponent({
       return true
     }
 
+    // Custom dialog related:
+    const confirmDialog = ref(false)
+    const pendingBaseUrl = ref('')
     const submitForm = () => {
       // First trigger QForm validation styling:
       if (!reportForm.value.validate() || !validateForm()) {
@@ -406,7 +409,27 @@ export default defineComponent({
 
       // console.log(reportMarkdown)
       // console.log('Redirecting to:', baseUrl)
-      window.open(baseUrl, '_blank')
+      // window.open(baseUrl, '_blank')
+
+      // Instead of immediately opening GitHub, store the URL and open our custom dialog.
+      pendingBaseUrl.value = baseUrl
+      confirmDialog.value = true
+    }
+
+    // Called when the user clicks "Login to GitHub" in the dialog.
+    const onConfirmDialogLogin = () => {
+      window.open('https://github.com/login', '_blank')
+    }
+
+    // Called when the user clicks "Continue" in the dialog.
+    const onConfirmDialogContinue = () => {
+      window.open(pendingBaseUrl.value, '_blank')
+      confirmDialog.value = false
+    }
+
+    // Called when the user clicks "Cancel" in the dialog.
+    const onConfirmDialogCancel = () => {
+      confirmDialog.value = false
     }
 
     onMounted(async () => {
@@ -432,7 +455,11 @@ export default defineComponent({
       handleGameSettingsUpdate,
       reportForm,
       submitForm,
-      clearFormState
+      clearFormState,
+      confirmDialog,
+      onConfirmDialogLogin,
+      onConfirmDialogContinue,
+      onConfirmDialogCancel
     }
   }
 })
@@ -526,7 +553,7 @@ export default defineComponent({
                         <q-icon left size="3em" name="add_circle" />
                         <div>ADD SECTION</div>
                       </q-btn>
-                      “ADD SECTION” button.
+                      "ADD SECTION" button.
                       <br />
                       <br />
                       You can reorder options or move them between sections by dragging the
@@ -544,7 +571,7 @@ export default defineComponent({
                         <q-icon left size="3em" name="add_circle" />
                         <div>ADD OPTION</div>
                       </q-btn>
-                      “ADD OPTION” button to insert new settings.
+                      "ADD OPTION" button to insert new settings.
                       <br />
                       <br />
                       If the game lacks <strong>"Display"</strong> or <strong>"Graphics"</strong> options,
@@ -657,6 +684,70 @@ export default defineComponent({
         @click="submitForm" />
     </q-card-actions>
   </q-card>
+
+  <q-dialog v-model="confirmDialog">
+    <q-card>
+      <q-card-section>
+        <div class="text-h6">Confirm Submission</div>
+      </q-card-section>
+      <q-card-section>
+        <p>
+          You are about to submit this form to GitHub.
+        </p>
+        <p>
+          Before proceeding, please ensure you are signed into GitHub on this browser.
+          If you're not, click the button below to log in.
+        </p>
+        <div class="q-mx-xl q-my-md">
+          <q-btn
+            dense
+            class="full-width"
+            color="primary"
+            label="Login to GitHub"
+            icon="fab fa-github"
+            icon-right="open_in_new"
+            @click="onConfirmDialogLogin"
+          />
+        </div>
+        <p>
+          Otherwise, click <strong>"Continue to GitHub"</strong> below to proceed.
+          When you do, a new window will open, taking you to the GitHub Issues page with your
+          report details pre-filled.
+        </p>
+        <p>
+          <strong>Important:</strong>
+          <ul>
+            <li>
+              Your form will remain open in this window. This way, if any details need to be adjusted,
+              you won't lose your work.
+            </li>
+            <li>
+              Any empty fields will be set to <em>"_No response_"</em> in the issue body.
+            </li>
+          </ul>
+        </p>
+        <p>
+          Please review your information carefully on GitHub, then click the
+          <q-btn
+            dense
+            size="xs"
+            :ripple="false"
+            color="positive"
+            icon-right="keyboard_return"
+            label="Create"
+            class="q-ma-none cursor-inherit" />
+          <strong>"Create"</strong> button.
+          Note that it may take up to an hour for your report to appear on our website, as reports are imported on an
+          hourly schedule.
+        </p>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn label="Cancel" color="negative" icon="close" @click="onConfirmDialogCancel" />
+        <q-btn label="Continue to GitHub" color="positive" icon="open_in_new" @click="onConfirmDialogContinue" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
 </template>
 
 <style scoped>

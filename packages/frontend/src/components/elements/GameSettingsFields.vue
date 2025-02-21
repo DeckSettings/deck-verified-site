@@ -395,7 +395,7 @@ export default defineComponent({
     </div>
     <div v-if="fieldData.validations?.required && invalidData" class="text-caption q-my-sm text-negative">
       At least one option needs to be added. If the game has no settings, <br /> simply add a single option
-      <strong>“Display Resolution”</strong> with the resolution of your device as the value.
+      <strong>"Display Resolution"</strong> with the resolution of your device as the value.
     </div>
 
     <!-- Render each section (not draggable) -->
