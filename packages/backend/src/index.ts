@@ -221,6 +221,8 @@ app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Resp
  * ]
  */
 app.get('/deck-verified/api/v1/games_with_reports', async (req: Request, res: Response) => {
+  const orderBy = req.query['orderBy'] === 'appname' ? 'appname' : 'reportcount'
+  const orderDirection = req.query['orderDirection'] === 'ASC' ? 'ASC' : 'DESC'
   const from = parseInt(req.query['from'] as string, 10) || 0
   const limit = Math.min(parseInt(req.query['limit'] as string, 10) || 100, 500)
   if (from < 0 || limit <= 0) {
@@ -228,8 +230,7 @@ app.get('/deck-verified/api/v1/games_with_reports', async (req: Request, res: Re
   }
 
   try {
-    const gamesWithReports = await getGamesWithReports(from, limit)
-    console.log(from, limit)
+    const gamesWithReports = await getGamesWithReports(from, limit, orderBy, orderDirection)
     if (gamesWithReports.length > 0) {
       const results: GameSearchResult[] = await Promise.all(
         gamesWithReports.map(async (game) => {

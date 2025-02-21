@@ -71,6 +71,7 @@ export const createRedisSearchIndex = async (): Promise<void> => {
       'games_idx',
       {
         appsearch: { type: SchemaFieldTypes.TEXT, SORTABLE: true },
+        appname: { type: SchemaFieldTypes.TEXT, SORTABLE: true },
         reportcount: { type: SchemaFieldTypes.NUMERIC, SORTABLE: true }
       },
       {
@@ -216,15 +217,23 @@ export const searchGamesInRedis = async (
  */
 export const getGamesWithReports = async (
   from: number = 0,
-  limit: number = 100
+  limit: number = 100,
+  orderBy: 'appname' | 'reportcount' = 'reportcount',
+  direction: 'ASC' | 'DESC' = 'DESC'
 ): Promise<GameSearchCache[]> => {
   try {
+    // Validate and sanitize limit
+    const sanitizedLimit = Math.min(Math.max(limit, 1), 500) // Ensures 1 <= limit <= 500
+
+    // Set SORTBY field based on orderBy parameter
+    const sortByField = orderBy === 'appname' ? 'appname' : 'reportcount'
+
     const results = await redisClient.ft.search(
       'games_idx',
       '@reportcount:[1 +inf]',
       {
-        SORTBY: { BY: 'reportcount', DIRECTION: 'DESC' },
-        LIMIT: { from, size: limit }
+        SORTBY: { BY: sortByField, DIRECTION: direction },
+        LIMIT: { from, size: sanitizedLimit }
       }
     )
 
