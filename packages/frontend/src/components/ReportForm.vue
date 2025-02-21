@@ -487,7 +487,7 @@ export default defineComponent({
         </div>
         <div class="col-auto self-baseline">
           <q-btn
-            color="primary"
+            color="negative"
             icon="close"
             label="Cancel"
             @click="clearFormState"
@@ -495,7 +495,7 @@ export default defineComponent({
           <q-btn
             v-if="$q.screen.lt.md"
             class="q-ml-md"
-            color="primary"
+            color="positive"
             icon="fab fa-github"
             icon-right="open_in_new"
             label="Submit On GitHub"
@@ -506,7 +506,9 @@ export default defineComponent({
       <div v-else class="row items-center no-wrap">
         <div class="col">
           <q-btn
-            color="primary"
+            dense
+            class="q-pa-sm"
+            color="negative"
             icon="close"
             label="Cancel"
             @click="clearFormState"
@@ -514,9 +516,9 @@ export default defineComponent({
         </div>
         <div class="col-auto">
           <q-btn
-            v-if="$q.screen.lt.md"
-            class="q-ml-md"
-            color="primary"
+            dense
+            class="q-ml-md q-pa-sm"
+            color="positive"
             icon="fab fa-github"
             icon-right="open_in_new"
             label="Submit On GitHub"
@@ -671,13 +673,13 @@ export default defineComponent({
 
     <q-card-actions v-if="!$q.screen.lt.md" align="right" class="q-pa-md-md">
       <!--      <q-btn
-              color="primary"
+              color="negative"
               icon="close"
               label="Cancel"
               @click="clearFormState"
               v-close-popup />-->
       <q-btn
-        color="primary"
+        color="positive"
         icon="fab fa-github"
         icon-right="open_in_new"
         label="Submit On GitHub"
@@ -716,16 +718,16 @@ export default defineComponent({
         </p>
         <p>
           <strong>Important:</strong>
-          <ul>
-            <li>
-              Your form will remain open in this window. This way, if any details need to be adjusted,
-              you won't lose your work.
-            </li>
-            <li>
-              Any empty fields will be set to <em>"_No response_"</em> in the issue body.
-            </li>
-          </ul>
         </p>
+        <ul>
+          <li>
+            Your form will remain open in this window. This way, if any details need to be adjusted,
+            you won't lose your work.
+          </li>
+          <li>
+            Any empty fields will be set to <em>"_No response_"</em> in the issue body.
+          </li>
+        </ul>
         <p>
           Please review your information carefully on GitHub, then click the
           <q-btn
