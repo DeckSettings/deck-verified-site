@@ -96,7 +96,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
 }
 
 export const fetchGamesWithReports = async (from: number, limit: number): Promise<GameSearchResult[] | null> => {
-  const url = `/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}&orderBy=reportcount&orderDirection=DESC`
+  const url = `/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}&orderBy=appname&orderDirection=ASC`
   try {
     const response = await fetch(url)
     if (response.status === 204) {
