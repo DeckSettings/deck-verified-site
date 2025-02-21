@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
@@ -224,20 +224,29 @@ const initGameData = async (params: RouteParamsGeneric) => {
   }
 }
 
-//watch(
-//  () => filteredReports.map(report => report.reportVisible), // Watch `reportVisible` states
-//  () => {
-//    const expandedReport = filteredReports.find(report => report.reportVisible)
-//    const query = { ...route.query }
-//
-//    if (expandedReport) {
-//      query.expandedId = expandedReport.id.toString()
-//    } else {
-//      delete query.expandedId
-//    }
-//    router.replace({ query })
-//  }
-//)
+const openDialog = () => {
+  // Push a dummy state so that "back" will trigger popstate
+  history.pushState({ dialog: true }, '')
+  submitReportDialog.value = true
+}
+
+const closeDialog = () => {
+  submitReportDialog.value = false
+  // Remove the dummy state
+  if (history.state && history.state.dialog) {
+    history.back()
+  }
+}
+
+const onPopState = () => {
+  if (submitReportDialog.value) {
+    closeDialog()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('popstate', onPopState)
+})
 
 watch(
   () => route.params,
@@ -247,7 +256,11 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('popstate', onPopState)
   await initGameData(route.params)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onPopState)
 })
 
 /*METADATA*/
@@ -413,7 +426,7 @@ useMeta(() => {
             <q-btn v-else color="secondary" glossy
                    icon="fas fa-file-invoice"
                    label="Submit Report"
-                   @click="submitReportDialog = true" />
+                   @click="openDialog" />
             <q-dialog class="q-ma-none q-pa-none report-dialog"
                       full-height
                       :full-width="$q.screen.lt.md"
