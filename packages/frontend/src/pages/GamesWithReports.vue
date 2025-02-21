@@ -102,7 +102,7 @@ useMeta(() => {
         class="row q-col-gutter-md q-row-gutter-md q-px-lg-xl">
         <div
           v-for="(game, index) in gamesWithReports" :key="index"
-          class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2">
+          class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 q-pa-sm">
           <q-card
             class="q-hoverable full-height game-result"
             clickable
