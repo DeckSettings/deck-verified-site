@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, onMounted, ref } from 'vue'
+import { defineComponent, onMounted, ref, watch } from 'vue'
 import { gameReportTemplate } from 'src/services/gh-reports'
 import type {
   GameReportForm,
@@ -42,8 +42,10 @@ export default defineComponent({
     const reportForm = ref()
     const formData = ref<GameReportForm | null>(null)
     const formValues = ref<Record<string, string | number | null>>({})
+    const previousFormValues = ref<Record<string, string | number | null>>({})
     const fieldInputTypes = ref<Record<string, string>>({})
     //const gameDisplaySettings = ref<string | null>(null)
+    const gameSettingsUpdates = ref<Record<string, string>>({})
     const gameSettingsInvalid = ref<boolean>(false)
 
     // List of field ids whose values should be overwritten from previousSubmission
@@ -52,12 +54,10 @@ export default defineComponent({
     // List of fields to be handled specially in the template; ignore them in the initFormData function
     const gameSettingsFields = ['game_display_settings', 'game_graphics_settings']
 
-
     const initFormData = async () => {
       const data = await gameReportTemplate()
       formData.value = data
 
-      // Build the mapping from schema properties.
       if (data?.schema && data.schema.properties) {
         const mapping: Record<string, string> = {}
         const schemaProps = data.schema.properties as Record<string, { type: string }>
@@ -88,16 +88,70 @@ export default defineComponent({
           }
         })
 
-        // Overwrite values from previousSubmission for specified fields
+        // Override values with ones from a previous submission
         if (props.previousSubmission) {
           Object.keys(props.previousSubmission).forEach(key => {
             if (initOverwriteFields.includes(key)) {
-              const currentValue = formValues.value[key]
-              formValues.value[key] = props.previousSubmission?.[key] ?? currentValue
+              const newVal = props.previousSubmission?.[key]
+              if (newVal !== undefined) {
+                formValues.value[key] = newVal
+              }
+            }
+          })
+        }
+
+        // Import values from localStorage
+        const importedFormValues = loadSavedFormValues()
+        // Combine previousSubmission values and values pulled from local storage.
+        // I did this so that this can be passed to the GameSettingsFields component
+        if (importedFormValues) {
+          previousFormValues.value = { ...props.previousSubmission, ...importedFormValues }
+        } else if (props.previousSubmission) {
+          previousFormValues.value = props.previousSubmission
+        }
+        // Override ALL values with those pulled from localStorage
+        if (importedFormValues) {
+          Object.keys(importedFormValues).forEach(key => {
+            const newVal = importedFormValues[key]
+            if (newVal !== undefined) {
+              formValues.value[key] = newVal
             }
           })
         }
       }
+    }
+
+    // Load saved form state if available.
+    const loadSavedFormValues = (): Record<string, string | number | null> | null => {
+      const saved = localStorage.getItem(`gameReportForm-${props.gameName}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+            return parsed.formValues || null
+          } else {
+            localStorage.removeItem(`gameReportForm-${props.gameName}`)
+          }
+        } catch (e) {
+          console.error('Error parsing saved form state', e)
+          localStorage.removeItem(`gameReportForm-${props.gameName}`)
+        }
+      }
+      return null
+    }
+
+    // Store form state in local storage
+    const saveFormValuesState = () => {
+      const state = {
+        timestamp: Date.now(),
+        formValues: { ...formValues.value, ...gameSettingsUpdates.value }
+      }
+      localStorage.setItem(`gameReportForm-${props.gameName}`, JSON.stringify(state))
+    }
+
+    // Clear saved form state (for instance, when clicking cancel).
+    const clearFormState = () => {
+      localStorage.removeItem(`gameReportForm-${props.gameName}`)
     }
 
     const getSections = () => {
@@ -133,7 +187,6 @@ export default defineComponent({
       return sections
     }
 
-    const gameSettingsUpdates = ref<Record<string, string>>({})
     const handleGameSettingsUpdate = (
       fieldId: string,
       newValue: { title: string; items: { key: string; value: string }[] }[]
@@ -157,6 +210,7 @@ export default defineComponent({
             : itemsMarkdown
         })
         .join('\n')
+      saveFormValuesState()
     }
 
     const getLabelWithAsterisk = (label: string, required: boolean | undefined): string => {
@@ -359,10 +413,17 @@ export default defineComponent({
       await initFormData()
     })
 
+    // Save form state whenever formValues changes.
+    watch(formValues, () => {
+      // NOTE: This is also executed from handleGameSettingsUpdate() above
+      saveFormValuesState()
+    }, { deep: true })
+
     return {
       formData,
       formValues,
       fieldInputTypes,
+      previousFormValues,
       gameSettingsFields,
       getSections,
       getLabelWithAsterisk,
@@ -370,7 +431,8 @@ export default defineComponent({
       gameSettingsInvalid,
       handleGameSettingsUpdate,
       reportForm,
-      submitForm
+      submitForm,
+      clearFormState
     }
   }
 })
@@ -401,6 +463,7 @@ export default defineComponent({
             color="primary"
             icon="close"
             label="Cancel"
+            @click="clearFormState"
             v-close-popup />
           <q-btn
             v-if="$q.screen.lt.md"
@@ -419,6 +482,7 @@ export default defineComponent({
             color="primary"
             icon="close"
             label="Cancel"
+            @click="clearFormState"
             v-close-popup />
         </div>
         <div class="col-auto">
@@ -554,7 +618,7 @@ export default defineComponent({
                     <div :style="gameSettingsInvalid && field.validations?.required ? 'border: thin solid red;' : '' ">
                       <GameSettingsFields
                         :fieldData="field"
-                        :previousData="previousSubmission?.[field.id] || ''"
+                        :previousData="previousFormValues?.[field.id] ? String(previousFormValues?.[field.id]) : ''"
                         :invalidData="gameSettingsInvalid"
                         @update="handleGameSettingsUpdate(field.id, $event)"
                       />
@@ -583,6 +647,7 @@ export default defineComponent({
               color="primary"
               icon="close"
               label="Cancel"
+              @click="clearFormState"
               v-close-popup />-->
       <q-btn
         color="primary"
