@@ -431,7 +431,8 @@ useMeta(() => {
                       full-height
                       :full-width="$q.screen.lt.md"
                       :maximized="$q.screen.lt.md"
-                      v-model="submitReportDialog">
+                      v-model="submitReportDialog"
+                      @hide="closeDialog">
               <ReportForm :gameName="gameName"
                           :appId="appId ? appId : ''"
                           :gameBanner="gameBanner ? gameBanner : ''"
