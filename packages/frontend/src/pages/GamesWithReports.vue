@@ -89,7 +89,7 @@ useMeta(() => {
 </script>
 
 <template>
-  <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.is.mobile">
+  <q-page class="bg-dark text-white q-pb-xl" padding>
     <div class="background-container"
          :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
     <NavBackButton />

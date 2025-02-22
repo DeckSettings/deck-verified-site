@@ -7,7 +7,7 @@ import NavBackButton from 'components/elements/NavBackButton.vue'
 </script>
 
 <template>
-  <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.is.mobile">
+  <q-page class="bg-dark text-white q-pb-xl" padding>
     <NavBackButton />
     <GameData />
     <ScrollToTop />
