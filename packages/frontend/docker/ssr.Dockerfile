@@ -8,10 +8,15 @@ RUN npm ci --ignore-scripts
 WORKDIR /app/packages/frontend
 COPY ./packages/frontend/. /app/packages/frontend/
 COPY ./packages/shared /app/packages/shared
-RUN npm run build
+RUN npm run build:ssr
 
-FROM nginx:alpine
+FROM node:22-alpine
 
-COPY --from=build /app/packages/frontend/dist/spa /usr/share/nginx/html/deck-verified
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/packages/frontend/dist/ssr /app
 
-COPY ./packages/frontend/docker/nginx/nginx.conf /etc/nginx/nginx.conf
+WORKDIR /app
+
+EXPOSE 9022
+
+CMD ["npm", "run", "start"]

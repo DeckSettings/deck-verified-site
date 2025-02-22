@@ -11,7 +11,8 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build"
+    "build": "quasar build -m spa",
+    "build:ssr": "quasar build -m ssr"
   },
   "dependencies": {
     "@fontsource/exo-2": "^5.1.1",

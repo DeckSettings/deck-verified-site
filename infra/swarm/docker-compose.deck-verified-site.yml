@@ -133,7 +133,7 @@ services:
     image: ghcr.io/decksettings/deck-verified-api:latest
     deploy:
       mode: replicated
-      replicas: ${REPLICAS_API}
+      replicas: ${REPLICAS_API:-1}
       restart_policy:
         condition: on-failure
         delay: 2s
@@ -202,12 +202,50 @@ services:
         tag: "deck-verified-api"
         env: "source_env,source_service,source_version,source_project"
 
+  # --- FRONTEND SSR ---
+  web-ssr:
+    image: ghcr.io/decksettings/deck-verified-web-ssr:latest
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_WEB_SSR:-1}
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          memory: 100M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_WEB:?}
+      labels:
+        #### -- Configure Logging labels
+        - "source.env=${ENVIRONMENT_NAME:-test}"
+        - "source.service=deck-verified-web-ssr"
+        - "source.project=deck-verified-site"
+
+        #### -- Enable traefik router for this service
+        - "traefik.enable=false"
+    networks:
+      - private-net
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24225"
+        fluentd-request-ack: "true"
+        fluentd-async: "false"
+        tag: "deck-verified-web-ssr"
+        env: "source_env,source_service,source_version,source_project"
+
   # --- FRONTEND ---
   web:
     image: ghcr.io/decksettings/deck-verified-web:latest
     deploy:
       mode: replicated
-      replicas: ${REPLICAS_WEB}
+      replicas: ${REPLICAS_WEB:-1}
       restart_policy:
         condition: on-failure
         delay: 1s
