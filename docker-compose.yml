@@ -85,7 +85,7 @@ services:
     networks:
       - private-net
     healthcheck:
-      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9021/health"]
+      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9021/deck-verified/health"]
       interval: 10s
       timeout: 5s
       retries: 3
