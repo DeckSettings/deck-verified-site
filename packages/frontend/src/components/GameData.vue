@@ -76,11 +76,6 @@ const launcherOptions = computed(() => {
   return [{ label: 'All', value: 'all' }]
 })
 
-fetchLabels().then(labels => {
-  deviceLabels.value = labels.filter(label => label.name.startsWith('device:'))
-  launcherLabels.value = labels.filter(label => label.name.startsWith('launcher:'))
-})
-
 // Toggle function for sorting
 const sortOption = ref('none')
 const sortOrder = ref('off') // 'desc', 'asc', 'off'
@@ -198,6 +193,11 @@ const lastUpdated = (dateString: string | null): string => {
 }
 
 const initGameData = async (params: RouteParamsGeneric) => {
+
+  const labels = await fetchLabels()
+  deviceLabels.value = labels.filter(label => label.name.startsWith('device:'))
+  launcherLabels.value = labels.filter(label => label.name.startsWith('launcher:'))
+
   if (route.path.startsWith('/app/')) {
     appId.value = params.appId as string
     gameData.value = await fetchGameData(null, appId.value)
@@ -243,10 +243,6 @@ const onPopState = () => {
     closeDialog()
   }
 }
-
-onMounted(() => {
-  window.addEventListener('popstate', onPopState)
-})
 
 watch(
   () => route.params,
