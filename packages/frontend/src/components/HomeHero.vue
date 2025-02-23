@@ -30,7 +30,7 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
           icon="fab fa-github"
           href="https://github.com/DeckSettings/game-reports-steamos"
           target="_blank"
-          label="View & Contribute to Reports"
+          label="View Reports Source"
           color="white"
           text-color="black"
           no-caps
