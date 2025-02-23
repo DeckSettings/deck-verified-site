@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, onMounted, ref, watch } from 'vue'
+import { defineComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { gameReportTemplate } from 'src/services/gh-reports'
 import type {
   GameReportForm,
@@ -49,14 +49,14 @@ export default defineComponent({
     const gameSettingsInvalid = ref<boolean>(false)
 
     // List of field ids whose values should be overwritten from previousSubmission
-    const initOverwriteFields = ['launcher']
+    const initOverwriteFields = ['app_id', 'game_name', 'launcher', 'average_battery_power_draw']
 
     // List of fields to be handled specially in the template; ignore them in the initFormData function
     const gameSettingsFields = ['game_display_settings', 'game_graphics_settings']
 
+
     const initFormData = async () => {
       const data = await gameReportTemplate()
-      formData.value = data
 
       if (data?.schema && data.schema.properties) {
         const mapping: Record<string, string> = {}
@@ -67,23 +67,25 @@ export default defineComponent({
         fieldInputTypes.value = mapping
       }
 
+      const tempFormValues: Record<string, string | number | null> = {}
+
       // Initialize form values with defaults or empty strings
       if (data?.template?.body) {
         data?.template?.body.forEach(field => {
           if (field.type === 'input' && field.id) {
-            formValues.value[field.id] = field.attributes.value || ''
+            tempFormValues[field.id] = field.attributes.value || ''
           } else if (field.type === 'dropdown' && field.id) {
             const options = field.attributes.options || []
             if (field.attributes.default !== undefined && options.length > 0) {
-              formValues.value[field.id] = String(options[field.attributes.default]) || String(options[0])
+              tempFormValues[field.id] = String(options[field.attributes.default]) || String(options[0])
             }
           }
           // Add additional data
           if (field.type !== 'markdown' && field.id) {
             if (field.id === 'game_name' && props.gameName) {
-              formValues.value[field.id] = props.gameName || ''
+              tempFormValues[field.id] = props.gameName || ''
             } else if (field.id === 'app_id' && props.appId) {
-              formValues.value[field.id] = props.appId || ''
+              tempFormValues[field.id] = props.appId || ''
             }
           }
         })
@@ -94,7 +96,7 @@ export default defineComponent({
             if (initOverwriteFields.includes(key)) {
               const newVal = props.previousSubmission?.[key]
               if (newVal !== undefined) {
-                formValues.value[key] = newVal
+                tempFormValues[key] = newVal
               }
             }
           })
@@ -114,11 +116,14 @@ export default defineComponent({
           Object.keys(importedFormValues).forEach(key => {
             const newVal = importedFormValues[key]
             if (newVal !== undefined) {
-              formValues.value[key] = newVal
+              tempFormValues[key] = newVal
             }
           })
         }
       }
+
+      formValues.value = tempFormValues
+      formData.value = data
     }
 
     // Load saved form state if available.
@@ -434,6 +439,10 @@ export default defineComponent({
 
     onMounted(async () => {
       await initFormData()
+    })
+
+    onUnmounted(() => {
+      console.log('Report form dialog closed')
     })
 
     // Save form state whenever formValues changes.

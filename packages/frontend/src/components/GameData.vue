@@ -31,7 +31,7 @@ const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game
 const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
 
 const useLocalReportForm = ref<boolean>(true)
-const submitReportDialog = ref<boolean>(false)
+const reportFormDialogOpen = ref<boolean>(false)
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -150,16 +150,7 @@ watch(
     }
 
     // Extract the data from the highest rated report
-    const popularReport = reports.sort((a, b) => {
-      const aLikes =
-        a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-      const bLikes =
-        b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-      return aLikes - bLikes
-    })
-    if (popularReport && popularReport.length > 0 && popularReport[0] !== undefined) {
-      highestRatedGameReport.value = popularReport[0].data
-    }
+    setHighestRatedGameReport(reports)
 
     // Sort logic
     if (sortOrd !== 'off') {
@@ -198,15 +189,19 @@ const initGameData = async (params: RouteParamsGeneric) => {
   deviceLabels.value = labels.filter(label => label.name.startsWith('device:'))
   launcherLabels.value = labels.filter(label => label.name.startsWith('launcher:'))
 
+  let parsedGameName = null
+  let parsedAppId = null
   if (route.path.startsWith('/app/')) {
-    appId.value = params.appId as string
-    gameData.value = await fetchGameData(null, appId.value)
+    parsedAppId = params.appId as string
+    appId.value = parsedAppId
   } else if (route.path.startsWith('/game/')) {
-    gameName.value = decodeURIComponent(params.gameName as string)
-    gameData.value = await fetchGameData(gameName.value, null)
+    parsedGameName = decodeURIComponent(params.gameName as string)
+    gameName.value = parsedGameName
   }
+  const fetchedGameData = await fetchGameData(parsedGameName, parsedAppId)
   // Fill in details from game data
-  if (gameData.value) {
+  if (fetchedGameData) {
+    gameData.value = fetchedGameData
     if (gameData.value.gameName) {
       gameName.value = gameData.value.gameName
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&game_name=${encodeURIComponent(gameName.value)}`
@@ -221,17 +216,34 @@ const initGameData = async (params: RouteParamsGeneric) => {
       gameBanner.value = gameData.value.metadata.banner
       githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
     }
+    setHighestRatedGameReport(fetchedGameData.reports)
+  }
+  if (route.query.openReportForm === 'true') {
+    openDialog()
+  }
+}
+
+const setHighestRatedGameReport = (reports: GameReport[]) => {
+  const popularReport = reports.sort((a: GameReport, b: GameReport) => {
+    const aLikes =
+      a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+    const bLikes =
+      b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+    return aLikes - bLikes
+  })
+  if (popularReport && popularReport.length > 0 && popularReport[0] !== undefined) {
+    highestRatedGameReport.value = popularReport[0].data
   }
 }
 
 const openDialog = () => {
   // Push a dummy state so that "back" will trigger popstate
   history.pushState({ dialog: true }, '')
-  submitReportDialog.value = true
+  reportFormDialogOpen.value = true
 }
 
 const closeDialog = () => {
-  submitReportDialog.value = false
+  reportFormDialogOpen.value = false
   // Remove the dummy state
   if (history.state && history.state.dialog) {
     history.back()
@@ -239,7 +251,7 @@ const closeDialog = () => {
 }
 
 const onPopState = () => {
-  if (submitReportDialog.value) {
+  if (reportFormDialogOpen.value) {
     closeDialog()
   }
 }
@@ -427,7 +439,7 @@ useMeta(() => {
                       full-height
                       :full-width="$q.screen.lt.md"
                       :maximized="$q.screen.lt.md"
-                      v-model="submitReportDialog"
+                      v-model="reportFormDialogOpen"
                       @hide="closeDialog">
               <ReportForm :gameName="gameName"
                           :appId="appId ? appId : ''"
