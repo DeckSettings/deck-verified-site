@@ -315,7 +315,7 @@ export default defineComponent({
       update: (callback: () => void) => void,
       abort: () => void
     ) => {
-      // Set a minimum length before filtering
+      // Set a minimum length before filtering (currently disabled - 0)
       if (val.length < 0) {
         abort()
         return
@@ -333,7 +333,8 @@ export default defineComponent({
       update: (callback: () => void) => void,
       abort: () => void
     ) => {
-      if (val.length < 2) {
+      // Set a minimum length before filtering (currently disabled - 0)
+      if (val.length < 0) {
         abort()
         return
       }
