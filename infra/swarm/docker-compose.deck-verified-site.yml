@@ -218,7 +218,7 @@ services:
         order: start-first
       resources:
         limits:
-          memory: 100M
+          memory: 160M
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_API:?}
