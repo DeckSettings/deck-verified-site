@@ -295,8 +295,8 @@ export default defineComponent({
           if (exclusiveMinimum !== undefined) {
             rules.push(value => {
               const num = Number(value)
-              return num > exclusiveMinimum ||
-                `${label} must be greater than ${exclusiveMinimum}.`
+              return num >= exclusiveMinimum ||
+                `${label} must be greater or equal to ${exclusiveMinimum}.`
             })
           }
           const propEnum = schemaProp.enum
