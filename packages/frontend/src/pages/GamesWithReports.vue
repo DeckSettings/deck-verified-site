@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMeta } from 'quasar'
 import { fetchGamesWithReports } from 'src/services/gh-reports'
 import type { GameSearchResult } from '../../../shared/src/game'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
+import ReportForm from 'components/ReportForm.vue'
 
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
 const gameBackground = ref(`${import.meta.env.BASE_URL}/hero-background2.jpg`)
@@ -18,7 +19,35 @@ const fetchGames = async () => {
   }
 }
 
-onMounted(fetchGames)
+const reportFormDialogOpen = ref<boolean>(false)
+
+const openDialog = () => {
+  // Push a dummy state so that "back" will trigger popstate
+  history.pushState({ dialog: true }, '')
+  reportFormDialogOpen.value = true
+}
+
+const closeDialog = () => {
+  reportFormDialogOpen.value = false
+  // Remove the dummy state
+  if (history.state && history.state.dialog) {
+    history.back()
+  }
+}
+
+const onPopState = () => {
+  if (reportFormDialogOpen.value) {
+    closeDialog()
+  }
+}
+
+onMounted(async () => {
+  window.addEventListener('popstate', onPopState)
+  await fetchGames()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onPopState)
+})
 
 /*METADATA*/
 const metaTitle = ref('Games with Reports')
@@ -94,8 +123,43 @@ useMeta(() => {
          :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
     <NavBackButton />
     <div class="page-content-container">
-      <div class="text-h3 q-ml-xl q-mt-xl q-mb-sm">Games with Reports</div>
-      <div class="q-ml-xl q-mb-xl">All games with community-submitted reports</div>
+      <div class="row items-center justify-between q-mb-md">
+        <div class="col-12 col-md-6">
+          <div class="text-h3 q-ml-xl q-mt-xl q-mb-sm">
+            Games with Reports
+          </div>
+          <div class="q-ml-xl q-mb-sm">
+            All games with community-submitted reports
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="column">
+            <div class="col q-mt-lg" :class="$q.screen.lt.md ? 'self-center': 'self-end q-mr-xl'">
+              <q-btn
+                glossy
+                :size="$q.screen.lt.sm ? 'md': 'lg'"
+                icon="fas fa-file-invoice"
+                label="Submit Report"
+                color="secondary"
+                text-color="white"
+                @click="openDialog"
+              />
+              <q-dialog class="q-ma-none q-pa-none report-dialog"
+                        full-height
+                        :full-width="$q.screen.lt.md"
+                        :maximized="$q.screen.lt.md"
+                        v-model="reportFormDialogOpen"
+                        @hide="closeDialog">
+                <ReportForm :gameName="''"
+                            :appId="''"
+                            :gameBanner="''"
+                            :gameBackground="''"
+                            :previousSubmission="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
+              </q-dialog>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div
         style="max-width: 2000px; margin: 0 auto"
