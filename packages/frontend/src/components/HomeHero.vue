@@ -34,6 +34,7 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
           color="white"
           text-color="black"
           no-caps
+          glossy
         />
         <q-btn
           class="q-mr-md q-mt-md"
@@ -45,6 +46,7 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
           color="white"
           text-color="black"
           no-caps
+          glossy
         />
         <p class="text-caption q-mt-md" :class="{'text-center': $q.screen.lt.sm}">
           All game report data and website source code are available on GitHub. Feel free to contribute!
@@ -63,6 +65,7 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
         color="secondary"
         text-color="white"
         no-caps
+        glossy
         :to="{ name: 'games-with-reports' }"
       />
     </div>
