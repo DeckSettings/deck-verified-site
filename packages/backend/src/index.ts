@@ -55,41 +55,51 @@ if (config.enableRateLimiter) {
 
 // Configure middleware to log requests
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const start = process.hrtime()
-  res.on('finish', () => {
-    const duration = process.hrtime(start)
-    const timeTaken = (duration[0] * 1e3) + (duration[1] / 1e6)
-    const user = '' // Placeholder for is user auth is added at a later stage
-    const timeNow = new Date()
-    const timeNowString = timeNow.toISOString()
-    const responseLength = res.getHeader('Content-Length') || 0
-    const httpReferer = req.headers['referer'] || '-'
-    const userAgent = req.headers['user-agent'] || ''
-    const message = `${req.ip} - ${user} [${timeNowString}] "${req.method}" ${res.statusCode} ${responseLength} "${httpReferer}" "${userAgent}"`
-    const logData = {
-      source_project: 'deck-verified-api',
-      source_version: 1, // TODO: Cook version into build
-      process: process.pid,
-      time: timeNowString,
-      timestamp: Math.floor(Date.now() / 1000),
-      duration_in_ms: timeTaken.toFixed(3),
-      message: message,
-      x_forwarded_for: req.headers['x-forwarded-for'] || '',
-      x_forwarded_proto: req.headers['x-forwarded-proto'] || '',
-      method: req.method,
-      path: req.originalUrl,
-      status: res.statusCode,
-      response_length: responseLength,
-      // @ts-ignore
-      rate_limit_used: req.rateLimit ? req.rateLimit.current : '0',
-      // @ts-ignore
-      rate_limit_remaining: req.rateLimit ? req.rateLimit.remaining : '0',
-      referer: httpReferer,
-      user_agent: userAgent,
-      remote_ip: req.ip
-    }
-    logger.info(logData)
-  })
+
+  // Define paths that should not be logged
+  let logRequest = true
+  if (req.path === '/deck-verified/api/v1/health') {
+    logRequest = false 
+  }
+
+  if (logRequest) {
+    const start = process.hrtime()
+    res.on('finish', () => {
+      const duration = process.hrtime(start)
+      const timeTaken = (duration[0] * 1e3) + (duration[1] / 1e6)
+      const user = '' // Placeholder for is user auth is added at a later stage
+      const timeNow = new Date()
+      const timeNowString = timeNow.toISOString()
+      const responseLength = res.getHeader('Content-Length') || 0
+      const httpReferer = req.headers['referer'] || '-'
+      const userAgent = req.headers['user-agent'] || ''
+      const message = `${req.ip} - ${user} [${timeNowString}] "${req.method}" ${res.statusCode} ${responseLength} "${httpReferer}" "${userAgent}"`
+      const logData = {
+        source_project: 'deck-verified-api',
+        source_version: 1, // TODO: Cook version into build
+        process: process.pid,
+        time: timeNowString,
+        timestamp: Math.floor(Date.now() / 1000),
+        duration_in_ms: timeTaken.toFixed(3),
+        message: message,
+        x_forwarded_for: req.headers['x-forwarded-for'] || '',
+        x_forwarded_proto: req.headers['x-forwarded-proto'] || '',
+        method: req.method,
+        path2: req.path,
+        path: req.originalUrl,
+        status: res.statusCode,
+        response_length: responseLength,
+        // @ts-ignore
+        rate_limit_used: req.rateLimit ? req.rateLimit.current : '0',
+        // @ts-ignore
+        rate_limit_remaining: req.rateLimit ? req.rateLimit.remaining : '0',
+        referer: httpReferer,
+        user_agent: userAgent,
+        remote_ip: req.ip
+      }
+      logger.info(logData)
+    })
+  }
   next()
 })
 
