@@ -755,7 +755,7 @@ export default defineComponent({
             icon-right="keyboard_return"
             label="Create"
             class="q-ma-none cursor-inherit" />
-          <strong>"Create"</strong> button.
+          &nbsp;<strong>"Create"</strong> button.
           Note that it may take up to an hour for your report to appear on our website, as reports are imported on an
           hourly schedule.
         </p>
