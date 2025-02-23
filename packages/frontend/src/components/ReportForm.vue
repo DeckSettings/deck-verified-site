@@ -496,12 +496,14 @@ export default defineComponent({
         </div>
         <div class="col-auto self-baseline">
           <q-btn
+            glossy
             color="negative"
             icon="close"
             label="Cancel"
             @click="clearFormState"
             v-close-popup />
           <q-btn
+            glossy
             v-if="$q.screen.lt.md"
             class="q-ml-md"
             color="positive"
@@ -516,6 +518,7 @@ export default defineComponent({
         <div class="col">
           <q-btn
             dense
+            glossy
             class="q-pa-sm"
             color="negative"
             icon="close"
@@ -526,6 +529,7 @@ export default defineComponent({
         <div class="col-auto">
           <q-btn
             dense
+            glossy
             class="q-ml-md q-pa-sm"
             color="positive"
             icon="fab fa-github"
@@ -557,6 +561,7 @@ export default defineComponent({
                       Organize your options into sections by clicking the
                       <q-btn
                         dense
+                        glossy
                         size="xs"
                         :ripple="false"
                         color="primary"
@@ -575,6 +580,7 @@ export default defineComponent({
                       Use the
                       <q-btn
                         dense
+                        glossy
                         size="xs"
                         :ripple="false"
                         color="primary"
@@ -688,6 +694,7 @@ export default defineComponent({
               @click="clearFormState"
               v-close-popup />-->
       <q-btn
+        glossy
         color="positive"
         icon="fab fa-github"
         icon-right="open_in_new"
@@ -712,6 +719,7 @@ export default defineComponent({
         <div class="q-mx-xl q-my-md">
           <q-btn
             dense
+            glossy
             class="full-width"
             color="primary"
             label="Login to GitHub"
@@ -753,8 +761,8 @@ export default defineComponent({
         </p>
       </q-card-section>
       <q-card-actions align="right">
-        <q-btn label="Cancel" color="negative" icon="close" @click="onConfirmDialogCancel" />
-        <q-btn label="Continue to GitHub" color="positive" icon="open_in_new" @click="onConfirmDialogContinue" />
+        <q-btn glossy label="Cancel" color="negative" icon="close" @click="onConfirmDialogCancel" />
+        <q-btn glossy label="Continue to GitHub" color="positive" icon="open_in_new" @click="onConfirmDialogContinue" />
       </q-card-actions>
     </q-card>
   </q-dialog>

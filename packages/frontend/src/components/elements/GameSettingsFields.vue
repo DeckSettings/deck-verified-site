@@ -509,6 +509,7 @@ export default defineComponent({
               <div class="col self-end">
                 <!-- Button to add a key/value pair to this section -->
                 <q-btn
+                  glossy
                   color="primary"
                   class="q-mt-sm q-ml-lg"
                   @click="addPair(sectionIndex)">
@@ -528,6 +529,7 @@ export default defineComponent({
     <!-- Button to add a new section (not draggable) -->
     <q-btn
       dense
+      glossy
       class="full-width q-mt-sm q-ml-lg"
       color="primary"
       @click="addSection">
