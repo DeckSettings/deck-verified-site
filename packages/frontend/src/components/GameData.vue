@@ -32,6 +32,7 @@ const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-
 
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
+const dialogAutoOpened = ref(false)
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -218,7 +219,8 @@ const initGameData = async (params: RouteParamsGeneric) => {
     }
     setHighestRatedGameReport(fetchedGameData.reports)
   }
-  if (route.query.openReportForm === 'true') {
+  if (route.query.openReportForm === 'true' && !dialogAutoOpened.value) {
+    dialogAutoOpened.value = true
     openDialog()
   }
 }
