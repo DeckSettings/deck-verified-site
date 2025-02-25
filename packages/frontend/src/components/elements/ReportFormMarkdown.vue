@@ -102,6 +102,7 @@ export default defineComponent({
 
 /* Highlighting for code blocks */
 ::v-deep(.form-markdown code) {
+  display: block;
   background-color: #f5f5f5;
   color: #333;
   font-family: "Courier New", Courier, monospace;
