@@ -6,18 +6,28 @@ import type {
   GitHubReportIssueBodySchema,
   SteamGame,
   SteamStoreAppDetails,
-  SteamSuggestApp
+  SteamSuggestApp,
+  SDHQReview,
+  ExternalGameReview,
+  ExternalGameReviewReportData
 } from '../../shared/src/game'
 import {
+  redisCacheSDHQReview,
+  redisLookupSDHQReview,
   redisCacheSteamAppDetails,
-  redisCacheSteamSearchSuggestions,
   redisLookupSteamAppDetails,
+  redisCacheSteamSearchSuggestions,
   redisLookupSteamSearchSuggestions, storeGameInRedis
 } from './redis'
+import { fetchHardwareInfo } from './github'
 import NodeCache from 'node-cache'
 
 /**
- * TODO: Fill in this
+ * Fetches and caches the Josh5 avatar image from GitHub.
+ *
+ * This function first checks if the avatar image is present in the in-memory cache.
+ * If found, it serves the cached image. Otherwise, it fetches the image using native
+ * fetch(), converts the response into a Buffer, caches it, and then returns the Buffer.
  */
 const imageCache = new NodeCache({ stdTTL: 3600 })
 export const fetchJosh5Avatar = async (): Promise<Buffer | null> => {
@@ -54,10 +64,6 @@ export const fetchJosh5Avatar = async (): Promise<Buffer | null> => {
 /**
  * Extracts the value associated with a specific heading from a markdown-like text.
  * It searches for the heading and returns the first non-empty line below it.
- *
- * @param lines - Array of strings representing lines of the markdown text.
- * @param heading - The heading to search for.
- * @returns The extracted value or null if the heading is not found.
  */
 export const extractHeadingValue = async (
   lines: string[],
@@ -81,9 +87,156 @@ export const extractHeadingValue = async (
   return content.length > 0 ? content : null
 }
 
+/**
+ * Convert HTML to Markdown for game settings.
+ * Replaces <strong> tags with bold formatting, converts <br> and <p> tags to newlines,
+ * removes any remaining HTML tags, replaces HTML entities, and formats lines containing a colon
+ * as bullet list items—unless the line is a header. Headers (e.g. lines entirely in bold ending with a colon)
+ * remain unchanged.
+ *
+ * For example, an input of:
+ *
+ *    > <strong>Graphics Settings:</strong>
+ *    > VSYNC: On
+ *    > Frame rate limit: 45
+ *
+ * will be converted to:
+ *
+ *    > #### Graphics Settings:
+ *    > - **VSYNC:** On
+ *    > - **Frame rate limit:** 45
+ *
+ */
+const parseGameSettingsToMarkdown = (htmlString: string): string => {
+  let markdown = htmlString
+  // Convert <strong>...</strong> to #### ...
+  markdown = markdown.replace(/<strong>(.*?)<\/strong>/gi, '#### $1')
+  // Replace <br> and <br/> with newlines.
+  markdown = markdown.replace(/<br\s*\/?>/gi, '\n')
+  // Replace <p> and </p> with newlines.
+  markdown = markdown.replace(/<\/?p>/gi, '\n')
+  // Remove any remaining HTML tags.
+  markdown = markdown.replace(/<[^>]+>/g, '')
+  // Replace HTML entities like &nbsp; with a space.
+  markdown = markdown.replace(/&nbsp;/gi, ' ')
+
+  // Split the processed string into individual lines.
+  const lines = markdown
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+
+  // Process each line to format key-value pairs as bullet list items,
+  // except for lines that start with "###" or are header lines.
+  const processedLines = lines.map(line => {
+    // If the line starts with "###", return it unchanged.
+    if (line.startsWith('###')) {
+      return line
+    }
+    // If the line is a header in bold and ends with a colon, return it unchanged.
+    if (/^\*\*.*\*\*:\s*$/.test(line)) {
+      return line
+    }
+    // If the line contains a colon, format it as a bullet list item.
+    if (line.includes(':')) {
+      const parts = line.split(':')
+      const key = parts[0].trim()
+      const value = parts.slice(1).join(':').trim()
+      // Ensure the key is bold.
+      const formattedKey = (key.startsWith('**') && key.endsWith('**')) ? key : `**${key}:**`
+      return value ? `- ${formattedKey} ${value}` : `- ${formattedKey}`
+    }
+    // Otherwise, return the line as-is.
+    return line
+  })
+
+  return processedLines.join('\n')
+}
+
+/**
+ * Calculates the estimated battery life in minutes.
+ *
+ * Battery life in minutes is calculated as:
+ * (Battery Size in Wh / Average Power Draw in W) * 60.
+ */
 const calculatedBatteryLife = async (deviceInfo: HardwareInfo, averagePowerDraw: number): Promise<number> => {
   // Battery life in minutes = (Battery Size in Wh / Average Power Draw in W) * 60
   return Math.round((deviceInfo.battery_size_wh / averagePowerDraw) * 60)
+}
+
+/**
+ * Converts a string into a numeric hash using a simple algorithm.
+ */
+const numberValueFromString = (str: string): number => {
+  let num = 0
+  for (let i = 0; i < str.length; i++) {
+    num = num * 31 + str.charCodeAt(i)
+  }
+  return num
+}
+
+/**
+ * Converts a numeric rating (out of 5) into a string of star icons.
+ */
+const convertRatingToStars = (rating: number): string => {
+  const maxStars = 5
+  const filledStars = '★'.repeat(rating)
+  const emptyStars = '☆'.repeat(maxStars - rating)
+  return filledStars + emptyStars
+}
+
+/**
+ * Extracts the first numeric value found in a string.
+ */
+const extractNumbersFromString = (numberString: string | undefined): number | null => {
+  if (!numberString) return null
+  const match = numberString.match(/[\d.]+/)
+  return match ? parseFloat(match[0]) : null
+}
+
+/**
+ * Converts a wattage string to a numeric string representation.
+ * Uses extractNumbersFromString to extract the numeric value.
+ */
+const convertWattageToNumber = (wattage: string | undefined): string => {
+  if (!wattage) return 'Unknown'
+  const extracted = extractNumbersFromString(wattage)
+  return extracted ? String(extracted) : 'Unknown'
+}
+
+/**
+ * Checks if a given value is a valid number (non-NaN and greater than zero).
+ */
+export const isValidNumber = (value: unknown): value is number => {
+  return (
+    typeof value === 'number' &&
+    !isNaN(value) &&
+    value > 0
+  )
+}
+
+/**
+ * Limits a string to 100 characters total.
+ * If the string exceeds 100 characters, it is truncated to 97 characters and "..." is appended,
+ * ensuring the final string length is exactly 100 characters.
+ */
+function limitStringTo100Characters(input: string): string {
+  if (input.length <= 100) {
+    return input
+  }
+  return input.substring(0, 97) + '...'
+}
+
+/**
+ * Generates game image URLs from a given app ID.
+ */
+export const generateImageLinksFromAppId = async (appId: string): Promise<GameImages> => {
+  return {
+    poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
+    hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
+    background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
+    banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+  }
 }
 
 /**
@@ -292,19 +445,137 @@ export const fetchSteamGameSuggestions = async (
   }
 }
 
-export const generateImageLinksFromAppId = async (appId: string): Promise<GameImages> => {
-  return {
-    poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
-    hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
-    background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
-    banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
+  const cachedData = await redisLookupSDHQReview(appId)
+  if (cachedData) {
+    return cachedData
   }
+
+  const url = `https://steamdeckhq.com/wp-json/wp/v2/game-reviews/?meta_key=steam_app_id&meta_value=${appId}`
+  try {
+    logger.info(`Fetching SDHQ review data for appId ${appId} from SDHQ API...`)
+    const response = await fetch(url)
+
+    // Check if response is ok (status 200)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error(`SDHQ game review PI request failed with status ${response.status}: ${errorBody}`)
+      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
+      return []
+    }
+
+    const data: SDHQReview[] = await response.json()
+
+    if (data.length > 0) {
+
+      // Cache results, then return them
+      await redisCacheSDHQReview(data, appId)
+
+      return data
+    } else {
+      logger.error(`No game data found for appId ${appId}`)
+      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
+      return []
+    }
+  } catch (error) {
+    logger.error(`Failed to fetch game data for appId ${appId}:`, error)
+  }
+
+  await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
+  return []
 }
 
-export const isValidNumber = (value: unknown): value is number => {
-  return (
-    typeof value === 'number' &&
-    !isNaN(value) &&
-    value > 0
+export const generateSDHQReviewData = async (appId: string): Promise<ExternalGameReview[]> => {
+  const rawReviews: SDHQReview[] = await fetchSDHQReview(appId)
+  return await Promise.all(
+    rawReviews.map(async review => {
+      // Use optional chaining and fallback to null if sections are missing.
+      const optimizedSettings = review.acf?.optimized_and_recommended_settings || null
+      const steamos = optimizedSettings?.steamos_settings || null
+      const ratingCategories = review.acf?.sdhq_rating_categories || null
+
+      // Build additional notes line by line.
+      let additionalNotes: string = ''
+      if (ratingCategories) {
+        const notes: string[] = []
+        if (ratingCategories.performance !== undefined) {
+          notes.push(`- **Performance:** ${convertRatingToStars(ratingCategories.performance)} (${ratingCategories.performance}/5)`)
+        }
+        if (ratingCategories.visuals !== undefined) {
+          notes.push(`- **Visuals:** ${convertRatingToStars(ratingCategories.visuals)} (${ratingCategories.visuals}/5)`)
+        }
+        if (ratingCategories.stability !== undefined) {
+          notes.push(`- **Stability:** ${convertRatingToStars(ratingCategories.stability)} (${ratingCategories.stability}/5)`)
+        }
+        if (ratingCategories.controls !== undefined) {
+          notes.push(`- **Controls:** ${convertRatingToStars(ratingCategories.controls)} (${ratingCategories.controls}/5)`)
+        }
+        if (ratingCategories.battery !== undefined) {
+          notes.push(`- **Battery:** ${convertRatingToStars(ratingCategories.battery)} (${ratingCategories.battery}/5)`)
+        }
+
+        additionalNotes = '#### SDHQ\'s Build Score Breakdown\n'
+        if (ratingCategories.score_breakdown) {
+          additionalNotes += `\n\n${ratingCategories.score_breakdown}\n`
+        }
+        if (notes.length > 0) {
+          additionalNotes += notes.join('\n')
+        }
+      }
+
+      const summary = limitStringTo100Characters(
+        review.excerpt.rendered
+          ? review.excerpt.rendered.replace(/<[^>]+>/g, '')
+          : review.title.rendered
+      )
+      const assumedDevice = 'Steam Deck LCD (256GB/512GB)'
+      const averagePowerDraw = convertWattageToNumber(optimizedSettings?.projected_battery_usage_and_temperature?.wattage)
+      const hardwareInfo = await fetchHardwareInfo()
+      const matchedDevice = hardwareInfo.find(
+        (device) => device.name === assumedDevice
+      )
+      const calcBatteryLifeMinutes = matchedDevice ? await calculatedBatteryLife(matchedDevice, Number(averagePowerDraw)) : null
+      const gameDisplaySettings = optimizedSettings?.game_settings ? parseGameSettingsToMarkdown(optimizedSettings.game_settings) : ''
+
+      // Build the report data. If any field is missing, assign null.
+      const reportData: ExternalGameReviewReportData = {
+        summary: summary,
+        game_name: review.title.rendered,
+        app_id: Number(appId),
+        average_battery_power_draw: averagePowerDraw,
+        calculated_battery_life_minutes: calcBatteryLifeMinutes,
+        device: assumedDevice,
+        steam_play_compatibility_tool_used: 'Glorious Eggroll Proton (GE)',
+        compatibility_tool_version: optimizedSettings?.proton_version || 'default',
+        game_resolution: 'Default',
+        custom_launch_options: null,
+        frame_limit: extractNumbersFromString(steamos?.fps_cap),
+        disable_frame_limit: 'Off',
+        enable_vrr: 'Off',
+        allow_tearing: 'Off',
+        half_rate_shading: steamos?.half_rate_shading ? 'On' : 'Off',
+        tdp_limit: extractNumbersFromString(steamos?.tdp_limit),
+        manual_gpu_clock: extractNumbersFromString(steamos?.gpu_clock_frequency),
+        scaling_mode: 'Auto',
+        scaling_filter: steamos?.scaling_filter || 'Linear',
+        game_display_settings: gameDisplaySettings,
+        game_graphics_settings: '',
+        additional_notes: additionalNotes
+      }
+
+      return {
+        id: numberValueFromString('SDHQ') + Number(review.id),
+        title: review.title.rendered || '',
+        html_url: review.link,
+        data: reportData,
+        user: {
+          login: 'SDHQ',
+          avatar_url: 'https://steamdeckhq.com/wp-content/uploads/2022/06/sdhq-holographic-logo.svg',
+          report_count: rawReviews.length
+        },
+        created_at: review.date || '',
+        updated_at: review.modified || ''
+      }
+    })
   )
 }

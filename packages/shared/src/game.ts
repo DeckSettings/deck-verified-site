@@ -98,6 +98,7 @@ export interface GameDetails {
   projectNumber: number | null;
   metadata: GameMetadata;
   reports: GameReport[];
+  external_reviews: ExternalReviews;
 }
 
 export interface GitHubProjectGameDetails extends GameDetails {
@@ -317,4 +318,84 @@ export interface SteamSuggestApp {
 export interface SteamGame {
   appId: string;
   name: string;
+}
+
+export interface SDHQReview {
+  id: number;
+  date: string;
+  modified: string;
+  link: string;
+  title: {
+    rendered: string;
+  };
+  excerpt: {
+    rendered: string;
+  };
+  acf: {
+    optimized_and_recommended_settings: {
+      steamos_settings: {
+        fps_cap?: string;
+        fps_refresh_rate?: string;
+        half_rate_shading?: string;
+        tdp_limit?: string;
+        scaling_filter?: string;
+        gpu_clock_frequency?: string;
+      }
+      proton_version: string;
+      game_settings: string;
+      projected_battery_usage_and_temperature: {
+        wattage: string;
+        temperatures: string;
+        gameplay_time: string;
+      }
+    }
+    sdhq_rating_categories: {
+      performance?: number;
+      visuals?: number;
+      stability?: number;
+      controls?: number;
+      battery?: number;
+      score_breakdown?: string;
+    }
+  };
+}
+
+export interface ExternalReviews {
+  sdhq?: ExternalGameReview[];
+}
+
+export interface ExternalGameReview {
+  id: number;
+  title: string;
+  html_url: string;
+  data: ExternalGameReviewReportData;
+  user: GameReportUser;
+  created_at: string; // ISO 8601 formatted date string
+  updated_at: string; // ISO 8601 formatted date string
+}
+
+export interface ExternalGameReviewReportData {
+  summary?: string;
+  game_name?: string;
+  app_id?: number;
+  launcher?: string;
+  average_battery_power_draw?: string | null;
+  calculated_battery_life_minutes?: number | null;
+  device: string;
+  steam_play_compatibility_tool_used?: string;
+  compatibility_tool_version?: string;
+  game_resolution?: string;
+  custom_launch_options?: string | null;
+  frame_limit?: number | null;
+  disable_frame_limit?: string;
+  enable_vrr?: string;
+  allow_tearing?: string;
+  half_rate_shading?: string;
+  tdp_limit?: number | null;
+  manual_gpu_clock?: number | null;
+  scaling_mode?: string;
+  scaling_filter?: string;
+  game_display_settings?: string;
+  game_graphics_settings?: string;
+  additional_notes?: string;
 }

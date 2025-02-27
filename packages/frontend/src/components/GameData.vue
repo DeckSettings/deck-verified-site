@@ -3,7 +3,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
-import type { GameReport, GameDetails, GitHubIssueLabel, GameReportData } from '../../../shared/src/game'
+import type {
+  GameReport,
+  GameDetails,
+  GitHubIssueLabel,
+  GameReportData,
+  ExternalGameReview
+} from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -13,8 +19,10 @@ import { useMeta } from 'quasar'
 
 dayjs.extend(relativeTime)
 
-interface ExtendedGameReport extends GameReport {
+interface ExtendedGameReport extends Omit<GameReport, 'data'> {
+  data: Partial<GameReportData>;
   reportVisible: boolean;
+  external?: boolean;
 }
 
 const route = useRoute()
@@ -22,7 +30,7 @@ const route = useRoute()
 const appId = ref<string | null>(null)
 const gameName = ref<string>('')
 const gameData = ref<GameDetails | null>(null)
-const highestRatedGameReport = ref<GameReportData | null>(null)
+const highestRatedGameReport = ref<Partial<GameReportData> | null>(null)
 const gameBackground = ref<string | null>(null)
 const gamePoster = ref<string | null>(null)
 const gameBanner = ref<string | null>(null)
@@ -33,6 +41,8 @@ const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const dialogAutoOpened = ref(false)
+
+const includeExternalReports = ref(route.query.includeExternalReports === 'true')
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -95,7 +105,7 @@ const toggleSortOrder = (option: string) => {
   }
 }
 
-const hasSystemConfig = (report: GameReport) => {
+const hasSystemConfig = (report: ExtendedGameReport) => {
   return (
     report.data.undervolt_applied ||
     report.data.compatibility_tool_version ||
@@ -104,7 +114,7 @@ const hasSystemConfig = (report: GameReport) => {
   )
 }
 
-const hasPerformanceSettings = (report: GameReport) => {
+const hasPerformanceSettings = (report: ExtendedGameReport) => {
   return (
     report.data.frame_limit ||
     report.data.disable_frame_limit ||
@@ -117,6 +127,26 @@ const hasPerformanceSettings = (report: GameReport) => {
     report.data.scaling_filter
   )
 }
+
+const hasReports = computed(() => {
+  if (!gameData.value) return false
+
+  // Internal reports: if reports is still null (loading) or if there are any internal reports.
+  const internalReports = gameData.value.reports
+  const hasInternalReports =
+    internalReports === null ||
+    (Array.isArray(internalReports) && internalReports.length > 0)
+
+  // External reports: if the flag is set and there is at least one external review.
+  const hasExternalReports =
+    includeExternalReports.value &&
+    gameData.value.external_reviews &&
+    Object.values(gameData.value.external_reviews).some(
+      (arr) => Array.isArray(arr) && arr.length > 0
+    )
+
+  return hasInternalReports || hasExternalReports
+})
 
 // Reactive reports list with `reportVisible`
 const filteredReports = reactive<ExtendedGameReport[]>([])
@@ -150,8 +180,41 @@ watch(
       )
     }
 
-    // Extract the data from the highest rated report
-    setHighestRatedGameReport(reports)
+    // Extract the data from the highest rated report using only internal reports
+    setHighestRatedGameReport(reports as GameReport[])
+
+    // Append any external reports
+    if (includeExternalReports.value && newGameData.external_reviews) {
+      Object.entries(newGameData.external_reviews).forEach(([, reviews]) => {
+        if (reviews && Array.isArray(reviews)) {
+          reviews.forEach((review: ExternalGameReview) => {
+            reports.push({
+              id: review.id,
+              title: review.title,
+              html_url: review.html_url,
+              data: review.data as Partial<GameReportData>,
+              user: review.user,
+              created_at: review.created_at,
+              updated_at: review.updated_at,
+              // Never mark an external report as visible
+              reportVisible: false,
+              // Use metadata from parent game data
+              metadata: {
+                poster: newGameData.metadata.poster,
+                hero: newGameData.metadata.hero,
+                banner: newGameData.metadata.banner,
+                background: newGameData.metadata.background
+              },
+              // Insert empty fillter data for things that will not exist from external reports
+              reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+              labels: [],
+              // Mark this report as external for additional tempalte formating changes
+              external: true
+            })
+          })
+        }
+      })
+    }
 
     // Sort logic
     if (sortOrd !== 'off') {
@@ -455,7 +518,7 @@ useMeta(() => {
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="gameData">
-            <div v-if="gameData.reports === null || gameData.reports.length > 0">
+            <div v-if="hasReports">
               <div class="game-data-filters row q-mb-md justify-between items-center">
                 <!-- Filters (Top Left) -->
                 <div class="filters col-xs-12 col-md-8">
@@ -515,7 +578,7 @@ useMeta(() => {
                           <!-- Avatar Section -->
                           <div class="col-auto q-ml-md">
                             <q-avatar>
-                              <DeviceImage :device="report.data.device" />
+                              <DeviceImage :device="report.data.device ? report.data.device : ''" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->
@@ -576,7 +639,7 @@ useMeta(() => {
                           <!-- Avatar Section -->
                           <div class="col-auto">
                             <q-avatar>
-                              <DeviceImage :device="report.data.device" />
+                              <DeviceImage :device="report.data.device ? report.data.device : ''" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->
@@ -749,11 +812,24 @@ useMeta(() => {
                       <div class="row items-center q-mt-lg q-mb-md q-pa-none">
                         <!-- Author Section -->
                         <div class="col-auto">
-                          <q-item clickable
-                                  v-ripple
+                          <q-item v-if="!report.external"
+                                  :clickable="!report.external"
+                                  v-ripple="!report.external"
                                   tag="a"
-                                  :href="`${githubListReportsLink}+author%3A${report.user.login}`"
+                                  :href="`${githubListReportsLink}+author%3A${report.user.login}` "
                                   target="_blank"
+                                  class="q-ma-none q-pa-none q-pl-xs">
+                            <q-item-section side>
+                              <q-avatar rounded size="48px">
+                                <img :src="report.user.avatar_url" />
+                              </q-avatar>
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label>{{ report.user.login }}</q-item-label>
+                              <q-item-label caption>{{ report.user.report_count }} reports</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-item v-else
                                   class="q-ma-none q-pa-none q-pl-xs">
                             <q-item-section side>
                               <q-avatar rounded size="48px">
@@ -771,10 +847,21 @@ useMeta(() => {
                           <q-item class="q-ma-none q-pa-none q-pr-xs">
                             <q-item-section>
                               <q-item-label caption>
-                                <a :href="report.html_url" target="_blank" rel="noopener noreferrer"
+                                <a v-if="!report.external"
+                                   :href="report.html_url" target="_blank" rel="noopener noreferrer"
                                    style="text-decoration: none;">
                                   <q-chip square clickable class="q-ma-none q-pr-xs">
                                     <q-avatar icon="fab fa-github" text-color="white" />
+                                    source
+                                  </q-chip>
+                                </a>
+                                <a v-else
+                                   :href="report.html_url" target="_blank" rel="noopener noreferrer"
+                                   style="text-decoration: none;">
+                                  <q-chip square clickable class="q-ma-none q-pr-xs">
+                                    <q-avatar text-color="white">
+                                      <img :src="report.user.avatar_url">
+                                    </q-avatar>
                                     source
                                   </q-chip>
                                 </a>

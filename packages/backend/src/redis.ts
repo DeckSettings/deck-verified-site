@@ -2,14 +2,14 @@ import { createClient, SchemaFieldTypes } from 'redis'
 import type { RedisClientType } from 'redis'
 import config from './config'
 import logger from './logger'
-import type {
+import {
   GameReport,
   GameSearchCache,
   GitHubIssueLabel,
   GitHubReportIssueBodySchema,
   GitHubProjectGameDetails,
   SteamStoreAppDetails,
-  SteamGame, HardwareInfo, GitHubIssueTemplate
+  SteamGame, HardwareInfo, GitHubIssueTemplate, SDHQReview
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
@@ -604,6 +604,48 @@ export const redisLookupSteamSearchSuggestions = async (
     }
   } catch (error) {
     logger.error('Redis error while fetching cached suggestions:', error)
+  }
+  return null
+}
+
+/**
+ * Caches an object of SDHQ Game Review in Redis.
+ * The cached data is stored for 2 days to improve search performance and reduce API calls.
+ */
+export const redisCacheSDHQReview = async (
+  data: SDHQReview[],
+  appId: string,
+  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching SDHQ review.')
+  }
+  if (!appId) {
+    throw new Error('An AppID is required to cache SDHQ review.')
+  }
+
+  const redisKey = `sdhq_review:${escapeRedisKey(appId)}`
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached SDHQ review for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Retrieves a cached object of SDHQ Game Review for a given App ID.
+ */
+export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[] | null> => {
+  if (!appId) {
+    throw new Error('An AppID is required to lookup SDHQ review.')
+  }
+
+  const redisKey = `sdhq_review:${escapeRedisKey(appId)}`
+  try {
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved SDHQ review for "${appId}" from Redis cache`)
+      return JSON.parse(cachedData) as SDHQReview[]
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached SDHQ review:', error)
   }
   return null
 }

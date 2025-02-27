@@ -16,12 +16,19 @@ import {
   fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema
 } from './github'
 import {
-  fetchJosh5Avatar,
+  fetchJosh5Avatar, fetchSDHQReview,
   fetchSteamGameSuggestions,
   fetchSteamStoreGameDetails,
-  generateImageLinksFromAppId
+  generateImageLinksFromAppId, generateSDHQReviewData
 } from './helpers'
-import { GameDetails, GameMetadata, GameReportForm, GameSearchResult } from '../../shared/src/game'
+import {
+  GameDetails,
+  GameMetadata,
+  GameReport,
+  GameReportForm,
+  GameSearchResult,
+  SDHQReview
+} from '../../shared/src/game'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -59,7 +66,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Define paths that should not be logged
   let logRequest = true
   if (req.path === '/deck-verified/api/v1/health') {
-    logRequest = false 
+    logRequest = false
   }
 
   if (logRequest) {
@@ -407,33 +414,44 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   const includeExternal = req.query['include_external'] === 'true'
   const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
   const userAgent = req.headers['user-agent'] || 'Unknown'
-  let returnData: GameDetails | null = null
+
 
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'No valid query parameter' })
   }
 
+  //let returnData: GameDetails | null = null
+  // Start with a partial GameDetails return object
+  let returnData: Partial<GameDetails> = {
+    reports: [],
+    external_reviews: {}
+  }
+
   try {
+    // First try GitHub project data
     const project = await fetchProjectsByAppIdOrGameName(appId, gameName, null)
     if (project && project.projectNumber) {
       returnData = {
+        ...returnData,
         gameName: project.gameName,
         appId: project.appId,
         projectNumber: project.projectNumber,
         metadata: project.metadata,
-        reports: project.reports || []
+        reports: project.reports || [],
+        external_reviews: {}
       }
       logger.info('Using GitHub project data for game details result')
     }
 
     // If we have no project data, check RedisSearch
-    if (!returnData && appId) {
+    if (!returnData.gameName && appId) {
       const games = await searchGamesInRedis(null, appId)
       if (games.length > 0) {
         const redisResult = games[0]
         if (redisResult) {
           const gameImages = await generateImageLinksFromAppId(appId)
           returnData = {
+            ...returnData,
             gameName: redisResult.name,
             appId: Number(appId),
             projectNumber: null,
@@ -443,18 +461,21 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
               background: gameImages.background,
               banner: gameImages.banner
             },
-            reports: []
+            reports: [],
+            external_reviews: {}
           }
           logger.info('Using local RedisSearch data for game details result')
         }
       }
     }
 
-    if (!returnData && includeExternal && appId) {
+    // Fetch steam store results only if no other results were found our internal search
+    if (!returnData.gameName && includeExternal && appId) {
       const steamResult = await fetchSteamStoreGameDetails(appId)
       if (steamResult && steamResult.name) {
         const gameImages = await generateImageLinksFromAppId(appId)
         returnData = {
+          ...returnData,
           gameName: steamResult.name,
           appId: Number(appId),
           projectNumber: null,
@@ -464,9 +485,21 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
             background: gameImages.background,
             banner: gameImages.banner
           },
-          reports: []
+          reports: [],
+          external_reviews: {}
         }
         logger.info('Using Steam store API data for game details result')
+      }
+    }
+
+    // Add additional external source data based on appId
+    if (includeExternal && appId) {
+      const sdhqReviews = await generateSDHQReviewData(appId)
+      if (sdhqReviews.length > 0) {
+        returnData.external_reviews = {
+          ...returnData.external_reviews,
+          sdhq: sdhqReviews
+        }
       }
     }
 
