@@ -101,7 +101,7 @@ export interface GameDetails {
   external_reviews: ExternalReviews;
 }
 
-export interface GitHubProjectGameDetails extends GameDetails {
+export interface GitHubProjectGameDetails extends Omit<GameDetails, 'external_reviews'> {
   projectNumber: number;
   shortDescription: string;
   readme: string;
