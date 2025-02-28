@@ -140,10 +140,8 @@ const hasReports = computed(() => {
   // External reports: if the flag is set and there is at least one external review.
   const hasExternalReports =
     includeExternalReports.value &&
-    gameData.value.external_reviews &&
-    Object.values(gameData.value.external_reviews).some(
-      (arr) => Array.isArray(arr) && arr.length > 0
-    )
+    Array.isArray(gameData.value.external_reviews) &&
+    gameData.value.external_reviews.length > 0
 
   return hasInternalReports || hasExternalReports
 })
@@ -184,35 +182,35 @@ watch(
     setHighestRatedGameReport(reports as GameReport[])
 
     // Append any external reports
-    if (includeExternalReports.value && newGameData.external_reviews) {
-      Object.entries(newGameData.external_reviews).forEach(([, reviews]) => {
-        if (reviews && Array.isArray(reviews)) {
-          reviews.forEach((review: ExternalGameReview) => {
-            reports.push({
-              id: review.id,
-              title: review.title,
-              html_url: review.html_url,
-              data: review.data as Partial<GameReportData>,
-              user: review.user,
-              created_at: review.created_at,
-              updated_at: review.updated_at,
-              // Never mark an external report as visible
-              reportVisible: false,
-              // Use metadata from parent game data
-              metadata: {
-                poster: newGameData.metadata.poster,
-                hero: newGameData.metadata.hero,
-                banner: newGameData.metadata.banner,
-                background: newGameData.metadata.background
-              },
-              // Insert empty fillter data for things that will not exist from external reports
-              reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
-              labels: [],
-              // Mark this report as external for additional tempalte formating changes
-              external: true
-            })
-          })
-        }
+    if (includeExternalReports.value && Array.isArray(newGameData.external_reviews)) {
+      newGameData.external_reviews.forEach((review: ExternalGameReview) => {
+        reports.push({
+          id: review.id,
+          title: review.title,
+          html_url: review.html_url,
+          data: review.data as Partial<GameReportData>,
+          user: {
+            login: review.source.name,
+            avatar_url: review.source.avatar_url,
+            report_count: review.source.report_count || 0
+          },
+          created_at: review.created_at,
+          updated_at: review.updated_at,
+          // Never mark an external report as visible
+          reportVisible: false,
+          // Use metadata from parent game data
+          metadata: {
+            poster: newGameData.metadata.poster,
+            hero: newGameData.metadata.hero,
+            banner: newGameData.metadata.banner,
+            background: newGameData.metadata.background
+          },
+          // Insert empty fillter data for things that will not exist from external reports
+          reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+          labels: [],
+          // Mark this report as external for additional tempalte formating changes
+          external: true
+        })
       })
     }
 

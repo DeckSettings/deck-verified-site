@@ -415,16 +415,14 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
   const userAgent = req.headers['user-agent'] || 'Unknown'
 
-
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'No valid query parameter' })
   }
 
-  //let returnData: GameDetails | null = null
-  // Start with a partial GameDetails return object
+  // Start with a partial GameDetails object
   let returnData: Partial<GameDetails> = {
     reports: [],
-    external_reviews: {}
+    external_reviews: []
   }
 
   try {
@@ -438,7 +436,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         projectNumber: project.projectNumber,
         metadata: project.metadata,
         reports: project.reports || [],
-        external_reviews: {}
+        external_reviews: []
       }
       logger.info('Using GitHub project data for game details result')
     }
@@ -462,7 +460,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
               banner: gameImages.banner
             },
             reports: [],
-            external_reviews: {}
+            external_reviews: []
           }
           logger.info('Using local RedisSearch data for game details result')
         }
@@ -486,7 +484,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
             banner: gameImages.banner
           },
           reports: [],
-          external_reviews: {}
+          external_reviews: []
         }
         logger.info('Using Steam store API data for game details result')
       }
@@ -496,10 +494,10 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     if (includeExternal && appId) {
       const sdhqReviews = await generateSDHQReviewData(appId)
       if (sdhqReviews.length > 0) {
-        returnData.external_reviews = {
-          ...returnData.external_reviews,
-          sdhq: sdhqReviews
-        }
+        returnData.external_reviews = [
+          ...(returnData.external_reviews || []),
+          ...sdhqReviews
+        ]
       }
     }
 

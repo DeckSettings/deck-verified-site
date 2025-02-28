@@ -568,8 +568,8 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
         title: review.title.rendered || '',
         html_url: review.link,
         data: reportData,
-        user: {
-          login: 'SDHQ',
+        source: {
+          name: 'SDHQ',
           avatar_url: 'https://steamdeckhq.com/wp-content/uploads/2022/06/sdhq-holographic-logo.svg',
           report_count: rawReviews.length
         },

@@ -98,7 +98,7 @@ export interface GameDetails {
   projectNumber: number | null;
   metadata: GameMetadata;
   reports: GameReport[];
-  external_reviews: ExternalReviews;
+  external_reviews: ExternalGameReview[];
 }
 
 export interface GitHubProjectGameDetails extends Omit<GameDetails, 'external_reviews'> {
@@ -360,16 +360,16 @@ export interface SDHQReview {
   };
 }
 
-export interface ExternalReviews {
-  sdhq?: ExternalGameReview[];
-}
-
 export interface ExternalGameReview {
   id: number;
   title: string;
   html_url: string;
   data: ExternalGameReviewReportData;
-  user: GameReportUser;
+  source: {
+    name: string;
+    avatar_url: string;
+    report_count: number | null;
+  };
   created_at: string; // ISO 8601 formatted date string
   updated_at: string; // ISO 8601 formatted date string
 }
