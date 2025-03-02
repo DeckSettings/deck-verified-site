@@ -411,4 +411,5 @@ export interface GameDetailsRequestMetricResult {
   app_id: number | null;
   game_name: string | null;
   count: number;
+  metadata?: GameMetadata;
 }

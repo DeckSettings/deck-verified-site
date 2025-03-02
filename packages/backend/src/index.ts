@@ -22,9 +22,10 @@ import {
   fetchSteamStoreGameDetails,
   generateImageLinksFromAppId, generateSDHQReviewData
 } from './helpers'
-import {
+import type {
   AggregateMetricResponse,
   GameDetails,
+  GameDetailsRequestMetricResult,
   GameMetadata,
   GameReport,
   GameReportForm,
@@ -576,9 +577,10 @@ app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Respons
  */
 app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: Response) => {
   try {
-    // Parse query parameters (days and min_report_count)
+    // Parse query parameters
     const daysParam = req.query.days as string
     const minReportCountParam = req.query.min_report_count as string
+    const detailedParam = req.query.detailed as string
 
     // Default values: 7 days and no minimum filter (0)
     let days = 7
@@ -589,29 +591,69 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     if (minReportCountParam && !isNaN(parseInt(minReportCountParam))) {
       minReportCount = parseInt(minReportCountParam)
     }
+    const detailed = detailedParam === 'true'
 
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
-    // Now each result is expected to include both "count" (e.g., request count)
-    // and "reportCount" (the aggregated report_count from each metric event)
     const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
-
     // Filter the results based on the provided minimum report count
-    // (filtering by the aggregated reportCount rather than just the number of requests)
     const filteredMetrics = aggregatedMetrics.filter(metric => metric.count >= minReportCount)
 
     // Transform the results by splitting metricValue into app_id and game_name.
     // If either value is "_" or an empty string, set it to null.
     // Ensure app_id is a number (or null if the conversion fails).
-    const transformedMetrics = filteredMetrics.map(metric => {
-      const [rawAppId, rawGameName] = metric.metricValue.split(':')
-      const app_id =
-        rawAppId === '_' || rawAppId.trim() === '' || isNaN(Number(rawAppId))
-          ? null
-          : Number(rawAppId)
-      const game_name =
-        rawGameName === '_' || rawGameName.trim() === '' ? null : rawGameName
-      return { app_id, game_name, count: metric.count }
-    })
+    const transformedMetrics = await Promise.all(
+      filteredMetrics.map(async metric => {
+        const [rawAppId, rawGameName] = metric.metricValue.split(':')
+        const app_id =
+          rawAppId === '_' || rawAppId.trim() === '' || isNaN(Number(rawAppId))
+            ? null
+            : Number(rawAppId)
+        const game_name =
+          rawGameName === '_' || rawGameName.trim() === '' ? null : rawGameName
+
+        // Start with the base result per your interface
+        let result: GameDetailsRequestMetricResult = { app_id, game_name, count: metric.count }
+
+        // If detailed flag is set, enrich the result with metadata
+        if (detailed) {
+          let metadata: Partial<GameMetadata> = {
+            banner: null,
+            poster: null,
+            hero: null,
+            background: null
+          }
+          // Do a search lookup if app_id is not available
+          if (app_id === null && game_name !== null) {
+            const games = await searchGamesInRedis(null, null, game_name)
+            if (games.length > 0) {
+              const redisResult = games[0]
+              metadata = {
+                banner: redisResult.banner ?? null,
+                poster: redisResult.poster ?? null,
+                hero: null,
+                background: null
+              }
+            }
+          }
+          // Fill in missing data if app_id is available
+          if (app_id !== null) {
+            // Generate image links if app_id is not null
+            const gameImages = await generateImageLinksFromAppId(String(app_id))
+            metadata = {
+              banner: metadata.banner ?? gameImages.banner,
+              poster: metadata.poster ?? gameImages.poster,
+              hero: metadata.hero ?? gameImages.hero,
+              background: metadata.background ?? gameImages.background
+            }
+          }
+          // Add the metadata property to the result
+          result = { ...result, metadata }
+        }
+        return result
+      })
+    )
+
+    // Build the response object
     const returnData: AggregateMetricResponse = {
       metric: 'game_details',
       days,
@@ -619,7 +661,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       results: transformedMetrics
     }
 
-    // Return the filtered metrics as JSON, including the report_count with each result
+    // Return the response as JSON
     return res.status(200).json(returnData)
   } catch (error) {
     logger.error('Error retrieving aggregated game_details metrics:', error)
