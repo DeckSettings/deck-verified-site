@@ -580,6 +580,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     // Parse query parameters
     const daysParam = req.query.days as string
     const minReportCountParam = req.query.min_report_count as string
+    const maxReportCountParam = req.query.max_report_count as string
     const detailedParam = req.query.detailed as string
 
     // Default values: 7 days and no minimum filter (0)
@@ -591,18 +592,18 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     if (minReportCountParam && !isNaN(parseInt(minReportCountParam))) {
       minReportCount = parseInt(minReportCountParam)
     }
+    let maxReportCount = Infinity
+    if (maxReportCountParam && !isNaN(parseInt(maxReportCountParam))) {
+      maxReportCount = parseInt(maxReportCountParam)
+    }
     const detailed = detailedParam === 'true'
 
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
     const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
-    // Filter the results based on the provided minimum report count
-    const filteredMetrics = aggregatedMetrics.filter(metric => metric.count >= minReportCount)
 
-    // Transform the results by splitting metricValue into app_id and game_name.
-    // If either value is "_" or an empty string, set it to null.
-    // Ensure app_id is a number (or null if the conversion fails).
-    const transformedMetrics = await Promise.all(
-      filteredMetrics.map(async metric => {
+    // Transform the results
+    const transformedMetricsOrNull = await Promise.all(
+      aggregatedMetrics.map(async metric => {
         const [rawAppId, rawGameName] = metric.metricValue.split(':')
         const app_id =
           rawAppId === '_' || rawAppId.trim() === '' || isNaN(Number(rawAppId))
@@ -612,27 +613,38 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
           rawGameName === '_' || rawGameName.trim() === '' ? null : rawGameName
 
         // Start with the base result per your interface
-        let result: GameDetailsRequestMetricResult = { app_id, game_name, count: metric.count }
+        let result: GameDetailsRequestMetricResult = {
+          app_id,
+          game_name,
+          count: metric.count,
+          report_count: 0
+        }
 
         // If detailed flag is set, enrich the result with metadata
         if (detailed) {
-          let metadata: Partial<GameMetadata> = {
+          let metadata: GameMetadata = {
             banner: null,
             poster: null,
             hero: null,
             background: null
           }
-          // Do a search lookup if app_id is not available
-          if (app_id === null && game_name !== null) {
-            const games = await searchGamesInRedis(null, null, game_name)
-            if (games.length > 0) {
-              const redisResult = games[0]
-              metadata = {
-                banner: redisResult.banner ?? null,
-                poster: redisResult.poster ?? null,
-                hero: null,
-                background: null
-              }
+          // Search by AppId if provided
+          let games = undefined
+          if (app_id !== null) {
+            games = await searchGamesInRedis(null, String(app_id))
+          } else if (game_name !== null) {
+            games = await searchGamesInRedis(null, null, game_name)
+          }
+          if (games && games.length > 0) {
+            const redisResult = games[0]
+            metadata = {
+              banner: redisResult.banner ?? null,
+              poster: redisResult.poster ?? null,
+              hero: null,
+              background: null
+            }
+            if (redisResult.reportCount) {
+              result.report_count = redisResult.reportCount ?? 0
             }
           }
           // Fill in missing data if app_id is available
@@ -646,6 +658,13 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
               background: metadata.background ?? gameImages.background
             }
           }
+
+          // Filter by report count
+          const reportCount = result.report_count ?? 0;
+          if (reportCount < minReportCount || reportCount > maxReportCount) {
+            return null
+          }
+
           // Add the metadata property to the result
           result = { ...result, metadata }
         }
@@ -653,11 +672,15 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       })
     )
 
+    // Remove any null values from the transformed metrics
+    const transformedMetrics = transformedMetricsOrNull.filter(
+      (item): item is GameDetailsRequestMetricResult => item !== null
+    )
+
     // Build the response object
     const returnData: AggregateMetricResponse = {
       metric: 'game_details',
       days,
-      min_report_count: minReportCount,
       results: transformedMetrics
     }
 

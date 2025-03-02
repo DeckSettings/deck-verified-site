@@ -301,7 +301,7 @@ export const getAggregatedMetrics = async (
 
   try {
     // Combine the sorted sets, summing their scores.
-    await redisClient.zUnionStore(tempKey, keys, { aggregate: 'SUM' })
+    await redisClient.zUnionStore(tempKey, keys, { AGGREGATE: 'SUM' })
 
     // Retrieve the top 'limit' metric values sorted by their aggregated score using zRangeWithScores with REV option.
     const results = await redisClient.zRangeWithScores(tempKey, 0, limit - 1, { REV: true })
@@ -311,7 +311,7 @@ export const getAggregatedMetrics = async (
 
     // Format the results into an array of objects.
     // `results` is now an array of objects like { value: '...', score: '...' }
-    const aggregated = results.map(item => ({
+    const aggregated = results.map((item: { value: string; score: number | string }) => ({
       metricValue: item.value,
       count: Number(item.score)
     }))

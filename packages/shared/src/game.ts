@@ -403,7 +403,6 @@ export interface ExternalGameReviewReportData {
 export interface AggregateMetricResponse {
   metric: string;
   days: number;
-  min_report_count: number;
   results: GameDetailsRequestMetricResult[];
 }
 
@@ -412,4 +411,5 @@ export interface GameDetailsRequestMetricResult {
   game_name: string | null;
   count: number;
   metadata?: GameMetadata;
+  report_count?: number;
 }
