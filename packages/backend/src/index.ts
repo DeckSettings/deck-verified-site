@@ -8,7 +8,8 @@ import logger, { logMetric } from './logger'
 import {
   connectToRedis,
   storeGameInRedis,
-  searchGamesInRedis, getGamesWithReports
+  searchGamesInRedis, getGamesWithReports,
+  logAggregatedMetric, getAggregatedMetrics
 } from './redis'
 import {
   fetchIssueLabels, fetchPopularReports,
@@ -22,6 +23,7 @@ import {
   generateImageLinksFromAppId, generateSDHQReviewData
 } from './helpers'
 import {
+  AggregateMetricResponse,
   GameDetails,
   GameMetadata,
   GameReport,
@@ -503,7 +505,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Log the metric for the game details lookup
     const metricName = 'game_details'
-    const metricValue = appId || gameName
+    const metricValue = `${returnData?.appId ? returnData?.appId : '_'}:${returnData?.gameName ? returnData?.gameName : '_'}`
     logMetric(metricName, metricValue, {
       request_ip: requestIp,
       user_agent: userAgent,
@@ -511,6 +513,8 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       app_id: returnData?.appId || appId,
       report_count: returnData?.reports?.length || 0
     })
+    // Cache the aggregate metric for the game details lookup
+    await logAggregatedMetric(metricName, metricValue)
 
     if (!returnData) {
       logger.info(`No results found for appId "${appId}" or gameName "${gameName}".`)
@@ -541,6 +545,85 @@ app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Respons
   } catch (error) {
     logger.error('Error:', error)
     return res.status(500).json({ error: 'Failed to fetch labels' })
+  }
+})
+
+/**
+ * Get aggregated game_details metrics
+ *
+ * @queryParam days {string} - The number of past days to include in the aggregation (max 7). Defaults to 7.
+ * @queryParam min_report_count {string} - The minimum aggregated report count a metric must have to be returned. Defaults to 0.
+ *
+ * @returns {object} 200 - An object containing the metric name, days used, minimum report count filter, and an array of metric results.
+ * @returns {object} 500 - Internal server error.
+ *
+ * @example
+ * {
+ *   "metric": "game_details",
+ *   "days": 7,
+ *   "min_report_count": 5,
+ *   "results": [
+ *     {
+ *       "metricValue": "1172380",
+ *       "count": 42
+ *     },
+ *     {
+ *       "metricValue": "SomeGameName",
+ *       "count": 36
+ *     }
+ *   ]
+ * }
+ */
+app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: Response) => {
+  try {
+    // Parse query parameters (days and min_report_count)
+    const daysParam = req.query.days as string
+    const minReportCountParam = req.query.min_report_count as string
+
+    // Default values: 7 days and no minimum filter (0)
+    let days = 7
+    if (daysParam && !isNaN(parseInt(daysParam))) {
+      days = Math.min(parseInt(daysParam), 7) // enforce maximum of 7 days
+    }
+    let minReportCount = 0
+    if (minReportCountParam && !isNaN(parseInt(minReportCountParam))) {
+      minReportCount = parseInt(minReportCountParam)
+    }
+
+    // Retrieve the aggregated metrics for the past `days` for 'game_details'
+    // Now each result is expected to include both "count" (e.g., request count)
+    // and "reportCount" (the aggregated report_count from each metric event)
+    const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
+
+    // Filter the results based on the provided minimum report count
+    // (filtering by the aggregated reportCount rather than just the number of requests)
+    const filteredMetrics = aggregatedMetrics.filter(metric => metric.count >= minReportCount)
+
+    // Transform the results by splitting metricValue into app_id and game_name.
+    // If either value is "_" or an empty string, set it to null.
+    // Ensure app_id is a number (or null if the conversion fails).
+    const transformedMetrics = filteredMetrics.map(metric => {
+      const [rawAppId, rawGameName] = metric.metricValue.split(':')
+      const app_id =
+        rawAppId === '_' || rawAppId.trim() === '' || isNaN(Number(rawAppId))
+          ? null
+          : Number(rawAppId)
+      const game_name =
+        rawGameName === '_' || rawGameName.trim() === '' ? null : rawGameName
+      return { app_id, game_name, count: metric.count }
+    })
+    const returnData: AggregateMetricResponse = {
+      metric: 'game_details',
+      days,
+      min_report_count: minReportCount,
+      results: transformedMetrics
+    }
+
+    // Return the filtered metrics as JSON, including the report_count with each result
+    return res.status(200).json(returnData)
+  } catch (error) {
+    logger.error('Error retrieving aggregated game_details metrics:', error)
+    return res.status(500).json({ error: 'Internal Server Error' })
   }
 })
 

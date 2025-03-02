@@ -399,3 +399,16 @@ export interface ExternalGameReviewReportData {
   game_graphics_settings?: string;
   additional_notes?: string;
 }
+
+export interface AggregateMetricResponse {
+  metric: string;
+  days: number;
+  min_report_count: number;
+  results: GameDetailsRequestMetricResult[];
+}
+
+export interface GameDetailsRequestMetricResult {
+  app_id: number | null;
+  game_name: string | null;
+  count: number;
+}

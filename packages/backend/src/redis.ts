@@ -256,6 +256,75 @@ export const getGamesWithReports = async (
 }
 
 /**
+ * Logs an aggregated metric into a daily sorted set.
+ */
+export const logAggregatedMetric = async (
+  metricName: string,
+  metricValue: string
+): Promise<void> => {
+  // Use today's date in YYYY-MM-DD format to separate daily logs
+  const today = new Date().toISOString().split('T')[0]
+  const key = `metric_aggregate:${metricName}:${today}`
+
+  try {
+    // Increment the score for this metricValue in today's sorted set
+    await redisClient.zIncrBy(key, 1, metricValue)
+    // Set a TTL of 7 days so that these keys expire automatically
+    await redisClient.expire(key, 7 * 24 * 60 * 60)
+  } catch (error) {
+    logger.error('Error logging aggregated metric:', error)
+  }
+}
+
+/**
+ * Retrieves aggregated metric counts for the past X days (up to 7).
+ */
+export const getAggregatedMetrics = async (
+  metricName: string,
+  days: number = 7,
+  limit: number = 30
+): Promise<{ metricValue: string; count: number }[]> => {
+  // Limit the days to 7 maximum
+  days = Math.min(days, 7)
+
+  // Build a list of daily keys
+  const keys: string[] = []
+  for (let i = 0; i < days; i++) {
+    const date = new Date()
+    date.setDate(date.getDate() - i)
+    const day = date.toISOString().split('T')[0]
+    keys.push(`metric_aggregate:${metricName}:${day}`)
+  }
+
+  // Temporary key for aggregating the results
+  const tempKey = `metric_aggregate:${metricName}:temp`
+
+  try {
+    // Combine the sorted sets, summing their scores.
+    await redisClient.zUnionStore(tempKey, keys, { aggregate: 'SUM' })
+
+    // Retrieve the top 'limit' metric values sorted by their aggregated score using zRangeWithScores with REV option.
+    const results = await redisClient.zRangeWithScores(tempKey, 0, limit - 1, { REV: true })
+
+    // Clean up the temporary key
+    await redisClient.del(tempKey)
+
+    // Format the results into an array of objects.
+    // `results` is now an array of objects like { value: '...', score: '...' }
+    const aggregated = results.map(item => ({
+      metricValue: item.value,
+      count: Number(item.score)
+    }))
+
+    return aggregated
+  } catch (error) {
+    logger.error('Error aggregating metrics:', error)
+    return []
+  }
+}
+
+
+/**
  * Caches recent game reports from GitHub in Redis.
  */
 export const redisCacheRecentGameReports = async (data: GameReport[]): Promise<void> => {
