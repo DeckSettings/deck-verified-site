@@ -1,0 +1,114 @@
+---
+name: New Device Request
+description: Request adding details for a new device.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        Thanks for taking the time to help improve!
+        <br>
+        In order to add a new device for you to provide game reports for, we need some information.
+        Please fill out the below questions as best you can and we will look at adding this new devices ASAP.
+
+  #   > Name
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: Enter is the name of the device you wish to add.
+    validations:
+      required: true
+
+  #   > Product link
+  - type: input
+    id: product_link
+    attributes:
+      label: Product Link
+      description: Add a link to the device product website. If there is no product website - no worries. Just leave this blank.
+    validations:
+      required: false
+
+  #   > Battery Size
+  - type: input
+    id: battery_size_wh
+    attributes:
+      label: Battery Size
+      description: What is the battery size (in watt-hour) for this device?
+    validations:
+      required: true
+
+  #   > Max Display Resolution
+  - type: input
+    id: max_display_resolution
+    attributes:
+      label: Max Display Resolution
+      description: What is the maximum resolution that this device can display? Eg. "1280x800", "1920x1080", etc.
+    validations:
+      required: true
+
+  #   > Max Display Refresh Rate
+  - type: input
+    id: max_refresh_rate
+    attributes:
+      label: Max Display Refresh Rate
+      description: What is the maximum refresh rate that this device can display?
+    validations:
+      required: true
+
+  #   > Supports VRR
+  - type: dropdown
+    id: supports_vrr
+    attributes:
+      label: Supports VRR
+      description: Does this device support VRR?
+      options:
+        - "No"
+        - "Yes"
+      default: 0
+    validations:
+      required: true
+
+  #   > Max TDP
+  - type: input
+    id: max_tdp_w
+    attributes:
+      label: Max TDP
+      description: What is the maximum TDP (in Watts) that this device can use?
+    validations:
+      required: true
+
+  #   > Device Images
+  - type: textarea
+    id: device_images
+    attributes:
+      label: Device Images
+      description: |
+        In order to have your device display with a unique icon on the website and Decky plugin, we need some images.
+        If you could provide something here that is a generic image with transparent background looking straight on, 
+        that would be **VERY** helpful.
+    validations:
+      required: false
+
+  #   > Device Variations
+  - type: textarea
+    id: device_variations
+    attributes:
+      label: Device Variations
+      description: |
+        If your device comes in a few different performance SKUs, then add details here about the other SKU specs and we will create them.
+        For example, the ROG Ally had 2 SKU "ROG Ally Z1" and "ROG Ally Z1 Extreme" with similar specs but different performance.
+    validations:
+      required: false
+
+  #   > Additional Information
+  - type: textarea
+    id: additional_information
+    attributes:
+      label: Additional Information
+      description: |
+        Any additional information you would like to add. The more details you give us to work with,
+        the less research we have to do and the faster we can get the device added.
+    validations:
+      required: false
