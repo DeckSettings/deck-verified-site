@@ -2,7 +2,14 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { RouteParamsGeneric } from 'vue-router'
+import {
+  simGithub,
+  simSteam,
+  simProtondb,
+  simPcgamingwiki
+} from 'quasar-extras-svg-icons/simple-icons-v14'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
+import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
 import type {
   GameReport,
   GameDetails,
@@ -43,6 +50,7 @@ const reportFormDialogOpen = ref<boolean>(false)
 const dialogAutoOpened = ref(false)
 
 const includeExternalReports = ref(route.query.includeExternalReports === 'true')
+const sdhqLink = ref('')
 
 const selectedDevice = ref('all')
 const deviceLabels = ref<GitHubIssueLabel[]>([])
@@ -182,35 +190,40 @@ watch(
     setHighestRatedGameReport(reports as GameReport[])
 
     // Append any external reports
-    if (includeExternalReports.value && Array.isArray(newGameData.external_reviews)) {
+    if (Array.isArray(newGameData.external_reviews)) {
       newGameData.external_reviews.forEach((review: ExternalGameReview) => {
-        reports.push({
-          id: review.id,
-          title: review.title,
-          html_url: review.html_url,
-          data: review.data as Partial<GameReportData>,
-          user: {
-            login: review.source.name,
-            avatar_url: review.source.avatar_url,
-            report_count: review.source.report_count || 0
-          },
-          created_at: review.created_at,
-          updated_at: review.updated_at,
-          // Never mark an external report as visible
-          reportVisible: false,
-          // Use metadata from parent game data
-          metadata: {
-            poster: newGameData.metadata.poster,
-            hero: newGameData.metadata.hero,
-            banner: newGameData.metadata.banner,
-            background: newGameData.metadata.background
-          },
-          // Insert empty fillter data for things that will not exist from external reports
-          reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
-          labels: [],
-          // Mark this report as external for additional tempalte formating changes
-          external: true
-        })
+        if (review.source.name === 'SDHQ') {
+          sdhqLink.value = review.html_url
+        }
+        if (includeExternalReports.value) {
+          reports.push({
+            id: review.id,
+            title: review.title,
+            html_url: review.html_url,
+            data: review.data as Partial<GameReportData>,
+            user: {
+              login: review.source.name,
+              avatar_url: review.source.avatar_url,
+              report_count: review.source.report_count || 0
+            },
+            created_at: review.created_at,
+            updated_at: review.updated_at,
+            // Never mark an external report as visible
+            reportVisible: false,
+            // Use metadata from parent game data
+            metadata: {
+              poster: newGameData.metadata.poster,
+              hero: newGameData.metadata.hero,
+              banner: newGameData.metadata.banner,
+              background: newGameData.metadata.background
+            },
+            // Insert empty fillter data for things that will not exist from external reports
+            reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+            labels: [],
+            // Mark this report as external for additional tempalte formating changes
+            external: true
+          })
+        }
       })
     }
 
@@ -476,17 +489,46 @@ useMeta(() => {
         </div>
         <div class="q-pa-md">
           <div class="row justify-center">
-            <q-btn class="q-ma-md" round flat icon="fab fa-github" :href="githubProjectSearchLink ?? ''" target="_blank"
+            <q-btn class="q-my-md"
+                   round flat
+                   :icon="simGithub"
+                   :href="githubProjectSearchLink ?? ''" target="_blank"
                    color="white">
               <q-tooltip>View Reports on Github</q-tooltip>
             </q-btn>
-            <q-btn v-if="appId" class="q-ma-md" round flat icon="fab fa-steam"
-                   :href="`https://store.steampowered.com/app/${appId}`" target="_blank" color="white">
+            <q-btn v-if="appId"
+                   class="q-my-md"
+                   round flat
+                   :icon="simSteam"
+                   :href="`https://store.steampowered.com/app/${appId}`" target="_blank"
+                   color="white">
               <q-tooltip>View on Steam</q-tooltip>
             </q-btn>
-            <q-btn v-if="appId" class="q-ma-md" round flat icon="fas fa-atom"
-                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`" target="_blank" color="white">
+            <q-btn v-if="appId"
+                   class="q-my-md"
+                   round flat
+                   :icon="simProtondb"
+                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`" target="_blank"
+                   color="white">
               <q-tooltip>View on ProtonDB</q-tooltip>
+            </q-btn>
+            <q-btn v-if="gameName"
+                   class="q-my-md"
+                   round flat
+                   :icon="simPcgamingwiki"
+                   :href="getPCGamingWikiUrlFromGameName(gameName)" target="_blank"
+                   color="white">
+              <q-tooltip>View on PCGamingWiki</q-tooltip>
+            </q-btn>
+            <q-btn v-if="sdhqLink"
+                   class="q-my-md"
+                   round flat
+                   :href="sdhqLink" target="_blank"
+                   color="white">
+              <q-avatar size="42px">
+                <img src="~/assets/icons/sdhq.svg">
+              </q-avatar>
+              <q-tooltip>View Game Review on SteamDeckHQ</q-tooltip>
             </q-btn>
           </div>
           <div class="row justify-center">
