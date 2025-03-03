@@ -506,7 +506,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Log the metric for the game details lookup
     const metricName = 'game_details'
-    const metricValue = `${returnData?.appId ? returnData?.appId : '_'}:${returnData?.gameName ? returnData?.gameName : '_'}`
+    const metricValue = `${returnData?.appId ?? appId ?? '_'}:${returnData?.gameName ?? gameName ?? '_'}`
     logMetric(metricName, metricValue, {
       request_ip: requestIp,
       user_agent: userAgent,
