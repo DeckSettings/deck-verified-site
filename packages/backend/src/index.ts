@@ -582,6 +582,8 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     const minReportCountParam = req.query.min_report_count as string
     const maxReportCountParam = req.query.max_report_count as string
     const detailedParam = req.query.detailed as string
+    const disableDedupeParam = req.query.disable_dedupe as string
+    const disableFilterParam = req.query.disable_filter as string
 
     // Default values: 7 days and no minimum filter (0)
     let days = 7
@@ -597,6 +599,8 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       maxReportCount = parseInt(maxReportCountParam)
     }
     const detailed = detailedParam === 'true'
+    const disableDedupe = disableDedupeParam === 'true'
+    const disableFilter = disableFilterParam === 'true'
 
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
     const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
@@ -718,10 +722,13 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       return dedupeMetricsGroup
     }
     const dedupePass1 = dedupeMetrics(transformedMetrics)
-    const dedupePass2 = dedupeMetrics(dedupePass1)
+    let dedupePass2 = dedupeMetrics(dedupePass1)
+    if (disableDedupe) {
+      dedupePass2 = transformedMetrics
+    }
 
     // Filter by report count
-    const filteredMetrics = Object.values(dedupePass2).filter(metric => {
+    let filteredMetrics = Object.values(dedupePass2).filter(metric => {
       // Filter out if no name or app id exists
       if (!metric.app_id && !metric.game_name) {
         return false
@@ -730,6 +737,9 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       const reportCount = metric.report_count ?? 0
       return reportCount >= minReportCount && reportCount <= maxReportCount
     })
+    if (disableFilter) {
+      filteredMetrics = dedupePass2
+    }
 
     // Build the response object
     const returnData: AggregateMetricResponse = {
