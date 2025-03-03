@@ -97,7 +97,11 @@ export const updateGameIndex = async (): Promise<void> => {
           logger.error('Error storing game in Redis:', error)
         }
         try {
-          await redisCacheGitHubProjectDetails(parsedProject, String(parsedProject.appId), parsedProject.gameName)
+          let appId: string | null = String(parsedProject.appId)
+          if (!parsedProject.appId) {
+            appId = null
+          }
+          await redisCacheGitHubProjectDetails(parsedProject, appId, parsedProject.gameName)
         } catch (error) {
           logger.error('Error storing project details in Redis:', error)
         }
