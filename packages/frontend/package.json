@@ -24,6 +24,7 @@
     "marked": "^15.0.4",
     "pinia": "^2.0.11",
     "quasar": "^2.16.0",
+    "quasar-extras-svg-icons": "^2.1.1",
     "vue": "^3.4.18",
     "vue-i18n": "^9.2.2",
     "vue-router": "^4.0.12",
