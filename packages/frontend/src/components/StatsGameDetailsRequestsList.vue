@@ -130,7 +130,7 @@ export default defineComponent({
 
             <q-item-section top class="q-ml-sm">
               <q-item-label class="text-h6 q-mb-xs">
-                {{ metricResult.game_name || 'No Name Provided' }}
+                {{ metricResult.game_name || '<< Game Name Not Yet Parsed >>' }}
               </q-item-label>
               <q-item-label caption lines="1">
                 <div class="row q-gutter-sm">
