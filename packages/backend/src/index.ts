@@ -578,32 +578,20 @@ app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Respons
 app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: Response) => {
   try {
     // Parse query parameters
-    const daysParam = req.query.days as string
-    const minReportCountParam = req.query.min_report_count as string
-    const maxReportCountParam = req.query.max_report_count as string
-    const detailedParam = req.query.detailed as string
-    const disableDedupeParam = req.query.disable_dedupe as string
-    const disableFilterParam = req.query.disable_filter as string
-
-    // Default values: 7 days and no minimum filter (0)
-    let days = 7
-    if (daysParam && !isNaN(parseInt(daysParam))) {
-      days = Math.min(parseInt(daysParam), 7) // enforce maximum of 7 days
-    }
-    let minReportCount = 0
-    if (minReportCountParam && !isNaN(parseInt(minReportCountParam))) {
-      minReportCount = parseInt(minReportCountParam)
-    }
-    let maxReportCount = Infinity
-    if (maxReportCountParam && !isNaN(parseInt(maxReportCountParam))) {
-      maxReportCount = parseInt(maxReportCountParam)
-    }
-    const detailed = detailedParam === 'true'
-    const disableDedupe = disableDedupeParam === 'true'
-    const disableFilter = disableFilterParam === 'true'
+    const days = Math.min(parseInt(req.query['days'] as string, 10) || 7, 7)
+    const limit = Math.min(parseInt(req.query['limit'] as string, 10) || 100, 500)
+    const minReportCount = req.query['min_report_count']
+      ? parseInt(req.query['min_report_count'] as string, 10)
+      : 0
+    const maxReportCount = req.query['max_report_count']
+      ? parseInt(req.query['max_report_count'] as string, 10)
+      : Infinity
+    const detailed = req.query.detailed === 'true'
+    const disableDedupe = req.query.disable_dedupe === 'true'
+    const disableFilter = req.query.disable_filter === 'true'
 
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
-    const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
+    const aggregatedMetrics = await getAggregatedMetrics('game_details', days, limit)
 
     // Transform the results by extracting app_id and game_name from metricValue
     const transformedMetrics = await Promise.all(

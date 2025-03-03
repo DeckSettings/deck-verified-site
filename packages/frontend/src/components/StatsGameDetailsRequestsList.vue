@@ -26,10 +26,10 @@ export default defineComponent({
         listTitle.value = ''
       } else if (props.statSelection == 'withReports') {
         gameDetailsRequestsMetricResult.value = await fetchTopGameDetailsRequestMetrics(7, 1, 99999)
-        listTitle.value = 'Top 30 Game Details Requests For Games With Reports'
+        listTitle.value = 'Top Requests This Week (With Reports)'
       } else if (props.statSelection == 'withoutReports') {
         gameDetailsRequestsMetricResult.value = await fetchTopGameDetailsRequestMetrics(7, 0, 0)
-        listTitle.value = 'Top 30 Game Details Requests For Games Without Reports'
+        listTitle.value = 'Top Requests This Week (No Reports)'
       }
       // Sort the list by request_count in descending order
       gameDetailsRequestsMetricResult.value.sort((a, b) => b.count - a.count)

@@ -282,7 +282,7 @@ export const logAggregatedMetric = async (
 export const getAggregatedMetrics = async (
   metricName: string,
   days: number = 7,
-  limit: number = 30
+  limit: number = 100
 ): Promise<{ metricValue: string; count: number }[]> => {
   // Limit the days to 7 maximum
   days = Math.min(days, 7)
