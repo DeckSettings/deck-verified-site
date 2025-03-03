@@ -601,8 +601,8 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
     const aggregatedMetrics = await getAggregatedMetrics('game_details', days)
 
-    // Transform the results
-    const transformedMetricsOrNull = await Promise.all(
+    // Transform the results by extracting app_id and game_name from metricValue
+    const transformedMetrics = await Promise.all(
       aggregatedMetrics.map(async metric => {
         const [rawAppId, rawGameName] = metric.metricValue.split(':')
         const app_id =
@@ -659,12 +659,6 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
             }
           }
 
-          // Filter by report count
-          const reportCount = result.report_count ?? 0;
-          if (reportCount < minReportCount || reportCount > maxReportCount) {
-            return null
-          }
-
           // Add the metadata property to the result
           result = { ...result, metadata }
         }
@@ -672,16 +666,72 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       })
     )
 
-    // Remove any null values from the transformed metrics
-    const transformedMetrics = transformedMetricsOrNull.filter(
-      (item): item is GameDetailsRequestMetricResult => item !== null
-    )
+    // Deduplicate metrics
+    const dedupeMetrics = (metricsArray: GameDetailsRequestMetricResult[]): GameDetailsRequestMetricResult[] => {
+      const dedupeMetricsGroup: GameDetailsRequestMetricResult[] = []
+      for (const rec of metricsArray) {
+        // Try to find a matching group.
+        let foundGroup: GameDetailsRequestMetricResult | undefined
+
+        // If the record has a game_name, try to match (case-insensitive).
+        if (rec.game_name) {
+          const recGameName = rec.game_name.toLowerCase()
+          foundGroup = dedupeMetricsGroup.find(g => g.game_name && g.game_name.toLowerCase() === recGameName)
+        }
+
+
+        // If no match by game_name and we have a valid app_id, try matching by app_id.
+        if (!foundGroup && rec.app_id !== null) {
+          foundGroup = dedupeMetricsGroup.find(g => g.app_id === rec.app_id)
+        }
+
+        if (foundGroup) {
+          // Merge counts.
+          foundGroup.count = (foundGroup.count ?? 0) + (rec.count ?? 0)
+          foundGroup.report_count = (foundGroup.report_count ?? 0) + (rec.report_count ?? 0)
+
+          // If the current record has both app_id and game_name,
+          // it takes priority and overwrites the values in the group.
+          if (rec.app_id !== null && rec.game_name) {
+            foundGroup.app_id = rec.app_id
+            foundGroup.game_name = rec.game_name
+            foundGroup.metadata = rec.metadata
+          } else {
+            // Otherwise, update only missing values.
+            if (foundGroup.app_id === null && rec.app_id !== null) {
+              foundGroup.app_id = rec.app_id
+              foundGroup.metadata = rec.metadata
+            }
+            if (!foundGroup.game_name && rec.game_name) {
+              foundGroup.game_name = rec.game_name
+            }
+          }
+        } else {
+          // No matching group was found; add this record as a new group.
+          dedupeMetricsGroup.push({
+            ...rec,
+            count: rec.count ?? 0,
+            report_count: rec.report_count ?? 0
+          })
+        }
+      }
+      return dedupeMetricsGroup
+    }
+    const dedupePass1 = dedupeMetrics(transformedMetrics)
+    const dedupePass2 = dedupeMetrics(dedupePass1)
+
+    // Filter by report count
+    const filteredMetrics = Object.values(dedupePass2).filter(metric => {
+      // Assume report_count is 0 if null or undefined
+      const reportCount = metric.report_count ?? 0
+      return reportCount >= minReportCount && reportCount <= maxReportCount
+    })
 
     // Build the response object
     const returnData: AggregateMetricResponse = {
       metric: 'game_details',
       days,
-      results: transformedMetrics
+      results: filteredMetrics
     }
 
     // Return the response as JSON

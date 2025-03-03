@@ -6,7 +6,9 @@ import type {
   GameSearchResult,
   GameDetails,
   GitHubIssueLabel,
-  GitHubUser, GameReportForm
+  GitHubUser,
+  GameReportForm,
+  GameDetailsRequestMetricResult
 } from '../../../shared/src/game'
 
 export interface Report {
@@ -184,5 +186,29 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
   } catch (error) {
     console.error('Error fetching labels:', error)
     return []
+  }
+}
+
+export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number): Promise<GameDetailsRequestMetricResult[]> => {
+  const url = `/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}&detailed=true`
+  try {
+    const response = await fetch(url)
+    if (response.status === 204) {
+      // 204 - No Content
+      console.log('No results found')
+      return []
+    } else if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
+      throw new Error('Failed to fetch project data')
+    }
+    const data = await response.json()
+    if (!data.results) {
+      return []
+    }
+    return data.results as GameDetailsRequestMetricResult[]
+  } catch (error) {
+    console.error('Error fetching project data:', error)
+    throw error
   }
 }
