@@ -297,7 +297,7 @@ export const getAggregatedMetrics = async (
   }
 
   // Temporary key for aggregating the results
-  const tempKey = `metric_aggregate:${metricName}:temp`
+  const tempKey = `metric_aggregate:${metricName}:temp:${Date.now()}:${Math.random().toString(36).substring(2, 10)}`
 
   try {
     // Combine the sorted sets, summing their scores.
