@@ -722,6 +722,10 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
 
     // Filter by report count
     const filteredMetrics = Object.values(dedupePass2).filter(metric => {
+      // Filter out if no name or app id exists
+      if (!metric.app_id && !metric.game_name) {
+        return false
+      }
       // Assume report_count is 0 if null or undefined
       const reportCount = metric.report_count ?? 0
       return reportCount >= minReportCount && reportCount <= maxReportCount
