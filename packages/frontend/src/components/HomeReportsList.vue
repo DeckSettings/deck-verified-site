@@ -231,7 +231,7 @@ export default defineComponent({
                 {{ report.user.login }}
               </q-chip>
               <q-chip
-                v-if="report.reviewScore"
+                v-if="report.reviewScore === 'positive'"
                 size="sm"
                 :name="getReviewScoreIcon(report.reviewScore)"
                 :color="getReviewScoreColor(report.reviewScore)">
