@@ -701,7 +701,7 @@ export const generateSDGReviewData = async (appId: string): Promise<ExternalGame
 
     const reportData: ExternalGameReviewReportData = {
       summary: summary,
-      additional_notes: `Watch video: ${video.videoURL}`,
+      additional_notes: video.videoURL,
       device: assumedDevice
     }
 
