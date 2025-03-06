@@ -17,10 +17,12 @@ import {
   fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema
 } from './github'
 import {
-  fetchJosh5Avatar, fetchSDHQReview,
+  fetchJosh5Avatar,
   fetchSteamGameSuggestions,
   fetchSteamStoreGameDetails,
-  generateImageLinksFromAppId, generateSDHQReviewData
+  generateImageLinksFromAppId,
+  generateSDHQReviewData,
+  generateSDGReviewData
 } from './helpers'
 import type {
   AggregateMetricResponse,
@@ -500,6 +502,13 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
           ...sdhqReviews
+        ]
+      }
+      const sdgVideoReviews = await generateSDGReviewData(appId)
+      if (sdgVideoReviews.length > 0) {
+        returnData.external_reviews = [
+          ...(returnData.external_reviews || []),
+          ...sdgVideoReviews
         ]
       }
     }

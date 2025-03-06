@@ -297,6 +297,19 @@ export interface GithubIssuesSearchResultItems {
   score: number;
 }
 
+export interface YouTubeOEmbedMetadata {
+  title: string;
+  author_name: string;
+  author_url: string;
+  height: number;
+  width: number;
+  version: string;
+  thumbnail_height: number;
+  thumbnail_width: number;
+  thumbnail_url: string;
+  html: string;
+}
+
 export interface SteamStoreAppDetails {
   id: string;
   name: string;
@@ -360,6 +373,14 @@ export interface SDHQReview {
   };
 }
 
+export interface SDGVideoReview {
+  appId: number;
+  title: string;
+  videoURL: string;
+  publishedDateUnix: number;
+  puiblishDateTime: string;
+}
+
 export interface ExternalGameReview {
   id: number;
   title: string;
@@ -375,29 +396,29 @@ export interface ExternalGameReview {
 }
 
 export interface ExternalGameReviewReportData {
-  summary?: string;
-  game_name?: string;
-  app_id?: number;
-  launcher?: string;
+  summary?: string | null;
+  game_name?: string | null;
+  app_id?: number | null;
+  launcher?: string | null;
   average_battery_power_draw?: string | null;
   calculated_battery_life_minutes?: number | null;
   device: string;
-  steam_play_compatibility_tool_used?: string;
-  compatibility_tool_version?: string;
-  game_resolution?: string;
+  steam_play_compatibility_tool_used?: string | null;
+  compatibility_tool_version?: string | null;
+  game_resolution?: string | null;
   custom_launch_options?: string | null;
   frame_limit?: number | null;
-  disable_frame_limit?: string;
-  enable_vrr?: string;
-  allow_tearing?: string;
-  half_rate_shading?: string;
+  disable_frame_limit?: string | null;
+  enable_vrr?: string | null;
+  allow_tearing?: string | null;
+  half_rate_shading?: string | null;
   tdp_limit?: number | null;
   manual_gpu_clock?: number | null;
-  scaling_mode?: string;
-  scaling_filter?: string;
-  game_display_settings?: string;
-  game_graphics_settings?: string;
-  additional_notes?: string;
+  scaling_mode?: string | null;
+  scaling_filter?: string | null;
+  game_display_settings?: string | null;
+  game_graphics_settings?: string | null;
+  additional_notes?: string | null;
 }
 
 export interface AggregateMetricResponse {

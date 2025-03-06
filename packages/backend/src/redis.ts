@@ -8,8 +8,11 @@ import {
   GitHubIssueLabel,
   GitHubReportIssueBodySchema,
   GitHubProjectGameDetails,
+  GitHubIssueTemplate,
   SteamStoreAppDetails,
-  SteamGame, HardwareInfo, GitHubIssueTemplate, SDHQReview
+  SteamGame, HardwareInfo,
+  SDHQReview,
+  SDGVideoReview
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
@@ -715,6 +718,48 @@ export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[]
     }
   } catch (error) {
     logger.error('Redis error while fetching cached SDHQ review:', error)
+  }
+  return null
+}
+
+/**
+ * Caches an object of SDG Video Review in Redis.
+ * The cached data is stored for 2 days to improve search performance and reduce API calls.
+ */
+export const redisCacheSDGReview = async (
+  data: SDGVideoReview[],
+  appId: string,
+  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching SDG review.')
+  }
+  if (!appId) {
+    throw new Error('An AppID is required to cache SDG review.')
+  }
+
+  const redisKey = `sdg_review:${escapeRedisKey(appId)}`
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached SDG review for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Retrieves a cached object of SDG Video Review for a given App ID.
+ */
+export const redisLookupSDGReview = async (appId: string): Promise<SDGVideoReview[] | null> => {
+  if (!appId) {
+    throw new Error('An AppID is required to lookup SDG review.')
+  }
+
+  const redisKey = `sdg_review:${escapeRedisKey(appId)}`
+  try {
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved SDG review for "${appId}" from Redis cache`)
+      return JSON.parse(cachedData) as SDGVideoReview[]
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached SDG review:', error)
   }
   return null
 }

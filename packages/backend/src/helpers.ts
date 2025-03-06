@@ -4,20 +4,25 @@ import type {
   GameImages,
   GameReportData,
   GitHubReportIssueBodySchema,
+  YouTubeOEmbedMetadata,
   SteamGame,
   SteamStoreAppDetails,
   SteamSuggestApp,
   SDHQReview,
   ExternalGameReview,
-  ExternalGameReviewReportData
+  ExternalGameReviewReportData,
+  SDGVideoReview
 } from '../../shared/src/game'
 import {
+  storeGameInRedis,
   redisCacheSDHQReview,
   redisLookupSDHQReview,
   redisCacheSteamAppDetails,
   redisLookupSteamAppDetails,
   redisCacheSteamSearchSuggestions,
-  redisLookupSteamSearchSuggestions, storeGameInRedis
+  redisLookupSteamSearchSuggestions,
+  redisLookupSDGReview,
+  redisCacheSDGReview
 } from './redis'
 import { fetchHardwareInfo } from './github'
 import NodeCache from 'node-cache'
@@ -333,6 +338,47 @@ export const parseGameProjectBody = async (markdown: string): Promise<Record<str
 }
 
 /**
+ * Fetches basic YouTube video metadata using the oEmbed endpoint.
+ * Note: The oEmbed response does not include the video description.
+ */
+export const fetchYouTubeOEmbedMetadata = async (videoId: string): Promise<YouTubeOEmbedMetadata | null> => {
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
+  const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`
+
+  try {
+    const response = await fetch(oembedUrl)
+    if (!response.ok) {
+      console.error(`YouTube oEmbed request failed with status ${response.status}`)
+      return null
+    }
+    const data = await response.json()
+    return data as YouTubeOEmbedMetadata
+  } catch (error) {
+    console.error('Error fetching YouTube oEmbed metadata:', error)
+    return null
+  }
+}
+
+/**
+ * Generates a numeric ID based on a YouTube video URL.
+ * It extracts the video ID from the URL and sums its character codes.
+ */
+const generateYoutubeNumericId = (videoURL: string): number => {
+  // Match typical YouTube URL patterns, e.g. https://youtu.be/VIDEO_ID or https://www.youtube.com/watch?v=VIDEO_ID
+  const match = videoURL.match(/(?:youtu\.be\/|v=)([^?&]+)/)
+  if (!match) {
+    // If extraction fails, fallback to 0 (or consider throwing an error)
+    return 0
+  }
+  const videoId = match[1]
+  let numericId = 0
+  for (let i = 0; i < videoId.length; i++) {
+    numericId += videoId.charCodeAt(i)
+  }
+  return numericId
+}
+
+/**
  * Fetches detailed information for a game from the Steam API by its App ID.
  *
  * @param {string} appId - The Steam App ID of the game to fetch.
@@ -445,6 +491,10 @@ export const fetchSteamGameSuggestions = async (
   }
 }
 
+
+/**
+ * Fetches SDHQ review data for the given App ID.
+ */
 export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
   const cachedData = await redisLookupSDHQReview(appId)
   if (cachedData) {
@@ -485,6 +535,13 @@ export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
   return []
 }
 
+/**
+ * Generates ExternalGameReview data based on SDHQ review data.
+ *
+ * It processes each review to generate a standardized ExternalGameReview object,
+ * enriching the data with additional computed values and formatting, such as summary,
+ * device assumptions, and additional notes. The goal here is to fill in the gaps.
+ */
 export const generateSDHQReviewData = async (appId: string): Promise<ExternalGameReview[]> => {
   const rawReviews: SDHQReview[] = await fetchSDHQReview(appId)
   return await Promise.all(
@@ -578,4 +635,88 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
       }
     })
   )
+}
+
+/**
+ * Fetches SDGC video review data for the given App ID.
+ */
+export const fetchSDGReview = async (appId: string): Promise<SDGVideoReview[]> => {
+  const cachedData = await redisLookupSDGReview(appId)
+  if (cachedData) {
+    return cachedData
+  }
+
+  const url = `http://sdgc.steamdeckgaming.net:4444/SDGVideo?AppId=${appId}`
+  try {
+    logger.info(`Fetching SDG review data for appId ${appId} from SDG API...`)
+    const response = await fetch(url)
+
+    // Check if response is ok (status 200)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error(`SDG API request failed with status ${response.status}: ${errorBody}`)
+      await redisCacheSDGReview([], appId, 3600) // Cache error response for 1 hour
+      return []
+    }
+
+    const data: SDGVideoReview[] = await response.json()
+
+    if (data.length > 0) {
+      // Cache results, then return them
+      await redisCacheSDGReview(data, appId)
+      return data
+    } else {
+      logger.error(`No video data found for appId ${appId}`)
+      await redisCacheSDGReview([], appId, 3600) // Cache error response for 1 hour
+      return []
+    }
+  } catch (error) {
+    logger.error(`Failed to fetch video data for appId ${appId}:`, error)
+  }
+
+  await redisCacheSDGReview([], appId, 3600) // Cache error response for 1 hour
+  return []
+}
+
+
+/**
+ * Transforms raw SDG video review data into ExternalGameReview objects.
+ *
+ * This function parses the SDGVideoReview object to generate a standardized ExternalGameReview
+ * object with additional computed values and formatting, such as summary, device assumptions, and
+ * additional notes. The goal here is to fill in the gaps.
+ */
+export const generateSDGReviewData = async (appId: string): Promise<ExternalGameReview[]> => {
+  const rawVideos: SDGVideoReview[] = await fetchSDGReview(appId)
+  if (!rawVideos || rawVideos.length === 0) {
+    return []
+  }
+
+  // Map each raw video into an ExternalGameReview.
+  return rawVideos.map(video => {
+    const id = generateYoutubeNumericId(video.videoURL)
+
+    const summary = limitStringTo100Characters(video.title)
+    const assumedDevice = 'Steam Deck LCD (256GB/512GB)'
+
+    const reportData: ExternalGameReviewReportData = {
+      summary: summary,
+      additional_notes: `Watch video: ${video.videoURL}`,
+      device: assumedDevice
+    }
+
+    return {
+      id: id,
+      title: video.title,
+      html_url: video.videoURL,
+      data: reportData,
+      source: {
+        name: 'Steam Deck Gaming',
+        avatar_url: 'https://static.wixstatic.com/media/97c54f_3a8d6d3db72d40c284188e457febb911~mv2.png',
+        report_count: rawVideos.length
+      },
+      created_at: video.puiblishDateTime,
+      updated_at: video.puiblishDateTime
+    }
+  })
 }
