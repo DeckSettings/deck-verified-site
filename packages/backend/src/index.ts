@@ -595,7 +595,6 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     const maxReportCount = req.query['max_report_count']
       ? parseInt(req.query['max_report_count'] as string, 10)
       : Infinity
-    const detailed = req.query.detailed === 'true'
     const disableDedupe = req.query.disable_dedupe === 'true'
     const disableFilter = req.query.disable_filter === 'true'
 
@@ -621,49 +620,46 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
           report_count: 0
         }
 
-        // If detailed flag is set, enrich the result with metadata
-        if (detailed) {
-          let metadata: GameMetadata = {
-            banner: null,
-            poster: null,
+        // Enrich the result with metadata
+        let metadata: GameMetadata = {
+          banner: null,
+          poster: null,
+          hero: null,
+          background: null
+        }
+        // Search by AppId if provided
+        let games = undefined
+        if (app_id !== null) {
+          games = await searchGamesInRedis(null, String(app_id))
+        } else if (game_name !== null) {
+          games = await searchGamesInRedis(null, null, game_name)
+        }
+        if (games && games.length > 0) {
+          const redisResult = games[0]
+          metadata = {
+            banner: redisResult.banner ?? null,
+            poster: redisResult.poster ?? null,
             hero: null,
             background: null
           }
-          // Search by AppId if provided
-          let games = undefined
-          if (app_id !== null) {
-            games = await searchGamesInRedis(null, String(app_id))
-          } else if (game_name !== null) {
-            games = await searchGamesInRedis(null, null, game_name)
+          if (redisResult.reportCount) {
+            result.report_count = redisResult.reportCount ?? 0
           }
-          if (games && games.length > 0) {
-            const redisResult = games[0]
-            metadata = {
-              banner: redisResult.banner ?? null,
-              poster: redisResult.poster ?? null,
-              hero: null,
-              background: null
-            }
-            if (redisResult.reportCount) {
-              result.report_count = redisResult.reportCount ?? 0
-            }
-          }
-          // Fill in missing data if app_id is available
-          if (app_id !== null) {
-            // Generate image links if app_id is not null
-            const gameImages = await generateImageLinksFromAppId(String(app_id))
-            metadata = {
-              banner: metadata.banner ?? gameImages.banner,
-              poster: metadata.poster ?? gameImages.poster,
-              hero: metadata.hero ?? gameImages.hero,
-              background: metadata.background ?? gameImages.background
-            }
-          }
-
-          // Add the metadata property to the result
-          result = { ...result, metadata }
         }
-        return result
+        // Fill in missing data if app_id is available
+        if (app_id !== null) {
+          // Generate image links if app_id is not null
+          const gameImages = await generateImageLinksFromAppId(String(app_id))
+          metadata = {
+            banner: metadata.banner ?? gameImages.banner,
+            poster: metadata.poster ?? gameImages.poster,
+            hero: metadata.hero ?? gameImages.hero,
+            background: metadata.background ?? gameImages.background
+          }
+        }
+
+        // Add the metadata property to the result
+        return { ...result, metadata }
       })
     )
 

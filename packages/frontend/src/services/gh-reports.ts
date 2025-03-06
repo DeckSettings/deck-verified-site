@@ -190,7 +190,7 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
 }
 
 export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number): Promise<GameDetailsRequestMetricResult[]> => {
-  const url = `/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}&detailed=true`
+  const url = `/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}`
   try {
     const response = await fetch(url)
     if (response.status === 204) {
