@@ -29,10 +29,9 @@ import type {
   GameDetails,
   GameDetailsRequestMetricResult,
   GameMetadata,
-  GameReport,
   GameReportForm,
   GameSearchResult,
-  SDHQReview
+  GameSearchCache
 } from '../../shared/src/game'
 
 // Log shutdown requests
@@ -420,24 +419,32 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
   const userAgent = req.headers['user-agent'] || 'Unknown'
 
+  // If both parameters are missing, return an error.
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'No valid query parameter' })
   }
 
-  // Start with a partial GameDetails object
+  // Start with a partial GameDetails object.
   let returnData: Partial<GameDetails> = {
     reports: [],
     external_reviews: []
   }
 
+  // Start with initial discovered values.
+  let discoveredAppId: number | null = appId ? Number(appId) : null
+  let discoveredGameName: string | null = gameName
+
   try {
-    // First try GitHub project data
-    const project = await fetchProjectsByAppIdOrGameName(appId, gameName, null)
+    // First try GitHub project data.
+    const project = await fetchProjectsByAppIdOrGameName(discoveredAppId !== null ? discoveredAppId.toString() : null, discoveredGameName, null)
     if (project && project.projectNumber) {
+      // Update discovered values.
+      discoveredAppId = project.appId // project.appId is a number.
+      discoveredGameName = project.gameName
       returnData = {
         ...returnData,
-        gameName: project.gameName,
-        appId: project.appId,
+        gameName: discoveredGameName,
+        appId: discoveredAppId,
         projectNumber: project.projectNumber,
         metadata: project.metadata,
         reports: project.reports || [],
@@ -446,24 +453,44 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       logger.info('Using GitHub project data for game details result')
     }
 
-    // If we have no project data, check RedisSearch
-    if (!returnData.gameName && appId) {
-      const games = await searchGamesInRedis(null, appId)
+    // If no project data found, try RedisSearch.
+    if (!returnData.gameName) {
+      let games: GameSearchCache[] = []
+      if (discoveredAppId !== null) {
+        games = await searchGamesInRedis(null, discoveredAppId.toString())
+      } else if (discoveredGameName) {
+        games = await searchGamesInRedis(null, null, discoveredGameName)
+      }
       if (games.length > 0) {
         const redisResult = games[0]
         if (redisResult) {
-          const gameImages = await generateImageLinksFromAppId(appId)
-          returnData = {
-            ...returnData,
-            gameName: redisResult.name,
-            appId: Number(appId),
-            projectNumber: null,
-            metadata: {
+          // Update discoveredAppId if missing.
+          if (discoveredAppId === null && redisResult.appId) {
+            discoveredAppId = Number(redisResult.appId)
+          }
+          discoveredGameName = redisResult.name
+          let metadata: GameMetadata = {
+            poster: null,
+            hero: null,
+            background: null,
+            banner: null
+          }
+          // Only generate image links if we have a valid discoveredAppId.
+          if (discoveredAppId !== null) {
+            const gameImages = await generateImageLinksFromAppId(discoveredAppId.toString())
+            metadata = {
               poster: gameImages.poster,
               hero: gameImages.hero,
               background: gameImages.background,
               banner: gameImages.banner
-            },
+            }
+          }
+          returnData = {
+            ...returnData,
+            gameName: redisResult.name,
+            appId: discoveredAppId,
+            projectNumber: null,
+            metadata: metadata,
             reports: [],
             external_reviews: []
           }
@@ -473,14 +500,15 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     }
 
     // Fetch steam store results only if no other results were found our internal search
-    if (!returnData.gameName && includeExternal && appId) {
-      const steamResult = await fetchSteamStoreGameDetails(appId)
+    if (!returnData.gameName && includeExternal && discoveredAppId !== null) {
+      const steamResult = await fetchSteamStoreGameDetails(discoveredAppId.toString())
       if (steamResult && steamResult.name) {
-        const gameImages = await generateImageLinksFromAppId(appId)
+        const gameImages = await generateImageLinksFromAppId(discoveredAppId.toString())
+        discoveredGameName = steamResult.name
         returnData = {
           ...returnData,
           gameName: steamResult.name,
-          appId: Number(appId),
+          appId: discoveredAppId,
           projectNumber: null,
           metadata: {
             poster: gameImages.poster,
@@ -496,15 +524,15 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     }
 
     // Add additional external source data based on appId
-    if (includeExternal && appId) {
-      const sdhqReviews = await generateSDHQReviewData(appId)
+    if (includeExternal && discoveredAppId !== null) {
+      const sdhqReviews = await generateSDHQReviewData(discoveredAppId.toString())
       if (sdhqReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
           ...sdhqReviews
         ]
       }
-      const sdgVideoReviews = await generateSDGReviewData(appId)
+      const sdgVideoReviews = await generateSDGReviewData(discoveredAppId.toString())
       if (sdgVideoReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
@@ -515,18 +543,18 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Log the metric for the game details lookup
     const metricName = 'game_details'
-    const metricValue = `${returnData?.appId ?? appId ?? '_'}:${returnData?.gameName ?? gameName ?? '_'}`
+    const metricValue = `${returnData?.appId ?? discoveredAppId ?? '_'}:${returnData?.gameName ?? discoveredGameName ?? '_'}`
     logMetric(metricName, metricValue, {
       request_ip: requestIp,
       user_agent: userAgent,
-      game_name: returnData?.gameName || gameName,
-      app_id: returnData?.appId || appId,
+      game_name: returnData?.gameName || discoveredGameName,
+      app_id: returnData?.appId || discoveredAppId,
       report_count: returnData?.reports?.length || 0
     })
     // Cache the aggregate metric for the game details lookup
     await logAggregatedMetric(metricName, metricValue)
 
-    if (!returnData) {
+    if (!returnData || !returnData.gameName) {
       logger.info(`No results found for appId "${appId}" or gameName "${gameName}".`)
       return res.status(204).json({})
     }
