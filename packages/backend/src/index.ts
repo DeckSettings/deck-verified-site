@@ -149,11 +149,20 @@ app.get('/deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg', async (req
   const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
   const userAgent = req.headers['user-agent'] || 'Unknown'
 
-  // Log the metric
-  logMetric('plugin_viewed', pluginName, {
+  // Extract optional metadata from GET params
+  const plugin_uuid = req.query.id ? String(req.query.id) : undefined
+  const plugin_version = req.query.v ? String(req.query.v) : undefined
+
+  // Build the metric object with common properties
+  const metricData = {
     request_ip: requestIp,
-    user_agent: userAgent
-  })
+    user_agent: userAgent,
+    ...(plugin_uuid && { plugin_uuid }),
+    ...(plugin_version && { plugin_version })
+  }
+
+  // Log the metric with the optional data if available
+  logMetric('plugin_viewed', pluginName, metricData)
 
   try {
     const imageBuffer = await fetchJosh5Avatar()
