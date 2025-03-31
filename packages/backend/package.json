@@ -8,7 +8,7 @@
   "scripts": {
     "watch": "nodemon --watch './**/*.ts' --exec 'tsx' src/index.ts",
     "serve-dev": "pm2-runtime --interpreter tsx src/index.ts",
-    "build": "tsc && npm run sentry:sourcemaps",
+    "build": "tsc",
     "serve": "node dist/backend/src/index.js",
     "serve-no-tasks": "pm2-runtime -i 2 dist/backend/src/index.js --no-scheduled-tasks",
     "test": "echo \"Error: no test specified\" && exit 1",
