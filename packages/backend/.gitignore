@@ -1,2 +1,4 @@
 node_modules
 dist
+# Sentry Config File
+.sentryclirc

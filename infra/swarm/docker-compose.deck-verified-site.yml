@@ -24,6 +24,14 @@
 #   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
 #   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
 #   #@ Container Config
+#   #-  - SENTRY_DSN -
+#   SENTRY_DSN
+#   #-  - SENTRY_ENVIRONMENT -
+#   SENTRY_ENVIRONMENT
+#   #-  - SENTRY_SERVICE_NAME -
+#   SENTRY_SERVICE_NAME
+#   #-  - SENTRY_TRACES_SAMPLE_RATE -
+#   SENTRY_TRACES_SAMPLE_RATE
 #   #-  - REDIS_PASSWORD -
 #   REDIS_PASSWORD=password
 #   #-  - GH_TOKEN -
@@ -188,6 +196,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      # -- Sentry
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
+      SENTRY_SERVICE_NAME: deck-verified-api
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
     healthcheck:
       test: ["CMD", "wget", "--header=User-Agent: Swarm-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9022/deck-verified/api/v1/health"]
       interval: 10s

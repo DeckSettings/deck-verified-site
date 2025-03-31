@@ -8,12 +8,16 @@
   "scripts": {
     "watch": "nodemon --watch './**/*.ts' --exec 'tsx' src/index.ts",
     "serve-dev": "pm2-runtime --interpreter tsx src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run sentry:sourcemaps",
     "serve": "node dist/backend/src/index.js",
     "serve-no-tasks": "pm2-runtime -i 2 dist/backend/src/index.js --no-scheduled-tasks",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org sentry --project deck-verified-api ./dist && sentry-cli --url https://sentry.sunnex.me/ sourcemaps upload --org sentry --project deck-verified-api ./dist"
   },
   "dependencies": {
+    "@sentry/cli": "^2.43.0",
+    "@sentry/node": "^9.10.1",
+    "@sentry/profiling-node": "^9.10.1",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

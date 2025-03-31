@@ -1,3 +1,5 @@
+import './instrument'
+import * as Sentry from '@sentry/node'
 import express from 'express'
 import { format } from 'date-fns'
 import type { Request, Response, NextFunction } from 'express'
@@ -9,12 +11,12 @@ import {
   connectToRedis,
   storeGameInRedis,
   searchGamesInRedis, getGamesWithReports,
-  logAggregatedMetric, getAggregatedMetrics
+  logAggregatedMetric, getAggregatedMetrics,
 } from './redis'
 import {
   fetchIssueLabels, fetchPopularReports,
   fetchProjectsByAppIdOrGameName, fetchRecentReports,
-  fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema
+  fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema,
 } from './github'
 import {
   fetchJosh5Avatar,
@@ -22,7 +24,7 @@ import {
   fetchSteamStoreGameDetails,
   generateImageLinksFromAppId,
   generateSDHQReviewData,
-  generateSDGReviewData
+  generateSDGReviewData,
 } from './helpers'
 import type {
   AggregateMetricResponse,
@@ -31,7 +33,7 @@ import type {
   GameMetadata,
   GameReportForm,
   GameSearchResult,
-  GameSearchCache
+  GameSearchCache,
 } from '../../shared/src/game'
 
 // Log shutdown requests
@@ -106,7 +108,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         rate_limit_remaining: req.rateLimit ? req.rateLimit.remaining : '0',
         referer: httpReferer,
         user_agent: userAgent,
-        remote_ip: req.ip
+        remote_ip: req.ip,
       }
       logger.info(logData)
     })
@@ -123,6 +125,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
   const proto = req.headers['x-forwarded-proto'] || req.protocol
   const baseUrl = `${proto}://${req.get('host')}`
+
+  if (req.query.error === 'true') {
+    throw new Error('Health check error!')
+  }
+
   res.status(200).json({
     status: 'OK',
     baseUrl: baseUrl,
@@ -131,7 +138,7 @@ app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
     method: req.method,
     path: req.originalUrl,
     referer: req.headers['referer'] || '-',
-    user_agent: req.headers['user-agent'] || ''
+    user_agent: req.headers['user-agent'] || '',
   })
 })
 
@@ -158,7 +165,7 @@ app.get('/deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg', async (req
     request_ip: requestIp,
     user_agent: userAgent,
     ...(plugin_uuid && { plugin_uuid }),
-    ...(plugin_version && { plugin_version })
+    ...(plugin_version && { plugin_version }),
   }
 
   // Log the metric with the optional data if available
@@ -268,7 +275,7 @@ app.get('/deck-verified/api/v1/games_with_reports', async (req: Request, res: Re
             banner: game.banner || null,
             poster: game.poster || null,
             hero: null,
-            background: null
+            background: null,
           }
 
           if (game.appId) {
@@ -283,9 +290,9 @@ app.get('/deck-verified/api/v1/games_with_reports', async (req: Request, res: Re
             gameName: game.name,
             appId: Number(game.appId),
             metadata,
-            reportCount: game.reportCount ?? 0
+            reportCount: game.reportCount ?? 0,
           }
-        })
+        }),
       )
 
       return res.json(results)
@@ -350,7 +357,7 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
               gameName: result.name,
               appId: appId,
               banner: gameImages.banner,
-              poster: gameImages.poster
+              poster: gameImages.poster,
             })
           }
         }
@@ -366,7 +373,7 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
             banner: game.banner,
             poster: null,
             hero: null,
-            background: null
+            background: null,
           }
           if (game.appId) {
             // Generate image links if appId is not null
@@ -375,16 +382,16 @@ app.get('/deck-verified/api/v1/search_games', async (req: Request, res: Response
               banner: metadata.banner ?? gameImages.banner,
               poster: metadata.poster ?? gameImages.poster,
               hero: metadata.hero ?? gameImages.hero,
-              background: metadata.background ?? gameImages.background
+              background: metadata.background ?? gameImages.background,
             }
           }
           return {
             gameName: game.name,
             appId: Number(game.appId),
             metadata: metadata as GameMetadata,
-            reportCount: game.reportCount ?? 0
+            reportCount: game.reportCount ?? 0,
           }
-        })
+        }),
       )
       return res.json(results)
     }
@@ -436,7 +443,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   // Start with a partial GameDetails object.
   let returnData: Partial<GameDetails> = {
     reports: [],
-    external_reviews: []
+    external_reviews: [],
   }
 
   // Start with initial discovered values.
@@ -457,7 +464,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         projectNumber: project.projectNumber,
         metadata: project.metadata,
         reports: project.reports || [],
-        external_reviews: []
+        external_reviews: [],
       }
       logger.info('Using GitHub project data for game details result')
     }
@@ -482,7 +489,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
             poster: null,
             hero: null,
             background: null,
-            banner: null
+            banner: null,
           }
           // Only generate image links if we have a valid discoveredAppId.
           if (discoveredAppId !== null) {
@@ -491,7 +498,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
               poster: gameImages.poster,
               hero: gameImages.hero,
               background: gameImages.background,
-              banner: gameImages.banner
+              banner: gameImages.banner,
             }
           }
           returnData = {
@@ -501,7 +508,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
             projectNumber: null,
             metadata: metadata,
             reports: [],
-            external_reviews: []
+            external_reviews: [],
           }
           logger.info('Using local RedisSearch data for game details result')
         }
@@ -523,10 +530,10 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
             poster: gameImages.poster,
             hero: gameImages.hero,
             background: gameImages.background,
-            banner: gameImages.banner
+            banner: gameImages.banner,
           },
           reports: [],
-          external_reviews: []
+          external_reviews: [],
         }
         logger.info('Using Steam store API data for game details result')
       }
@@ -538,14 +545,14 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       if (sdhqReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
-          ...sdhqReviews
+          ...sdhqReviews,
         ]
       }
       const sdgVideoReviews = await generateSDGReviewData(discoveredAppId.toString())
       if (sdgVideoReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
-          ...sdgVideoReviews
+          ...sdgVideoReviews,
         ]
       }
     }
@@ -558,7 +565,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       user_agent: userAgent,
       game_name: returnData?.gameName || discoveredGameName,
       app_id: returnData?.appId || discoveredAppId,
-      report_count: returnData?.reports?.length || 0
+      report_count: returnData?.reports?.length || 0,
     })
     // Cache the aggregate metric for the game details lookup
     await logAggregatedMetric(metricName, metricValue)
@@ -654,7 +661,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
           app_id,
           game_name,
           count: metric.count,
-          report_count: 0
+          report_count: 0,
         }
 
         // Enrich the result with metadata
@@ -662,7 +669,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
           banner: null,
           poster: null,
           hero: null,
-          background: null
+          background: null,
         }
         // Search by AppId if provided
         let games = undefined
@@ -677,7 +684,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
             banner: redisResult.banner ?? null,
             poster: redisResult.poster ?? null,
             hero: null,
-            background: null
+            background: null,
           }
           if (redisResult.reportCount) {
             result.report_count = redisResult.reportCount ?? 0
@@ -691,13 +698,13 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
             banner: metadata.banner ?? gameImages.banner,
             poster: metadata.poster ?? gameImages.poster,
             hero: metadata.hero ?? gameImages.hero,
-            background: metadata.background ?? gameImages.background
+            background: metadata.background ?? gameImages.background,
           }
         }
 
         // Add the metadata property to the result
         return { ...result, metadata }
-      })
+      }),
     )
 
     // Deduplicate metrics
@@ -745,7 +752,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
           dedupeMetricsGroup.push({
             ...rec,
             count: rec.count ?? 0,
-            report_count: rec.report_count ?? 0
+            report_count: rec.report_count ?? 0,
           })
         }
       }
@@ -775,7 +782,7 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     const returnData: AggregateMetricResponse = {
       metric: 'game_details',
       days,
-      results: filteredMetrics
+      results: filteredMetrics,
     }
 
     // Return the response as JSON
@@ -810,7 +817,7 @@ app.get('/deck-verified/api/v1/report_form', async (_req: Request, res: Response
     const reportFormDetails: GameReportForm = {
       template: template,
       hardware: hardware,
-      schema: schema
+      schema: schema,
     }
 
     return res.json(reportFormDetails)
@@ -832,7 +839,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const lastModDate = format(new Date(), 'yyyy-MM-dd') // Current date for lastmod
     const staticPages = [
       { loc: `${baseUrl}/deck-verified/`, priority: '1.0' },
-      { loc: `${baseUrl}/deck-verified/games-with-reports`, priority: '0.8' }
+      { loc: `${baseUrl}/deck-verified/games-with-reports`, priority: '0.8' },
     ]
 
     // Fetch all games with reports from RedisSearch
@@ -841,7 +848,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
       .filter((game) => game.appId) // Ensure appId exists
       .map((game) => ({
         loc: `${baseUrl}/deck-verified/app/${game.appId}`,
-        priority: '0.7'
+        priority: '0.7',
       }))
 
     // Construct XML sitemap
@@ -853,7 +860,7 @@ ${[...staticPages, ...gamePages]
     <loc>${page.loc}</loc>
     <lastmod>${lastModDate}</lastmod>
     <priority>${page.priority}</priority>
-  </url>`
+  </url>`,
       )
       .join('\n')}
 </urlset>`
@@ -905,6 +912,11 @@ const startServer = async () => {
       }
     } else {
       logger.info('Running with scheduled tasks disabled.')
+    }
+
+    // Enable sentry
+    if (process.env.SENTRY_DSN) {
+      Sentry.setupExpressErrorHandler(app)
     }
 
     // Server
