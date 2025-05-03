@@ -408,7 +408,7 @@ export default defineComponent({
       // Build the GitHub URL without the template parameter.
       const title = `(DON'T EDIT THIS TITLE) - Review the generated form below. When you are happy, click "Create".`
       let baseUrl =
-        'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&title=' +
+        'https://github.com/DeckSettings/game-reports-steamos/issues/new?template=none&assignees=&labels=&projects=&title=' +
         encodeURIComponent(title)
       baseUrl += '&body=' + encodeURIComponent(reportMarkdown)
 
