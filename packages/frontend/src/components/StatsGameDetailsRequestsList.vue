@@ -196,6 +196,7 @@ export default defineComponent({
               <q-btn
                 round
                 icon="open_in_new"
+                target="_blank"
                 :to="metricResult.app_id ? `/app/${metricResult.app_id}` : metricResult.game_name ? `/game/${encodeURIComponent(metricResult.game_name)}` : ``"
                 color="secondary"
               />
