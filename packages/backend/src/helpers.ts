@@ -11,7 +11,7 @@ import type {
   SDHQReview,
   ExternalGameReview,
   ExternalGameReviewReportData,
-  SDGVideoReview
+  SDGVideoReview,
 } from '../../shared/src/game'
 import {
   storeGameInRedis,
@@ -22,7 +22,7 @@ import {
   redisCacheSteamSearchSuggestions,
   redisLookupSteamSearchSuggestions,
   redisLookupSDGReview,
-  redisCacheSDGReview
+  redisCacheSDGReview,
 } from './redis'
 import { fetchHardwareInfo } from './github'
 import NodeCache from 'node-cache'
@@ -72,7 +72,7 @@ export const fetchJosh5Avatar = async (): Promise<Buffer | null> => {
  */
 export const extractHeadingValue = async (
   lines: string[],
-  heading: string
+  heading: string,
 ): Promise<string | null> => {
   const headingToFind = `### ${heading}`.toLowerCase()
   const headingIndex = lines.findIndex((line) => line.trim().toLowerCase() === headingToFind)
@@ -113,20 +113,30 @@ export const extractHeadingValue = async (
  *
  */
 const parseGameSettingsToMarkdown = (htmlString: string): string => {
-  let markdown = htmlString
+  let parsedMarkdown = htmlString
   // Convert <strong>...</strong> to #### ...
-  markdown = markdown.replace(/<strong>(.*?)<\/strong>/gi, '#### $1')
+  parsedMarkdown = parsedMarkdown.replace(/<strong>(.*?)<\/strong>/gi, '#### $1')
   // Replace <br> and <br/> with newlines.
-  markdown = markdown.replace(/<br\s*\/?>/gi, '\n')
+  parsedMarkdown = parsedMarkdown.replace(/<br\s*\/?>/gi, '\n')
   // Replace <p> and </p> with newlines.
-  markdown = markdown.replace(/<\/?p>/gi, '\n')
+  parsedMarkdown = parsedMarkdown.replace(/<\/?p>/gi, '\n')
   // Remove any remaining HTML tags.
-  markdown = markdown.replace(/<[^>]+>/g, '')
-  // Replace HTML entities like &nbsp; with a space.
-  markdown = markdown.replace(/&nbsp;/gi, ' ')
+  let previousParsedMarkdown
+  do {
+    previousParsedMarkdown = parsedMarkdown
+    parsedMarkdown = parsedMarkdown.replace(/<\/?[a-zA-Z][^>]*?>/g, '')
+  } while (parsedMarkdown !== previousParsedMarkdown)
+  // Decode basic entities
+  parsedMarkdown = parsedMarkdown
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, '\'')
 
   // Split the processed string into individual lines.
-  const lines = markdown
+  const lines = parsedMarkdown
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0)
@@ -240,7 +250,7 @@ export const generateImageLinksFromAppId = async (appId: string): Promise<GameIm
     poster: `https://steamcdn-a.akamaihd.net/steam/apps/${appId}/library_600x900.jpg`,
     hero: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_hero.jpg`,
     background: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/page_bg_generated_v6b.jpg`,
-    banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`
+    banner: `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
   }
 }
 
@@ -251,7 +261,7 @@ export const generateImageLinksFromAppId = async (appId: string): Promise<GameIm
 export const parseReportBody = async (
   markdown: string,
   schema: GitHubReportIssueBodySchema,
-  hardwareInfo: HardwareInfo[]
+  hardwareInfo: HardwareInfo[],
 ): Promise<GameReportData> => {
   try {
     const data: Partial<GameReportData> = {}
@@ -286,7 +296,7 @@ export const parseReportBody = async (
     if (data.average_battery_power_draw && isValidNumber(Number(data.average_battery_power_draw)) && Number(data.average_battery_power_draw) > 0) {
       // Match device info from hardwareInfo
       const matchedDevice = hardwareInfo.find(
-        (device) => device.name === data.device
+        (device) => device.name === data.device,
       )
       if (matchedDevice) {
         data.calculated_battery_life_minutes = await calculatedBatteryLife(matchedDevice, Number(data.average_battery_power_draw))
@@ -419,7 +429,7 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
           gameName: appDetails.name,
           appId: String(appId),
           banner: gameImages.banner || null,
-          poster: gameImages.poster || null
+          poster: gameImages.poster || null,
         })
       }
 
@@ -444,7 +454,7 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
  * results are fetched from the Steam API and cached in Redis.
  */
 export const fetchSteamGameSuggestions = async (
-  searchTerm: string
+  searchTerm: string,
 ): Promise<{ suggestions: SteamGame[]; fromCache: boolean }> => {
   const encodedSearchTerm = encodeURIComponent(searchTerm)
   const cachedData = await redisLookupSteamSearchSuggestions(encodedSearchTerm)
@@ -479,7 +489,7 @@ export const fetchSteamGameSuggestions = async (
       .filter((item: SteamSuggestApp) => item.type === 'game')
       .map((item: SteamSuggestApp) => ({
         appId: item.id,
-        name: item.name
+        name: item.name,
       }))
 
     await redisCacheSteamSearchSuggestions(games, encodedSearchTerm)
@@ -583,13 +593,13 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
       const summary = limitStringTo100Characters(
         review.excerpt.rendered
           ? review.excerpt.rendered.replace(/<[^>]+>/g, '')
-          : review.title.rendered
+          : review.title.rendered,
       )
       const assumedDevice = 'Steam Deck LCD (256GB/512GB)'
       const averagePowerDraw = convertWattageToNumber(optimizedSettings?.projected_battery_usage_and_temperature?.wattage)
       const hardwareInfo = await fetchHardwareInfo()
       const matchedDevice = hardwareInfo.find(
-        (device) => device.name === assumedDevice
+        (device) => device.name === assumedDevice,
       )
       const calcBatteryLifeMinutes = matchedDevice ? await calculatedBatteryLife(matchedDevice, Number(averagePowerDraw)) : null
       const gameDisplaySettings = optimizedSettings?.game_settings ? parseGameSettingsToMarkdown(optimizedSettings.game_settings) : ''
@@ -617,7 +627,7 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
         scaling_filter: steamos?.scaling_filter || 'Linear',
         game_display_settings: gameDisplaySettings,
         game_graphics_settings: '',
-        additional_notes: additionalNotes
+        additional_notes: additionalNotes,
       }
 
       return {
@@ -628,12 +638,12 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
         source: {
           name: 'SDHQ',
           avatar_url: 'https://steamdeckhq.com/wp-content/uploads/2022/06/sdhq-holographic-logo.svg',
-          report_count: rawReviews.length
+          report_count: rawReviews.length,
         },
         created_at: review.date || '',
-        updated_at: review.modified || ''
+        updated_at: review.modified || '',
       }
-    })
+    }),
   )
 }
 
@@ -702,7 +712,7 @@ export const generateSDGReviewData = async (appId: string): Promise<ExternalGame
     const reportData: ExternalGameReviewReportData = {
       summary: summary,
       additional_notes: video.videoURL,
-      device: assumedDevice
+      device: assumedDevice,
     }
 
     return {
@@ -713,10 +723,10 @@ export const generateSDGReviewData = async (appId: string): Promise<ExternalGame
       source: {
         name: 'Steam Deck Gaming',
         avatar_url: 'https://static.wixstatic.com/media/97c54f_3a8d6d3db72d40c284188e457febb911~mv2.png',
-        report_count: rawVideos.length
+        report_count: rawVideos.length,
       },
       created_at: video.puiblishDateTime,
-      updated_at: video.puiblishDateTime
+      updated_at: video.puiblishDateTime,
     }
   })
 }
