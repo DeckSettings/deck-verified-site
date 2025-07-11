@@ -9,6 +9,11 @@ if (process.env.SENTRY_DSN) {
       nodeProfilingIntegration(),
     ],
 
+    _experiments: { enableLogs: true },
+
+    // Adds request headers and IP for users
+    sendDefaultPii: true,
+
     // Set tracesSampleRate to 1.0 to capture 100%
     // of transactions for tracing.
     // We recommend adjusting this value in production
@@ -17,6 +22,15 @@ if (process.env.SENTRY_DSN) {
     tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
       ? parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE)
       : 0.1,
+
+    // Set profilesSampleRate to 1.0 to profile 100%
+    // of sampled transactions.
+    // This is relative to tracesSampleRate
+    // Learn more at
+    // https://docs.sentry.io/platforms/javascript/guides/node/configuration/options/#profilesSampleRate
+    profilesSampleRate: process.env.SENTRY_PROFILES_SAMPLE_RATE
+      ? parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE)
+      : 0.5,
   })
 
   const scope = Sentry.getCurrentScope()
