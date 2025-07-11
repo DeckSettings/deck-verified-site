@@ -111,6 +111,7 @@ services:
           - ${PLACEMENT_CONSTRAINT_TASKS:?}
       labels:
         #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
         - "source.service=deck-verified-tasks"
         - "source.project=deck-verified-site"
@@ -119,6 +120,7 @@ services:
     networks:
       - private-net
     environment:
+      # -- Application execution
       NODE_ENV: production
       DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
       RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
@@ -128,6 +130,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_service: deck-verified-tasks
+      source_project: deck-verified-site
     logging:
       driver: fluentd
       options:
@@ -158,6 +164,7 @@ services:
           - ${PLACEMENT_CONSTRAINT_API:?}
       labels:
         #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
         - "source.service=deck-verified-api"
         - "source.project=deck-verified-site"
@@ -185,6 +192,7 @@ services:
       - swarm-public
       - private-net
     environment:
+      # -- Application execution
       NODE_ENV: production
       DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
       REVERSE_PROXY_COUNT: ${REVERSE_PROXY_COUNT:-0}
@@ -201,6 +209,10 @@ services:
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
       SENTRY_SERVICE_NAME: deck-verified-api
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_service: deck-verified-api
+      source_project: deck-verified-site
     healthcheck:
       test: ["CMD", "wget", "--header=User-Agent: Swarm-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9022/deck-verified/api/v1/health"]
       interval: 10s
@@ -237,6 +249,7 @@ services:
           - ${PLACEMENT_CONSTRAINT_API:?}
       labels:
         #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
         - "source.service=deck-verified-web-ssr"
         - "source.project=deck-verified-site"
@@ -245,6 +258,11 @@ services:
         - "traefik.enable=false"
     networks:
       - private-net
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_service: deck-verified-web-ssr
+      source_project: deck-verified-site
     logging:
       driver: fluentd
       options:
@@ -275,6 +293,7 @@ services:
           - ${PLACEMENT_CONSTRAINT_WEB:?}
       labels:
         #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
         - "source.service=deck-verified-web"
         - "source.project=deck-verified-site"
@@ -297,6 +316,11 @@ services:
     networks:
       - swarm-public
       - private-net
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_service: deck-verified-web
+      source_project: deck-verified-site
     logging:
       driver: fluentd
       options:
