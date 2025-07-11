@@ -217,7 +217,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish Swarm Template
-        uses: Josh5/action.publish-swarm-stack@4392d434d4cfc8df552c7e92cf063428343f96d2
+        uses: Josh5/action.publish-swarm-stack@841e62adec930611e3c27924982eb85979a42f9c
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           templates_path: infra/swarm

@@ -119,8 +119,9 @@ services:
         #### -- Configure Logging labels
         # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
-        - "source.service=deck-verified-tasks"
         - "source.project=deck-verified-site"
+        - "source.service=deck-verified-tasks"
+        - "source.version=<GIT_COMMIT_SHORT_SHA>"
     user: "1000:1000"
     command: npm run serve
     networks:
@@ -139,13 +140,15 @@ services:
       # -- Sentry
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
+      SENTRY_RELEASE: <GIT_COMMIT_SHORT_SHA>
       SENTRY_SERVICE_NAME: deck-verified-tasks
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_TASKS:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_TASKS:-1.0}
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
-      source_service: deck-verified-tasks
       source_project: deck-verified-site
+      source_service: deck-verified-tasks
+      source_version: <GIT_COMMIT_SHORT_SHA>
     logging:
       driver: fluentd
       options:
@@ -178,8 +181,9 @@ services:
         #### -- Configure Logging labels
         # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
-        - "source.service=deck-verified-api"
         - "source.project=deck-verified-site"
+        - "source.service=deck-verified-api"
+        - "source.version=<GIT_COMMIT_SHORT_SHA>"
 
         #### -- Enable traefik router for this service
         - "traefik.enable=true"
@@ -219,13 +223,15 @@ services:
       # -- Sentry
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
+      SENTRY_RELEASE: <GIT_COMMIT_SHORT_SHA>
       SENTRY_SERVICE_NAME: deck-verified-api
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_API:-0.1}
       SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_API:-0.5}
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
-      source_service: deck-verified-api
       source_project: deck-verified-site
+      source_service: deck-verified-api
+      source_version: <GIT_COMMIT_SHORT_SHA>
     healthcheck:
       test: ["CMD", "wget", "--header=User-Agent: Swarm-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9022/deck-verified/api/v1/health"]
       interval: 10s
@@ -264,8 +270,9 @@ services:
         #### -- Configure Logging labels
         # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
-        - "source.service=deck-verified-web-ssr"
         - "source.project=deck-verified-site"
+        - "source.service=deck-verified-web-ssr"
+        - "source.version=<GIT_COMMIT_SHORT_SHA>"
 
         #### -- Enable traefik router for this service
         - "traefik.enable=false"
@@ -274,8 +281,9 @@ services:
     environment:
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
-      source_service: deck-verified-web-ssr
       source_project: deck-verified-site
+      source_service: deck-verified-web-ssr
+      source_version: <GIT_COMMIT_SHORT_SHA>
     logging:
       driver: fluentd
       options:
@@ -308,8 +316,9 @@ services:
         #### -- Configure Logging labels
         # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
         - "source.env=${ENVIRONMENT_NAME:-test}"
-        - "source.service=deck-verified-web"
         - "source.project=deck-verified-site"
+        - "source.service=deck-verified-web"
+        - "source.version=<GIT_COMMIT_SHORT_SHA>"
 
         #### -- Enable traefik router for this service
         - "traefik.enable=true"
@@ -332,8 +341,9 @@ services:
     environment:
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
-      source_service: deck-verified-web
       source_project: deck-verified-site
+      source_service: deck-verified-web
+      source_version: <GIT_COMMIT_SHORT_SHA>
     logging:
       driver: fluentd
       options:
