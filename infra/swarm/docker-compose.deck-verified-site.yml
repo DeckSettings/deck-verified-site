@@ -79,8 +79,8 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
-        delay: 1s
+        condition: any
+        delay: 5s
       update_config:
         delay: 10s
         order: stop-first
@@ -104,8 +104,8 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
-        delay: 1s
+        condition: any
+        delay: 10s
       update_config:
         delay: 10s
         order: stop-first
@@ -165,8 +165,8 @@ services:
       mode: replicated
       replicas: ${REPLICAS_API:-1}
       restart_policy:
-        condition: on-failure
-        delay: 2s
+        condition: any
+        delay: 5s
       update_config:
         parallelism: 1
         delay: 30s
@@ -254,8 +254,8 @@ services:
       mode: replicated
       replicas: ${REPLICAS_WEB_SSR:-1}
       restart_policy:
-        condition: on-failure
-        delay: 1s
+        condition: any
+        delay: 10s
       update_config:
         parallelism: 1
         delay: 10s
@@ -300,8 +300,8 @@ services:
       mode: replicated
       replicas: ${REPLICAS_WEB:-1}
       restart_policy:
-        condition: on-failure
-        delay: 1s
+        condition: any
+        delay: 5s
       update_config:
         parallelism: 1
         delay: 10s

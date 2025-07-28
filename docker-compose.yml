@@ -22,12 +22,13 @@ services:
 
   # --- BACKEND API ---
   api:
-    #image: ghcr.io/decksettings/deck-verified-api:latest
+    image: ghcr.io/decksettings/deck-verified-api:latest
     build:
       context: .
       dockerfile: ./packages/backend/docker/Dockerfile
     user: "1000:1000"
     #command: npm run watch:backend
+    #command: npm run serve-no-tasks
     command: npm run serve
     ports:
       - "9022:9022"
@@ -55,7 +56,7 @@ services:
 
   # --- FRONTEND ---
   web-ssr:
-    #image: ghcr.io/decksettings/deck-verified-web:latest
+    image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
       dockerfile: ./packages/frontend/docker/ssr.Dockerfile
@@ -74,7 +75,7 @@ services:
 
   # --- FRONTEND ---
   web:
-    #image: ghcr.io/decksettings/deck-verified-web:latest
+    image: ghcr.io/decksettings/deck-verified-web:latest
     build:
       context: .
       dockerfile: ./packages/frontend/docker/Dockerfile
