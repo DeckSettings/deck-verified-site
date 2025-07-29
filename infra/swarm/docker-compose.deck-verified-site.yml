@@ -111,7 +111,7 @@ services:
         order: stop-first
       resources:
         limits:
-          memory: 50M
+          memory: 200M
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_TASKS:?}
