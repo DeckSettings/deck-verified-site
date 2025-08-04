@@ -1,27 +1,63 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const baseUrl = ref(`${import.meta.env.BASE_URL}`)
+const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-background2.jpg`)
+
+// Reactive state to control the visibility of the background image
+const isBackgroundHidden = ref(false)
+
+// Ref to get a direct reference to the page-content-container div in the template
+const contentContainer = ref<HTMLElement | null>(null)
+
+// Function to check if the user has scrolled past the hero section
+const checkScroll = () => {
+  if (!contentContainer.value) return
+
+  const rect = contentContainer.value.getBoundingClientRect()
+
+  // If the bottom of the content is above the viewport top, it's scrolled out of view
+  if (rect.bottom <= 0) {
+    isBackgroundHidden.value = true
+  } else {
+    isBackgroundHidden.value = false
+  }
+}
+
+// Add the scroll listener when the component is mounted
+onMounted(() => {
+  window.addEventListener('scroll', checkScroll)
+  // Initial check on load to set the correct state
+  checkScroll()
+})
+
+// Remove the scroll listener when the component is unmounted to prevent memory leaks
+onUnmounted(() => {
+  window.removeEventListener('scroll', checkScroll)
+})
 </script>
 
 <template>
-
+  <!-- Fixed background image -->
   <div class="background-container"
-       :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark) 50%, transparent), url('${baseUrl}/hero-background2.jpg')` }"></div>
-  <div class="background-container"></div>
-  <div class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
+       :class="{ 'hide-component': isBackgroundHidden }"
+       :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark) 50%, transparent), url('${heroBackgroundImageUrl}')` }"></div>
+
+  <!-- The content that scrolls. -->
+  <div ref="contentContainer" class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
     <div class="col-xs-12 col-md-6 text-left q-pt-md q-px-md q-pb-none">
       <h1 class="text-h3 q-mb-lg q-mt-none" :class="{'text-center': $q.screen.lt.sm}">
         Welcome to Deck Verified!
       </h1>
       <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
-        Deck Verified is a fully open-source, community-driven database built to help you get the best gaming experience
-        on your handheld device.
+        <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimize performance on
+        handheld
+        gaming PCs such as the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong>, <strong>Lenovo Legion
+        Go</strong>, and dozens of other handheld gaming PCs — with new device support added via community request.
       </p>
       <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
-        We provide game settings, performance tweaks, and compatibility reports specifically tailored for the Steam
-        Deck,
-        ROG Ally, and other portable PCs.
+        Whether you're aiming for smooth 60 FPS gameplay or battery-efficient settings, this community-driven resource
+        delivers real-world performance reports, graphics settings, controller mappings, and compatibility notes.
       </p>
       <div class="q-pb-md" :class="{'text-center': $q.screen.lt.sm}">
         <q-btn
@@ -83,6 +119,12 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
   width: 100%;
   height: 800px;
   z-index: 0;
+  /* Set the background-image in the template with javascript: */
+  /*background-image: url('https://shared.steamstatic.com/store_item_assets/steam/apps/1888930/library_hero.jpg');*/
+  background-repeat: no-repeat;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
 }
 
 .background-container::before {
@@ -100,8 +142,20 @@ const baseUrl = ref(`${import.meta.env.BASE_URL}`)
   z-index: 1; /* Place it above the background image */
 }
 
+/*
+ * Class to apply to the .background-image-container element to hide it once we have scrolled past it
+ */
+.hide-component {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* sm width */
 .page-content-container {
   position: relative;
+  z-index: 2;
+  background-color: transparent;
+  overflow: hidden;
 }
 
 .hero-image {

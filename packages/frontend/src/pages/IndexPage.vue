@@ -4,6 +4,7 @@ import { useMeta } from 'quasar'
 import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeHero from 'components/HomeHero.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
+import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 
 /*METADATA*/
 const metaTitle = ref('Welcome')
@@ -23,7 +24,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: 'Steam Deck, ROG Ally, gaming performance, game settings, handheld gaming, battery life, FPS, graphics presets, ProtonDB, Linux gaming, compatibility'
+        content: 'Steam Deck, ROG Ally, gaming performance, game settings, handheld gaming, battery life, FPS, graphics presets, ProtonDB, Linux gaming, compatibility',
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
@@ -43,7 +44,7 @@ useMeta(() => {
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
       twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
-      twitterImage: { name: 'twitter:image', content: metaImage.value }
+      twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
 
     link: { canonical: { rel: 'canonical', href: metaLink.value } },
@@ -63,12 +64,12 @@ useMeta(() => {
             'name': 'Deck Verified',
             'logo': {
               '@type': 'ImageObject',
-              'url': metaLogo.value
-            }
-          }
-        })
-      }
-    }
+              'url': metaLogo.value,
+            },
+          },
+        }),
+      },
+    },
   }
 })
 </script>
