@@ -36,3 +36,6 @@ yarn-error.log*
 # CICD temp files
 infra/**/build/**
 infra/**/dist/**
+
+# Local development
+/tmp/**
