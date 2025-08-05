@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { CSSProperties } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const props = defineProps<{
   backgroundImageUrl?: string
@@ -110,14 +113,18 @@ const onScroll = (posY = scrollY.value) => {
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', () => onScroll(window.scrollY))
+  if (!$q.platform.is.mobile) {
+    window.addEventListener('scroll', () => onScroll(window.scrollY))
+  }
   window.addEventListener('resize', () => {
     THRESHOLD.value = window.innerHeight
   })
   onScroll()  // init
 })
 onUnmounted(() => {
-  window.removeEventListener('scroll', () => onScroll(window.scrollY))
+  if (!$q.platform.is.mobile) {
+    window.removeEventListener('scroll', () => onScroll(window.scrollY))
+  }
 })
 </script>
 
@@ -137,7 +144,9 @@ onUnmounted(() => {
       <div class="row items-center justify-center" style="width:100%">
         <div class="col-12 col-md-6 flex items-center justify-center">
           <div class="info-wrapper" :class="{'text-center': $q.screen.lt.sm}">
-            <h2 class="text-h2 q-mb-md">Devices Available for Community Reporting</h2>
+            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.sm}">
+              Devices Available for Community Reporting
+            </h2>
             <p>
               This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
               the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
@@ -304,6 +313,11 @@ onUnmounted(() => {
 
 /* -sm- */
 @media (max-width: 600px) {
+  .device-section {
+    padding-block-start: 70vh;
+    padding-block-end: 10vh;
+  }
+
   .info-wrapper {
     margin-top: 7vh;
     max-width: 520px;

@@ -88,7 +88,9 @@ onUnmounted(() => {
 
         <div class="text-col">
           <div class="text-panel" ref="textContainerRef">
-            <h2 class="text-h2 q-mt-none q-mb-md">Browse Game Reports Directly from Your Handheld</h2>
+            <h2 class="text-h2 q-mt-none q-mb-md" :class="{'text-h4': $q.screen.lt.sm}">
+              Browse Game Reports Directly from Your Handheld
+            </h2>
 
             <p>
               Use the <strong><a href="https://github.com/DeckSettings/decky-game-settings" target="_blank">
@@ -110,7 +112,8 @@ onUnmounted(() => {
               YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/" target="_blank">SDHQ</a>
               game settings reviews, and the ability to filter reports by specific devices or view them across all
               supported platforms. Whether you're trying to optimise for battery life or unlock higher FPS, the Deck
-              Settings plugin puts this community's knowledge at your fingertips without even needing to exit your game.
+              Settings plugin puts this community's knowledge at your fingertips without even needing to exit your
+              game.
             </p>
           </div>
         </div>
@@ -170,6 +173,10 @@ onUnmounted(() => {
 
 /* -sm- */
 @media (max-width: 600px) {
+  .device-section {
+    padding: 0 0.1rem;
+  }
+
   .split-container {
     flex-direction: column;
     gap: 1.5rem;

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const props = defineProps<{
   backgroundImageUrl?: string
@@ -49,13 +52,17 @@ const checkScroll = () => {
 }
 
 onMounted(() => {
-  // Use a simple scroll event listener instead of an IntersectionObserver for this
-  window.addEventListener('scroll', checkScroll)
+  if (!$q.platform.is.mobile) {
+    // Use a simple scroll event listener instead of an IntersectionObserver for this
+    window.addEventListener('scroll', checkScroll)
+  }
   checkScroll() // Initial check
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', checkScroll)
+  if (!$q.platform.is.mobile) {
+    window.removeEventListener('scroll', checkScroll)
+  }
 })
 </script>
 
