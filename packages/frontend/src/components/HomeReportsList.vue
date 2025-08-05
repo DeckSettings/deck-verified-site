@@ -1,7 +1,6 @@
 <script lang="ts">
-import { defineComponent, onMounted, ref } from 'vue'
-import { fetchPopularReports, fetchRecentReports } from 'src/services/gh-reports'
-import type { Report } from 'src/services/gh-reports'
+import { computed, defineComponent, onMounted } from 'vue'
+import { useReportsStore } from 'src/services/gh-reports'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 
 
@@ -10,12 +9,10 @@ export default defineComponent({
   props: {
     reportSelection: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
-    const reportsList = ref([] as Report[])
-    const listTitle = ref('')
 
     const getReviewScoreIcon = (reviewScore: string) => {
       switch (reviewScore) {
@@ -69,15 +66,23 @@ export default defineComponent({
       }
     }
 
+    const reportStore = useReportsStore()
+    const listTitle = computed(() =>
+      props.reportSelection === 'popular'
+        ? 'Most Popular Reports'
+        : 'Recently Updated Reports',
+    )
+    const reportsList = computed(() =>
+      props.reportSelection === 'popular'
+        ? reportStore.popular
+        : reportStore.recent,
+    )
+
     onMounted(async () => {
-      if (!props.reportSelection) {
-        listTitle.value = ''
-      } else if (props.reportSelection == 'popular') {
-        reportsList.value = await fetchPopularReports()
-        listTitle.value = 'Most Popular Reports'
+      if (props.reportSelection == 'popular') {
+        await reportStore.loadPopular()
       } else if (props.reportSelection == 'recentlyUpdated') {
-        reportsList.value = await fetchRecentReports()
-        listTitle.value = 'Recently Updated Reports'
+        await reportStore.loadRecent()
       }
     })
 
@@ -88,9 +93,9 @@ export default defineComponent({
       getReviewScoreIcon,
       getReviewScoreColor,
       getReviewScoreString,
-      getReviewScoreTooltip
+      getReviewScoreTooltip,
     }
-  }
+  },
 })
 </script>
 

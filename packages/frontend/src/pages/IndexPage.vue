@@ -1,10 +1,32 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useMeta } from 'quasar'
+import { computed, onMounted, ref } from 'vue'
+import { useMeta, useQuasar } from 'quasar'
 import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeHero from 'components/HomeHero.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
+import FullPageSection from 'components/elements/FullPageSection.vue'
+import { useReportsStore } from 'src/services/gh-reports'
+
+const $q = useQuasar()
+
+const reportStore = useReportsStore()
+onMounted(() => {
+  reportStore.loadRecent()
+})
+const sectionBackgrounds = computed(() => {
+  return reportStore.recent.map(rpt => {
+    const heroUrl = rpt.metadata.hero ?? rpt.metadata.poster
+    const posterUrl = rpt.metadata.poster ?? rpt.metadata.hero
+    const fallback = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1817070/library_hero.jpg'
+
+    if ($q.screen.width < 1024) {
+      return posterUrl ?? fallback
+    } else {
+      return heroUrl ?? fallback
+    }
+  })
+})
 
 /*METADATA*/
 const metaTitle = ref('Welcome')
@@ -78,7 +100,7 @@ useMeta(() => {
   <q-page class="bg-dark text-white q-pb-xl">
     <HomeHero />
 
-    <section class="reports-section q-pa-md">
+    <FullPageSection imageUrl="">
       <div class="row">
         <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
           <HomeReportsList reportSelection="recentlyUpdated" />
@@ -87,7 +109,9 @@ useMeta(() => {
           <HomeReportsList reportSelection="popular" />
         </div>
       </div>
-    </section>
+    </FullPageSection>
+
+    <HomeSupportedDevicesSection :imageUrl="sectionBackgrounds[0]!" />
 
     <ScrollToTop />
   </q-page>

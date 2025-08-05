@@ -10,6 +10,7 @@ import type {
   GameReportForm,
   GameDetailsRequestMetricResult
 } from '../../../shared/src/game'
+import { defineStore } from 'pinia'
 
 export interface Report {
   id: number;
@@ -19,6 +20,21 @@ export interface Report {
   user: GitHubUser;
   reviewScore: string;
 }
+
+export const useReportsStore = defineStore('reports', {
+  state: () => ({
+    recent: [] as Report[],
+    popular: [] as Report[],
+  }),
+  actions: {
+    async loadRecent() {
+      this.recent = await fetchRecentReports()
+    },
+    async loadPopular() {
+      this.popular = await fetchPopularReports()
+    }
+  }
+})
 
 export const fetchRecentReports = async (): Promise<Report[]> => {
   const url = '/deck-verified/api/v1/recent_reports'
