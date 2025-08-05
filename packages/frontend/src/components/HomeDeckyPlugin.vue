@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import videoSrc from '../assets/using-deck-settings-decky-plugin.compressed.mp4'
+
+const videoUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.mp4', import.meta.url).href
+const videoLoaded = ref(false)
 
 const sectionRef = ref<HTMLElement | null>(null)
 const textContainerRef = ref<HTMLElement | null>(null)
@@ -46,6 +48,7 @@ onMounted(() => {
 
   const obs = new IntersectionObserver((entries, observer) => {
     if (entries[0]?.isIntersecting) {
+      videoLoaded.value = true
       observer.disconnect()
       ;(async () => {
         for (let i = 0; i < paragraphs.length; i++) {
@@ -79,9 +82,13 @@ onUnmounted(() => {
               loop
               muted
               playsinline
+              preload="none"
               class="video-content"
             >
-              <source :src="videoSrc" type="video/mp4" />
+              <source
+                v-if="videoLoaded"
+                :src="videoUrl"
+                type="video/mp4" />
             </video>
           </div>
         </div>
