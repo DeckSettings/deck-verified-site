@@ -67,7 +67,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: 'Steam Deck, ROG Ally, gaming performance, game settings, handheld gaming, battery life, FPS, graphics presets, ProtonDB, Linux gaming, compatibility settings, game optimization'
+        content: 'Steam Deck, ROG Ally, gaming performance, game settings, handheld gaming, battery life, FPS, graphics presets, ProtonDB, Linux gaming, compatibility settings, game optimization',
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
@@ -87,7 +87,7 @@ useMeta(() => {
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
       twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
-      twitterImage: { name: 'twitter:image', content: metaImage.value }
+      twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
 
     link: { canonical: { rel: 'canonical', href: metaLink.value } },
@@ -107,12 +107,12 @@ useMeta(() => {
             'name': 'Deck Verified',
             'logo': {
               '@type': 'ImageObject',
-              'url': metaLogo.value
-            }
-          }
-        })
-      }
-    }
+              'url': metaLogo.value,
+            },
+          },
+        }),
+      },
+    },
   }
 })
 </script>
@@ -133,8 +133,19 @@ useMeta(() => {
           </div>
         </div>
         <div class="col-12 col-md-6">
-          <div class="column">
-            <div class="col q-mt-lg" :class="$q.screen.lt.md ? 'self-center': 'self-end q-mr-xl'">
+          <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
+            <div v-if="$q.screen.gt.sm" class="col-12 col-md-6 flex justify-end">
+              <q-btn
+                glossy
+                size="lg"
+                icon="fas fa-chart-bar"
+                label="View Site Stats"
+                color="secondary"
+                text-color="white"
+                :to="{ name: 'site-stats' }"
+              />
+            </div>
+            <div class="col-12 col-md-6 flex justify-center">
               <q-btn
                 glossy
                 :size="$q.screen.lt.sm ? 'md': 'lg'"
