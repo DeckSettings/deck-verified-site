@@ -17,14 +17,14 @@ import {
   redisLookupPopularGameReports,
   redisLookupRecentGameReports,
   redisLookupReportBodySchema, searchGamesInRedis,
-  storeGameInRedis
+  storeGameInRedis,
 } from './redis'
 import {
   GameMetadata,
   GameReport, GameReportForm, GitHubIssueLabel,
   GithubIssuesSearchResult,
   GitHubProjectDetails, GitHubProjectGameDetails,
-  GitHubReportIssueBodySchema, HardwareInfo
+  GitHubReportIssueBodySchema, HardwareInfo,
 } from '../../shared/src/game'
 import { generateImageLinksFromAppId, isValidNumber, parseGameProjectBody, parseReportBody } from './helpers'
 import type { GitHubIssueTemplate } from '../../shared/src/game'
@@ -40,7 +40,7 @@ export const fetchReports = async (
   sort: 'reactions-+1' | 'created' | 'updated' | 'comments' = 'updated',
   direction: 'asc' | 'desc' = 'desc',
   limit: number | null = null,
-  excludeInvalid: boolean = true
+  excludeInvalid: boolean = true,
 ): Promise<GithubIssuesSearchResult | null> => {
   const repoOwner = 'DeckSettings'
   const encodedSort = encodeURIComponent(sort)
@@ -91,7 +91,7 @@ export const updateGameIndex = async (): Promise<void> => {
             appId: typeof parsedProject.appId === 'number' ? String(parsedProject.appId) : null,
             banner: parsedProject.metadata.banner || null,
             poster: parsedProject.metadata.poster || null,
-            reportCount: parsedProject.reports.length
+            reportCount: parsedProject.reports.length,
           })
         } catch (error) {
           logger.error('Error storing game in Redis:', error)
@@ -132,9 +132,9 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
       poster: '',
       hero: '',
       banner: '',
-      background: ''
+      background: '',
     },
-    reports: []
+    reports: [],
   }
 
   const rawMetadata = await parseGameProjectBody(project.readme)
@@ -142,13 +142,13 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
     poster: rawMetadata.poster === '_No response_' ? null : rawMetadata.poster ?? null,
     hero: rawMetadata.hero === '_No response_' ? null : rawMetadata.hero ?? null,
     banner: rawMetadata.banner === '_No response_' ? null : rawMetadata.banner ?? null,
-    background: rawMetadata.background === '_No response_' ? null : rawMetadata.background ?? null
+    background: rawMetadata.background === '_No response_' ? null : rawMetadata.background ?? null,
   }
 
   for (const issue of project.issues) {
     // Check if the issue has the "invalid:template-incomplete" label
     const hasInvalidLabel = issue.labels.some(
-      (label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete'
+      (label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete',
     )
     if (hasInvalidLabel) {
       continue
@@ -162,20 +162,20 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
       metadata: projectDetails.metadata,
       reactions: {
         reactions_thumbs_up: issue.reactions['+1'] || 0,
-        reactions_thumbs_down: issue.reactions['-1'] || 0
+        reactions_thumbs_down: issue.reactions['-1'] || 0,
       },
       labels: issue.labels.map((label: GitHubIssueLabel) => ({
         name: label.name,
         color: label.color,
-        description: label.description || ''
+        description: label.description || '',
       })),
       user: {
         login: issue.user.login,
         avatar_url: issue.user.avatar_url,
-        report_count: await fetchAuthorReportCount(issue.user.login)
+        report_count: await fetchAuthorReportCount(issue.user.login),
       },
       created_at: issue.created_at,
-      updated_at: issue.updated_at
+      updated_at: issue.updated_at,
     })
   }
   return projectDetails
@@ -188,6 +188,12 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
  */
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
   const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
+  const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
+    m.banner     == null ||
+    m.poster     == null ||
+    m.hero       == null ||
+    m.background == null;
+
   return Promise.all(
     reports.items.map(async (report) => {
       const parsedIssueData = await parseReportBody(report.body, schema, hardwareInfo)
@@ -195,12 +201,9 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         banner: null,
         poster: null,
         hero: null,
-        background: null
+        background: null,
       }
-      if (parsedIssueData.app_id) {
-        const gameImages = await generateImageLinksFromAppId(String(parsedIssueData.app_id))
-        metadata = { ...metadata, ...gameImages }
-      } else if (parsedIssueData.game_name) {
+      if (parsedIssueData.game_name) {
         const games = await searchGamesInRedis(null, null, parsedIssueData.game_name)
         if (games.length > 0) {
           const redisResult = games[0]
@@ -208,7 +211,31 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
             banner: metadata.banner ?? redisResult.banner,
             poster: metadata.poster ?? redisResult.poster,
             hero: metadata.hero,
-            background: metadata.background
+            background: metadata.background,
+          }
+        }
+      }
+      if (parsedIssueData.app_id) {
+        if (hasMissingMetadata(metadata)) {
+          const games = await searchGamesInRedis(null, parsedIssueData.app_id.toString(), null)
+          if (games.length > 0) {
+            const redisResult = games[0]
+            metadata = {
+              banner: metadata.banner ?? redisResult.banner,
+              poster: metadata.poster ?? redisResult.poster,
+              hero: metadata.hero,
+              background: metadata.background,
+            }
+          }
+        }
+        // Generate metadata from AppId links as a fallback if still missing
+        if (hasMissingMetadata(metadata)) {
+          const fallbackImages = await generateImageLinksFromAppId(String(parsedIssueData.app_id))
+          metadata = {
+            banner: metadata.banner ?? fallbackImages.banner,
+            poster: metadata.poster ?? fallbackImages.poster,
+            hero: metadata.hero ?? fallbackImages.hero,
+            background: metadata.background ?? fallbackImages.background,
           }
         }
       }
@@ -220,22 +247,22 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         metadata: metadata as GameMetadata,
         reactions: {
           reactions_thumbs_up: report.reactions['+1'] || 0,
-          reactions_thumbs_down: report.reactions['-1'] || 0
+          reactions_thumbs_down: report.reactions['-1'] || 0,
         },
         labels: report.labels.map((label: GitHubIssueLabel) => ({
           name: label.name,
           color: label.color,
-          description: label.description || ''
+          description: label.description || '',
         })),
         user: {
           login: report.user.login,
           avatar_url: report.user.avatar_url,
-          report_count: null
+          report_count: null,
         },
         created_at: report.created_at,
-        updated_at: report.updated_at
+        updated_at: report.updated_at,
       }
-    })
+    }),
   )
 }
 
@@ -341,7 +368,7 @@ export const fetchAuthorReportCount = async (author: string): Promise<number> =>
 export const fetchProjectsByAppIdOrGameName = async (
   appId: string | null,
   gameName: string | null,
-  authToken: string | null = null
+  authToken: string | null = null,
 ): Promise<GitHubProjectGameDetails | Record<string, never>> => {
   if (!appId && !gameName) {
     throw new Error('Either appId or gameName must be provided.')
@@ -385,7 +412,7 @@ export const fetchProjectsByAppIdOrGameName = async (
  */
 export const fetchProject = async (
   searchTerm: string,
-  authToken: string | null = null
+  authToken: string | null = null,
 ): Promise<GitHubProjectDetails[] | null> => {
   if (!authToken && config.defaultGithubAuthToken) {
     authToken = config.defaultGithubAuthToken
@@ -461,7 +488,7 @@ export const fetchProject = async (
 
     while (hasNextPage) {
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       }
       if (authToken) {
         headers['Authorization'] = `bearer ${authToken}`
@@ -475,9 +502,9 @@ export const fetchProject = async (
           variables: {
             orgId: orgNodeId,
             cursor: endCursor,
-            searchTerm: searchTerm
-          }
-        })
+            searchTerm: searchTerm,
+          },
+        }),
       })
 
       if (!response.ok) {
@@ -490,7 +517,7 @@ export const fetchProject = async (
 
       if (responseData.errors) {
         responseData.errors.forEach((error: { message: string }) =>
-          logger.error(`GitHub GraphQL API Error: ${error.message}`)
+          logger.error(`GitHub GraphQL API Error: ${error.message}`),
         )
       }
 
@@ -511,9 +538,9 @@ export const fetchProject = async (
             poster: '',
             hero: '',
             banner: '',
-            background: ''
+            background: '',
           },
-          issues: []
+          issues: [],
         }
         for (const node of project.items.nodes) {
           if (node.content.__typename === 'Issue' && node.content.body) {
@@ -524,12 +551,12 @@ export const fetchProject = async (
               body: node.content.body,
               reactions: {
                 '+1': node.content.reactions_thumbs_up.totalCount,
-                '-1': node.content.reactions_thumbs_down.totalCount
+                '-1': node.content.reactions_thumbs_down.totalCount,
               },
               labels: node.content.labels.nodes,
               user: node.content.author,
               created_at: node.content.createdAt,
-              updated_at: node.content.updatedAt
+              updated_at: node.content.updatedAt,
             })
           }
         }
@@ -598,7 +625,7 @@ export const fetchIssueLabels = async (authToken: string | null = null): Promise
 
   logger.info('Fetching labels from GitHub API')
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   }
 
   if (authToken) {
@@ -607,7 +634,7 @@ export const fetchIssueLabels = async (authToken: string | null = null): Promise
 
   const response = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/labels', {
     method: 'GET',
-    headers
+    headers,
   })
 
   if (!response.ok) {
