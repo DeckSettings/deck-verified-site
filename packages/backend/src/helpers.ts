@@ -435,7 +435,7 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
 
       return appDetails
     } else {
-      logger.error(`No game data found for appId ${appId}`)
+      logger.warn(`No game data found for appId ${appId}`)
       await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
       return {}
     }
@@ -533,12 +533,12 @@ export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
 
       return data
     } else {
-      logger.error(`No game data found for appId ${appId}`)
+      logger.warn(`No SDHQ game data found for appId ${appId}`)
       await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
       return []
     }
   } catch (error) {
-    logger.error(`Failed to fetch game data for appId ${appId}:`, error)
+    logger.error(`Failed to fetch SDHQ game data for appId ${appId}:`, error)
   }
 
   await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
@@ -676,7 +676,7 @@ export const fetchSDGReview = async (appId: string): Promise<SDGVideoReview[]> =
       await redisCacheSDGReview(data, appId)
       return data
     } else {
-      logger.error(`No video data found for appId ${appId}`)
+      logger.warn(`No video data found for appId ${appId}`)
       await redisCacheSDGReview([], appId, 3600) // Cache error response for 1 hour
       return []
     }
