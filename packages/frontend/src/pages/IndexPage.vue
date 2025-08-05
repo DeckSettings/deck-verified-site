@@ -5,6 +5,7 @@ import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeHero from 'components/HomeHero.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
+import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 import FullPageSection from 'components/elements/FullPageSection.vue'
 import { useReportsStore } from 'src/services/gh-reports'
 
@@ -15,7 +16,7 @@ onMounted(() => {
   reportStore.loadRecent()
 })
 const sectionBackgrounds = computed(() => {
-  return reportStore.recent.map(rpt => {
+  return reportStore.popular.map(rpt => {
     const heroUrl = rpt.metadata.hero ?? rpt.metadata.poster
     const posterUrl = rpt.metadata.poster ?? rpt.metadata.hero
     const fallback = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1817070/library_hero.jpg'
@@ -100,7 +101,7 @@ useMeta(() => {
   <q-page class="bg-dark text-white q-pb-xl">
     <HomeHero />
 
-    <FullPageSection imageUrl="">
+    <FullPageSection backgroundImageUrl="">
       <div class="row">
         <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
           <HomeReportsList reportSelection="recentlyUpdated" />
@@ -111,7 +112,13 @@ useMeta(() => {
       </div>
     </FullPageSection>
 
-    <HomeSupportedDevicesSection :imageUrl="sectionBackgrounds[0]!" />
+    <HomeSupportedDevicesSection :backgroundImageUrl="sectionBackgrounds[0]!" />
+
+    <FullPageSection
+      backgroundColour="black"
+      :scrollLockDuration="1">
+      <HomeDeckyPlugin />
+    </FullPageSection>
 
     <ScrollToTop />
   </q-page>

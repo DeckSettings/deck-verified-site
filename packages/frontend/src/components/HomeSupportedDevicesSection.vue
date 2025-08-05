@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { CSSProperties } from 'vue'
 
 const props = defineProps<{
-  imageUrl: string
+  backgroundImageUrl?: string
 }>()
 
 interface Slide {
@@ -130,7 +130,7 @@ onUnmounted(() => {
     <div
       class="background-image"
       :class="{ 'is-visible': isBackgroundVisible }"
-      :style="{ backgroundImage: `url('${props.imageUrl}')` }"
+      :style="{ backgroundImage: `url('${props.backgroundImageUrl}')` }"
     />
 
     <div class="pin-wrapper">
@@ -226,7 +226,7 @@ onUnmounted(() => {
 .device-section {
   position: relative;
   padding-block-start: 50vh;
-  padding-block-end: 50vh;
+  padding-block-end: 10vh;
 }
 
 .pin-wrapper {

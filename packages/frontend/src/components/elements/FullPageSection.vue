@@ -1,21 +1,41 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps<{
-  imageUrl: string
+  backgroundImageUrl?: string
+  backgroundColour?: string
   transition?: string
   scrollLockDuration?: number
-}>()
-
-defineSlots<{
-  default: (props: {
-    scrollContainer: HTMLElement | null
-  }) => unknown
 }>()
 
 const isBackgroundVisible = ref(false)
 const sectionRef = ref<HTMLElement | null>(null)
 const contentWrapperRef = ref<HTMLElement | null>(null)
+
+// Generate background
+const fadeGradient = computed(() => {
+  const colour = props.backgroundColour || 'transparent'
+  return `linear-gradient(
+    to bottom,
+    transparent 0%,
+    ${colour} 30%,
+    ${colour} 80%,
+    transparent 100%
+  )`
+})
+const bgStyle = computed(() => {
+  const layers = [fadeGradient.value]
+  if (props.backgroundImageUrl) {
+    layers.push(`url(${props.backgroundImageUrl})`)
+  }
+  return {
+    backgroundImage: layers.join(','),
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    transitionDuration: props.transition || '1s',
+  }
+})
 
 // Function checks if the user has scrolled past the section
 const checkScroll = () => {
@@ -48,11 +68,11 @@ onUnmounted(() => {
   >
     <div
       class="background-image"
-      :class="{ 'is-visible': isBackgroundVisible }"
-      :style="{
-        backgroundImage: `url(${props.imageUrl})`,
-        'transition-duration': props.transition || '1s',
+      :class="{
+        'is-visible':        isBackgroundVisible,
+        'only-colour':       !props.backgroundImageUrl
       }"
+      :style="bgStyle"
     />
 
     <div ref="contentWrapperRef" class="content-wrapper">
@@ -92,6 +112,11 @@ onUnmounted(() => {
 
 .background-image.is-visible {
   opacity: 0.3;
+}
+
+.background-image.only-colour.is-visible {
+  /* Removes opacity when we only have a background colour */
+  opacity: 1;
 }
 
 .content-wrapper {
