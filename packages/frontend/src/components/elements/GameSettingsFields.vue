@@ -430,10 +430,14 @@ export default defineComponent({
     <div v-for="(section, sectionIndex) in sections" :key="sectionIndex"
          class="q-mb-lg rounded-borders game-settings-section">
       <q-input
-        standout dense
+        standout
+        dense
         v-model="section.title"
         type="text"
-        placeholder="[Optional] Give this section a name."
+        label="Section name (optional)"
+        placeholder="e.g. Texture Settings, Lighting Settings, etc"
+        hint="Give this section a title to group related options"
+        clearable
       />
       <q-list separator class="q-pa-none q-mt-sm">
         <!-- Draggable list for items in this section -->

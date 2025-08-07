@@ -531,49 +531,62 @@ watch(formValues, () => {
                   <div class="in-game-settings-head">
                     <h2>In-Game Settings</h2>
                     <p>
-                      Add your game settings options here.
-                      Match the in-game format as closely as possible.
-
+                      Enter your game’s settings here—try to mirror the in-game layout and values as closely as
+                      possible.
+                      <br /><br />
+                      Many games group settings into categories.
+                      <q-img
+                        v-if="$q.screen.lt.sm"
+                        lazy
+                        :src="LasOfUsGraphicSettingsImage"
+                        class="q-my-lg q-mx-none"
+                        style="max-width:95vw;display:block;float:right;" />
+                      <q-img
+                        v-else-if="$q.screen.lt.md"
+                        lazy
+                        :src="LasOfUsGraphicSettingsImage"
+                        class="q-ml-lg q-my-sm"
+                        style="max-width:400px;display:block;float:right;" />
+                      <span v-else>
+                        When they do it might look like this:
+                        <br /><br />
+                        <ZoomableImage
+                          :src="LasOfUsGraphicSettingsImage" />
+                      </span>
                       <br />
-                      <br />
-                      Some games organise their settings into sections.
-                      <ZoomableImage :src="LasOfUsGraphicSettingsImage" />
-                      You can also do this by clicking the
+                      To create a new category, click the
                       <q-btn
                         dense
                         glossy
                         size="xs"
                         :ripple="false"
                         color="primary"
-                        class="q-ma-none cursor-inherit">
+                        class="q-ma-none cursor-inherit"
+                      >
                         <q-icon left size="3em" name="add_circle" />
                         <div>ADD SECTION</div>
                       </q-btn>
-                      "ADD SECTION" button.
+                      button.
                       <br />
-                      <br />
-                      You can reorder options or move them between sections by dragging the
-                      <q-icon name="drag_handle" color="secondary" size="16px" inline />
-                      icon.
-                      <br />
-                      <br />
-                      Use the
+                      To add a new setting within a category, click the
                       <q-btn
                         dense
                         glossy
                         size="xs"
                         :ripple="false"
                         color="primary"
-                        class="q-ma-none cursor-inherit">
+                        class="q-ma-none cursor-inherit"
+                      >
                         <q-icon left size="3em" name="add_circle" />
                         <div>ADD OPTION</div>
                       </q-btn>
-                      "ADD OPTION" button to insert new settings.
-                      <br />
-                      <br />
-                      If the game lacks <strong>"Display"</strong> or <strong>"Graphics"</strong> options,
-                      list resolution details under the <strong>Game Display Settings</strong> section.
-                      If settings aren't separated, include all details under the Display section below.
+                      button.
+                      You can rearrange or move any setting by dragging the
+                      <q-icon name="drag_handle" color="secondary" size="16px" inline />
+                      icon.
+                      <br /><br />
+                      If a game doesn’t split its settings into sections or has no “Display”/“Graphics” category, just
+                      list resolution and related details under the <strong>Game Display Settings</strong> section.
                     </p>
                   </div>
                 </template>
