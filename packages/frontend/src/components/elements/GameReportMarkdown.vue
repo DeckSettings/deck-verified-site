@@ -9,11 +9,12 @@ export default defineComponent({
   props: {
     markdown: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const youTubeVideoId = ref('')
+    const additionalImages = ref<{ src: string; alt?: string }[]>([])
 
     function extractYouTubeId(url: string): string | null {
       const regex = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&\n?#]+)/
@@ -24,7 +25,7 @@ export default defineComponent({
     // Create a custom renderer for marked
     const renderer = new marked.Renderer()
 
-    // Override the default link behavior. Use this to extract custom link data for handling outside of marked
+    // Override the default link behaviour. Use this to extract custom link data for handling outside marked
     const defaultLinkRenderer = renderer.link
     renderer.link = function(link: Tokens.Link): string {
       const { href, title, tokens } = link
@@ -34,7 +35,7 @@ export default defineComponent({
       if (
         tokens.some((token: Token) =>
           (token.raw && token.raw.includes('shields.io')) ||
-          (token.type === 'image' && token.href && token.href.includes('shields.io'))
+          (token.type === 'image' && token.href && token.href.includes('shields.io')),
         )
       ) {
         return defaultLinkRenderer.call(this, link)
@@ -50,6 +51,24 @@ export default defineComponent({
       // Fallback for regular links
       const titleAttr = title ? ` title="${title}"` : ''
       return `<a href="${href}"${titleAttr}>${text}</a>`
+    }
+
+    // Override <img> HTML tags before sanitization
+    renderer.html = function(token: Tokens.HTML): string {
+      const html = token.text
+      // Find img tags
+      const imgMatch = html.match(
+        /<img\s+[^>]*src="([^"]+)"(?:\s+alt="([^"]*)")?[^>]*\/?>/i,
+      )
+      if (imgMatch) {
+        const [, src = '', alt = ''] = imgMatch
+        // Only care about user-attachments URLs (safer not to display things not hosted on GitHub)
+        if (src.startsWith('https://github.com/user-attachments/')) {
+          additionalImages.value.push({ src, alt })
+        }
+      }
+      // drop all raw HTML so <img> doesn’t survive sanitization
+      return ''
     }
 
     const parsedMarkdown = marked(props.markdown, { renderer })
@@ -68,23 +87,23 @@ export default defineComponent({
         'br',
         'hr',
         'a',
-        'img',
         'ul',
         'li',
         'ol',
         'h4',
         'h5',
-        'h6'
+        'h6',
       ],
-      ALLOWED_ATTR: ['class', 'src', 'href', 'alt']
+      ALLOWED_ATTR: ['class', 'src', 'href', 'alt'],
     })
 
     return {
       parsedMarkdown,
       sanitisedParsedMarkdown,
-      youTubeVideoId
+      youTubeVideoId,
+      additionalImages,
     }
-  }
+  },
 })
 
 </script>
@@ -99,6 +118,15 @@ export default defineComponent({
             allowfullscreen>
       Loading embedded YT player for link https://youtu.be/{{ youTubeVideoId }}
     </iframe>
+    <div v-if="additionalImages.length" style="margin-top: 1rem;">
+      <img
+        v-for="(img, i) in additionalImages"
+        :key="i"
+        :src="img.src"
+        :alt="img.alt || ''"
+        style="display: block; max-width: 100%; height: auto; margin: 1rem auto;"
+      />
+    </div>
   </div>
 </template>
 
