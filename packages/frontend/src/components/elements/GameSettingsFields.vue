@@ -147,7 +147,7 @@ const commonGameSettingsKeys = [
   'WATER REFRACTION QUALITY',
   'WINDOW RESOLUTION',
   'WINDOW SIZE',
-  'WINDOWED MODE'
+  'WINDOWED MODE',
 ]
 const commonGameSettingsValues = [
   '1024x640',
@@ -199,28 +199,28 @@ const commonGameSettingsValues = [
   'Unchecked',
   'Very Low',
   'Vulcan',
-  'Yes'
+  'Yes',
 ]
 
 export default defineComponent({
   methods: { marked },
   components: {
-    draggable
+    draggable,
   },
   props: {
     fieldData: {
       type: Object,
-      required: true
+      required: true,
     },
     previousData: {
       type: String,
-      required: false
+      required: false,
     },
     invalidData: {
       type: Boolean,
       required: false,
-      default: false
-    }
+      default: false,
+    },
   },
   emits: ['update'],
   setup(props, { emit }) {
@@ -228,9 +228,9 @@ export default defineComponent({
 
     // Each section has a title and an items array (of key/value pairs).
     // Sections are optional; if no previousData creates one, a default section is created.
-    const sections = ref<
-      { title: string; items: { key: string; value: string }[] }[]
-    >([])
+    type Row = { id: number; key: string; value: string }
+    const sections = ref<{ title: string; items: Row[] }[]>([])
+    let nextRowId = 0
 
     const defaultSectionTitle = ''
 
@@ -248,15 +248,16 @@ export default defineComponent({
       const lines: string[] = props.previousData.split('\n')
       // Regex matches lines like: - **Key:** Value
       const regex = /^-\s\*\*(.+?):\*\*\s*(.+)$/
-      const pairs: { key: string; value: string }[] = []
+      const pairs: Row[] = []
       for (const line of lines) {
         const trimmed = line.trim()
         if (!trimmed) continue
         const match = trimmed.match(regex)
         if (match && match.length > 2) {
           pairs.push({
+            id: nextRowId++,
             key: match[1]?.trim().toUpperCase() as string,
-            value: match[2]?.trim() as string
+            value: match[2]?.trim() as string,
           })
         }
       }
@@ -292,7 +293,7 @@ export default defineComponent({
     const draggableGroupOptions = {
       name: 'shared',
       pull: true,
-      put: true
+      put: true,
     }
 
     // Section management.
@@ -304,9 +305,12 @@ export default defineComponent({
       sections.value.splice(sectionIndex, 1)
     }
 
-    // Key/Value pair management within a section.
+    function makeBlankRow(): Row {
+      return { id: nextRowId++, key: '', value: '' }
+    }
+
     const addPair = (sectionIndex: number) => {
-      sections.value[sectionIndex]?.items.push({ key: '', value: '' })
+      sections.value[sectionIndex]?.items.push(makeBlankRow())
     }
 
     const deletePair = (sectionIndex: number, pairIndex: number) => {
@@ -317,7 +321,7 @@ export default defineComponent({
     const keyFilter = (
       val: string,
       update: (callback: () => void) => void,
-      abort: () => void
+      abort: () => void,
     ) => {
       // Set a minimum length before filtering (currently disabled - 0)
       if (val.length < 0) {
@@ -327,7 +331,7 @@ export default defineComponent({
       update(() => {
         const needle = val.toLowerCase()
         keyOptions.value = initialKeyOptions.value.filter(v =>
-          v.toLocaleLowerCase().indexOf(needle) > -1
+          v.toLowerCase().includes(needle),
         )
       })
     }
@@ -335,7 +339,7 @@ export default defineComponent({
     const valueFilter = (
       val: string,
       update: (callback: () => void) => void,
-      abort: () => void
+      abort: () => void,
     ) => {
       // Set a minimum length before filtering (currently disabled - 0)
       if (val.length < 0) {
@@ -345,7 +349,7 @@ export default defineComponent({
       update(() => {
         const needle = val.toLowerCase()
         valueOptions.value = initialValueOptions.value.filter(v =>
-          v.toLowerCase().includes(needle)
+          v.toLowerCase().includes(needle),
         )
       })
     }
@@ -360,7 +364,27 @@ export default defineComponent({
       (newVal) => {
         emit('update', newVal)
       },
-      { deep: true }
+      { deep: true },
+    )
+
+    watch(
+      sections,
+      (allSections) => {
+        allSections.forEach(section => {
+          const items = section.items
+          const last = items[items.length - 1]
+
+          // 1) if there is no "last" (i.e. items was empty), add a blank
+          if (!last) {
+            items.push(makeBlankRow())
+          }
+          // 2) otherwise last is definitely defined, so TS is happy here
+          else if (last.key.trim() !== '' && last.value.trim() !== '') {
+            items.push(makeBlankRow())
+          }
+        })
+      },
+      { deep: true },
     )
 
     onMounted(async () => {
@@ -383,9 +407,9 @@ export default defineComponent({
       keyOptions,
       valueFilter,
       valueOptions,
-      savePluginFlow
+      savePluginFlow,
     }
-  }
+  },
 })
 </script>
 
@@ -409,14 +433,14 @@ export default defineComponent({
         standout dense
         v-model="section.title"
         type="text"
-        placeholder="(This section has no name yet. If your game has broken the config into sections click here to add its name)"
+        placeholder="[Optional] Give this section a name."
       />
       <q-list separator class="q-pa-none q-mt-sm">
         <!-- Draggable list for items in this section -->
         <draggable
           v-model="section.items"
           :group="draggableGroupOptions"
-          item-key="key"
+          item-key="id"
           handle=".handle"
           ghost-class="ghost"
           animation="100"
@@ -447,6 +471,7 @@ export default defineComponent({
                   input-debounce="0"
                   :options="keyOptions"
                   new-value-mode="add-unique"
+                  @input-value="val => pair.key = val"
                   @filter="keyFilter" />
                 <q-select
                   filled
@@ -461,6 +486,7 @@ export default defineComponent({
                   input-debounce="0"
                   :options="valueOptions"
                   new-value-mode="add-unique"
+                  @input-value="val => pair.value = val"
                   @filter="valueFilter" />
               </q-item-section>
               <q-item-section v-if="!$q.screen.lt.sm" class="col">
@@ -476,6 +502,7 @@ export default defineComponent({
                   input-debounce="0"
                   :options="keyOptions"
                   new-value-mode="add-unique"
+                  @input-value="val => pair.key = val"
                   @filter="keyFilter" />
               </q-item-section>
               <q-item-section v-if="!$q.screen.lt.sm" class="col">
@@ -491,6 +518,7 @@ export default defineComponent({
                   input-debounce="0"
                   :options="valueOptions"
                   new-value-mode="add-unique"
+                  @input-value="val => pair.value = val"
                   @filter="valueFilter" />
               </q-item-section>
               <q-item-section side>

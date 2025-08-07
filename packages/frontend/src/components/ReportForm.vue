@@ -5,7 +5,7 @@ import type {
   GameReportForm,
   GitHubIssueTemplateBody,
   GitHubReportIssueBodySchema,
-  GitHubReportIssueBodySchemaProperty
+  GitHubReportIssueBodySchemaProperty,
 } from '../../../shared/src/game'
 import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
@@ -17,24 +17,24 @@ export default defineComponent({
   props: {
     gameName: {
       type: String,
-      required: true
+      required: true,
     },
     appId: {
       type: String,
-      required: false
+      required: false,
     },
     gameBanner: {
       type: String,
-      required: false
+      required: false,
     },
     gameBackground: {
       type: String,
-      required: false
+      required: false,
     },
     previousSubmission: {
       type: Object,
-      required: false
-    }
+      required: false,
+    },
   },
   setup(props) {
     const $q = useQuasar()
@@ -149,7 +149,7 @@ export default defineComponent({
     const saveFormValuesState = () => {
       const state = {
         timestamp: Date.now(),
-        formValues: { ...formValues.value, ...gameSettingsUpdates.value }
+        formValues: { ...formValues.value, ...gameSettingsUpdates.value },
       }
       localStorage.setItem(`gameReportForm-${props.gameName}`, JSON.stringify(state))
     }
@@ -194,7 +194,7 @@ export default defineComponent({
 
     const handleGameSettingsUpdate = (
       fieldId: string,
-      newValue: { title: string; items: { key: string; value: string }[] }[]
+      newValue: { title: string; items: { key: string; value: string }[] }[],
     ) => {
       gameSettingsUpdates.value[fieldId] = newValue
         // Only include sections that have at least one item
@@ -234,7 +234,7 @@ export default defineComponent({
       // Additional Regex rules
       const customRegexRules: Record<string, RegExp> = {
         // undervolt_applied should either be blank or match "number/number/number"
-        undervolt_applied: /^$|^\d+\/\d+\/\d+$/
+        undervolt_applied: /^$|^\d+\/\d+\/\d+$/,
       }
 
       // Only validate non-markdown fields that have an id.
@@ -269,21 +269,21 @@ export default defineComponent({
             }
             rules.push(value =>
               String(value).length >= minLength ||
-              minLengthRuleMessage
+              minLengthRuleMessage,
             )
           }
           const maxLength = schemaProp.maxLength
           if (maxLength) {
             rules.push(value =>
               String(value).length <= maxLength ||
-              `${label} must not exceed ${maxLength} characters.`
+              `${label} must not exceed ${maxLength} characters.`,
             )
           }
           const propEnum = schemaProp.enum
           if (propEnum) {
             rules.push(value =>
               propEnum.includes(String(value)) ||
-              `${label} must be one of ${propEnum.join(', ')}.`
+              `${label} must be one of ${propEnum.join(', ')}.`,
             )
           }
         } else if (schemaProp.type === 'number') {
@@ -352,7 +352,7 @@ export default defineComponent({
           console.error(`Validation error: ${error.message}`)
           $q.notify({
             type: 'negative',
-            message: error.message as string
+            message: error.message as string,
           })
         })
         return false
@@ -468,9 +468,9 @@ export default defineComponent({
       confirmDialog,
       onConfirmDialogLogin,
       onConfirmDialogContinue,
-      onConfirmDialogCancel
+      onConfirmDialogCancel,
     }
-  }
+  },
 })
 
 </script>
