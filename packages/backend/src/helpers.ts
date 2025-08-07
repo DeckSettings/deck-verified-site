@@ -563,10 +563,12 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
 
       // Build additional notes line by line.
       let additionalNotes: string = ''
+      let performanceRating = 'Unrated'
       if (ratingCategories) {
         const notes: string[] = []
         if (ratingCategories.performance !== undefined) {
-          notes.push(`- **Performance:** ${convertRatingToStars(ratingCategories.performance)} (${ratingCategories.performance}/5)`)
+          performanceRating = `${convertRatingToStars(ratingCategories.performance)} (${ratingCategories.performance}/5)`
+          notes.push(`- **Performance:** ${performanceRating})`)
         }
         if (ratingCategories.visuals !== undefined) {
           notes.push(`- **Visuals:** ${convertRatingToStars(ratingCategories.visuals)} (${ratingCategories.visuals}/5)`)
@@ -628,6 +630,7 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
         game_display_settings: gameDisplaySettings,
         game_graphics_settings: '',
         additional_notes: additionalNotes,
+        performance_rating: performanceRating,
       }
 
       return {

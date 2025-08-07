@@ -80,6 +80,7 @@ export interface GameReportData {
   game_display_settings: string;
   game_graphics_settings: string;
   additional_notes: string;
+  performance_rating: string | null;
 }
 
 export interface GameReportUser extends GitHubUser {
@@ -419,6 +420,7 @@ export interface ExternalGameReviewReportData {
   game_display_settings?: string | null;
   game_graphics_settings?: string | null;
   additional_notes?: string | null;
+  performance_rating?: string | null;
 }
 
 export interface AggregateMetricResponse {

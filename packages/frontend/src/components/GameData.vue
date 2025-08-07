@@ -6,7 +6,7 @@ import {
   simGithub,
   simSteam,
   simProtondb,
-  simPcgamingwiki
+  simPcgamingwiki,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
 import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
@@ -15,7 +15,7 @@ import type {
   GameDetails,
   GitHubIssueLabel,
   GameReportData,
-  ExternalGameReview
+  ExternalGameReview,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
@@ -59,7 +59,7 @@ const deviceOptions = computed(() => {
     const options = deviceLabels.value
       .map(label => ({
         label: label.description || label.name || 'Unknown',
-        value: label.name
+        value: label.name,
       }))
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })) // Case-insensitive sorting
     return [{ label: 'All', value: 'all' }, ...options]
@@ -75,7 +75,7 @@ const launcherOptions = computed(() => {
     let options = launcherLabels.value
       .map(label => ({
         label: label.description || label.name || 'Unknown',
-        value: label.name
+        value: label.name,
       }))
     // Separate out the 'launcher:other' option
     const otherOption = options.find(option => option.value === 'launcher:other')
@@ -169,20 +169,20 @@ watch(
     const expandedId = parseInt(route.query.expandedId as string, 10)
     let reports: ExtendedGameReport[] = newGameData.reports.map((report) => ({
       ...report,
-      reportVisible: expandedId === report.id
+      reportVisible: expandedId === report.id,
     }))
 
     // Filter by device selector
     if (device !== 'all' && device) {
       reports = reports.filter(report =>
-        report.labels.some(label => label.name === device)
+        report.labels.some(label => label.name === device),
       )
     }
 
     // Filter by launcher selector
     if (launcher !== 'all' && launcher) {
       reports = reports.filter(report =>
-        report.labels.some(label => label.name === launcher)
+        report.labels.some(label => label.name === launcher),
       )
     }
 
@@ -204,7 +204,7 @@ watch(
             user: {
               login: review.source.name,
               avatar_url: review.source.avatar_url,
-              report_count: review.source.report_count || 0
+              report_count: review.source.report_count || 0,
             },
             created_at: review.created_at,
             updated_at: review.updated_at,
@@ -215,13 +215,13 @@ watch(
               poster: newGameData.metadata.poster,
               hero: newGameData.metadata.hero,
               banner: newGameData.metadata.banner,
-              background: newGameData.metadata.background
+              background: newGameData.metadata.background,
             },
             // Insert empty fillter data for things that will not exist from external reports
             reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
             labels: [],
-            // Mark this report as external for additional tempalte formating changes
-            external: true
+            // Mark this report as external for additional template formating changes
+            external: true,
           })
         }
       })
@@ -249,7 +249,7 @@ watch(
     // Update the reactive array
     filteredReports.splice(0, filteredReports.length, ...reports)
   },
-  { immediate: true } // Trigger immediately on initialization
+  { immediate: true }, // Trigger immediately on initialization
 )
 
 const lastUpdated = (dateString: string | null): string => {
@@ -336,7 +336,7 @@ watch(
   () => route.params,
   async (newParams) => {
     await initGameData(newParams)
-  }
+  },
 )
 
 onMounted(async () => {
@@ -404,7 +404,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: `${gameName.value}, Steam Deck, ROG Ally, performance, settings, compatibility, optimization`
+        content: `${gameName.value}, Steam Deck, ROG Ally, performance, settings, compatibility, optimization`,
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
@@ -424,7 +424,7 @@ useMeta(() => {
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
       twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
-      twitterImage: { name: 'twitter:image', content: metaImage.value }
+      twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
 
     link: { canonical: { rel: 'canonical', href: metaLink.value } },
@@ -444,12 +444,12 @@ useMeta(() => {
             'name': 'Deck Verified',
             'logo': {
               '@type': 'ImageObject',
-              'url': metaLogo.value
-            }
-          }
-        })
-      }
-    }
+              'url': metaLogo.value,
+            },
+          },
+        }),
+      },
+    },
   }
 })
 </script>
@@ -644,6 +644,9 @@ useMeta(() => {
                         <!-- Report Description Section -->
                         <div class="row">
                           <div class="col-4">
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Rating: </b>{{ report.data.performance_rating ?? 'Unrated' }}
+                            </q-item-label>
                             <q-item-label caption lines="1" class="q-pt-sm">
                               <b>Device: </b>{{ report.data.device }}
                             </q-item-label>
