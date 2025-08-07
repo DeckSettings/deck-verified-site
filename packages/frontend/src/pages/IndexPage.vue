@@ -112,7 +112,7 @@ useMeta(() => {
       </div>
     </FullPageSection>
 
-    <HomeSupportedDevicesSection :backgroundImageUrl="sectionBackgrounds[0]!" />
+    <HomeSupportedDevicesSection :backgroundImageUrl="sectionBackgrounds[0] ?? ''" />
 
     <FullPageSection
       backgroundColour="black"

@@ -5,9 +5,10 @@ import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 
-const props = defineProps<{
-  backgroundImageUrl?: string
-}>()
+const props = defineProps({
+  backgroundImageUrl: { type: String, default: '' },
+  transition: { type: String, default: '1s' },
+})
 
 interface Slide {
   id: number
@@ -50,9 +51,23 @@ const slides = ref<Slide[]>([
   },
 ])
 
+const bgStyle = computed(() => {
+  const layers = []
+  if (props.backgroundImageUrl) {
+    layers.push(`url(${props.backgroundImageUrl})`)
+  }
+  return {
+    backgroundImage: layers.join(','),
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    transitionDuration: props.transition || '1s',
+  }
+})
+
 const sectionRef = ref<HTMLElement | null>(null)
 const scrollY = ref(0)
-const THRESHOLD = ref(window.innerHeight)
+const windowHeight = ref(0)
 const isBackgroundVisible = ref(false)
 
 const SCALE_AMOUNT = 0.1  // shrink by up to 10%
@@ -60,7 +75,7 @@ const SPEED = 1.9
 
 const slideStyles = computed<SlideStylesMap>(() => {
   const styles: SlideStylesMap = {}
-  const vh = THRESHOLD.value
+  const vh = windowHeight.value
   const halfV = vh / 2
   const top = sectionRef.value?.offsetTop ?? 0
 
@@ -98,32 +113,26 @@ const slideStyles = computed<SlideStylesMap>(() => {
   return styles
 })
 
-const onScroll = (posY = scrollY.value) => {
-  scrollY.value = posY
+const checkScroll = () => {
   if (!sectionRef.value) return
 
-  const top = sectionRef.value.offsetTop
-  const vh = THRESHOLD.value
-  const pinStart = top - vh / 2
-  const pinEnd = pinStart + slides.value.length * vh
+  const rect = sectionRef.value.getBoundingClientRect()
+  scrollY.value = window.scrollY
+  windowHeight.value = window.innerHeight
 
-  isBackgroundVisible.value =
-    scrollY.value >= pinStart &&
-    scrollY.value < pinEnd
+  // Show the background if any part of the section is in the viewport
+  isBackgroundVisible.value = rect.bottom > 0 && rect.top < windowHeight.value
 }
 
 onMounted(() => {
   if (!$q.platform.is.mobile) {
-    window.addEventListener('scroll', () => onScroll(window.scrollY))
+    window.addEventListener('scroll', checkScroll)
   }
-  window.addEventListener('resize', () => {
-    THRESHOLD.value = window.innerHeight
-  })
-  onScroll()  // init
+  checkScroll()
 })
 onUnmounted(() => {
   if (!$q.platform.is.mobile) {
-    window.removeEventListener('scroll', () => onScroll(window.scrollY))
+    window.removeEventListener('scroll', checkScroll)
   }
 })
 </script>
@@ -137,7 +146,7 @@ onUnmounted(() => {
     <div
       class="background-image"
       :class="{ 'is-visible': isBackgroundVisible }"
-      :style="{ backgroundImage: `url('${props.backgroundImageUrl}')` }"
+      :style="bgStyle"
     />
 
     <div class="pin-wrapper">

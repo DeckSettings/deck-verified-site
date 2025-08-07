@@ -14,6 +14,7 @@ packages/frontend/dist
 packages/backend/dist
 
 # Dependencies
+node_modules
 packages/frontend/node_modules
 packages/backend/node_modules
 

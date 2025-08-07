@@ -4,12 +4,12 @@ import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 
-const props = defineProps<{
-  backgroundImageUrl?: string
-  backgroundColour?: string
-  transition?: string
-  scrollLockDuration?: number
-}>()
+const props = defineProps({
+  backgroundImageUrl: { type: String, default: '' },
+  backgroundColour: { type: String, default: 'transparent' },
+  transition: { type: String, default: '1s' },
+  scrollLockDuration: { type: Number, default: 0 },
+})
 
 const isBackgroundVisible = ref(false)
 const sectionRef = ref<HTMLElement | null>(null)
@@ -53,10 +53,9 @@ const checkScroll = () => {
 
 onMounted(() => {
   if (!$q.platform.is.mobile) {
-    // Use a simple scroll event listener instead of an IntersectionObserver for this
     window.addEventListener('scroll', checkScroll)
   }
-  checkScroll() // Initial check
+  checkScroll()
 })
 
 onUnmounted(() => {
@@ -83,11 +82,7 @@ onUnmounted(() => {
     />
 
     <div ref="contentWrapperRef" class="content-wrapper">
-      <q-container class="q-pa-md">
-        <slot
-          :scrollContainer="contentWrapperRef"
-        />
-      </q-container>
+      <slot :scrollContainer="contentWrapperRef" />
     </div>
   </section>
 </template>
