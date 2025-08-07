@@ -11,9 +11,15 @@ import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
 import { useQuasar } from 'quasar'
 
+import ZoomableImage from 'components/elements/ZoomableImage.vue'
+import LasOfUsGraphicSettingsImage from '../assets/Last-of-Us-Part-1-Graphics-Settings.jpg'
 
 export default defineComponent({
-  components: { GameSettingsFields, ReportFormMarkdown },
+  components: {
+    ZoomableImage,
+    GameSettingsFields,
+    ReportFormMarkdown,
+  },
   props: {
     gameName: {
       type: String,
@@ -469,6 +475,7 @@ export default defineComponent({
       onConfirmDialogLogin,
       onConfirmDialogContinue,
       onConfirmDialogCancel,
+      LasOfUsGraphicSettingsImage,
     }
   },
 })
@@ -558,7 +565,9 @@ export default defineComponent({
 
                       <br />
                       <br />
-                      Organize your options into sections by clicking the
+                      Some games organise their settings into sections.
+                      <ZoomableImage :src="LasOfUsGraphicSettingsImage" />
+                      You can also do this by clicking the
                       <q-btn
                         dense
                         glossy

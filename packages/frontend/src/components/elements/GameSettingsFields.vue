@@ -463,7 +463,7 @@ export default defineComponent({
                   dense
                   class="q-pa-xs"
                   v-model="pair.key"
-                  clearable
+                  :clearable="!$q.platform.is.mobile"
                   use-input
                   hide-selected
                   hide-dropdown-icon
@@ -478,7 +478,7 @@ export default defineComponent({
                   dense
                   class="q-pa-xs"
                   v-model="pair.value"
-                  clearable
+                  :clearable="!$q.platform.is.mobile"
                   use-input
                   hide-selected
                   hide-dropdown-icon
@@ -494,7 +494,7 @@ export default defineComponent({
                   filled
                   dense
                   v-model="pair.key"
-                  clearable
+                  :clearable="!$q.platform.is.mobile"
                   use-input
                   hide-selected
                   hide-dropdown-icon
@@ -510,7 +510,7 @@ export default defineComponent({
                   filled
                   dense
                   v-model="pair.value"
-                  clearable
+                  :clearable="!$q.platform.is.mobile"
                   use-input
                   hide-selected
                   hide-dropdown-icon
