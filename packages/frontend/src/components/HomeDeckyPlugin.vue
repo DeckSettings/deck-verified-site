@@ -95,7 +95,7 @@ onUnmounted(() => {
 
         <div class="text-col">
           <div class="text-panel" ref="textContainerRef">
-            <h2 class="text-h2 q-mt-none q-mb-md" :class="{'text-h4': $q.screen.lt.sm}">
+            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.md}">
               Browse Game Reports Directly from Your Handheld
             </h2>
 

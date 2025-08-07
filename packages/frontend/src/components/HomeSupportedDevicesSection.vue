@@ -153,7 +153,7 @@ onUnmounted(() => {
       <div class="row items-center justify-center" style="width:100%">
         <div class="col-12 col-md-6 flex items-center justify-center">
           <div class="info-wrapper" :class="{'text-center': $q.screen.lt.sm}">
-            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.sm}">
+            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.md}">
               Devices Available for Community Reporting
             </h2>
             <p>
@@ -317,6 +317,14 @@ onUnmounted(() => {
 
   .carousel-wrapper {
     height: 40vh;
+  }
+}
+
+/* -steam deck- */
+@media (max-width: 855px) {
+  .device-section {
+    padding-block-start: 100vh;
+    padding-block-end: 10vh;
   }
 }
 
