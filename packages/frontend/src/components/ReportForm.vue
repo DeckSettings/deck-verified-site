@@ -422,12 +422,12 @@ const submitForm = () => {
 
 // Called when the user clicks "Login to GitHub" in the dialog.
 const onConfirmDialogLogin = () => {
-  window.open('https://github.com/login', '_blank')
+  window.open('https://github.com/login', '_blank', 'noopener,noreferrer')
 }
 
 // Called when the user clicks "Continue" in the dialog.
 const onConfirmDialogContinue = () => {
-  window.open(pendingBaseUrl.value, '_blank')
+  window.open(pendingBaseUrl.value, '_blank', 'noopener,noreferrer')
   confirmDialog.value = false
 }
 

@@ -489,10 +489,12 @@ useMeta(() => {
         </div>
         <div class="q-pa-md">
           <div class="row justify-center">
-            <q-btn class="q-my-md"
+            <q-btn v-if="githubProjectSearchLink"
+                   class="q-my-md"
                    round flat
                    :icon="simGithub"
-                   :href="githubProjectSearchLink ?? ''" target="_blank"
+                   :href="githubProjectSearchLink ?? ''"
+                   target="_blank" rel="noopener"
                    color="white">
               <q-tooltip>View Reports on Github</q-tooltip>
             </q-btn>
@@ -500,7 +502,8 @@ useMeta(() => {
                    class="q-my-md"
                    round flat
                    :icon="simSteam"
-                   :href="`https://store.steampowered.com/app/${appId}`" target="_blank"
+                   :href="`https://store.steampowered.com/app/${appId}`"
+                   target="_blank" rel="noopener"
                    color="white">
               <q-tooltip>View on Steam</q-tooltip>
             </q-btn>
@@ -508,7 +511,8 @@ useMeta(() => {
                    class="q-my-md"
                    round flat
                    :icon="simProtondb"
-                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`" target="_blank"
+                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`"
+                   target="_blank" rel="noopener"
                    color="white">
               <q-tooltip>View on ProtonDB</q-tooltip>
             </q-btn>
@@ -516,14 +520,16 @@ useMeta(() => {
                    class="q-my-md"
                    round flat
                    :icon="simPcgamingwiki"
-                   :href="getPCGamingWikiUrlFromGameName(gameName)" target="_blank"
+                   :href="getPCGamingWikiUrlFromGameName(gameName)"
+                   target="_blank" rel="noopener"
                    color="white">
               <q-tooltip>View on PCGamingWiki</q-tooltip>
             </q-btn>
             <q-btn v-if="sdhqLink"
                    class="q-my-md"
                    round flat
-                   :href="sdhqLink" target="_blank"
+                   :href="sdhqLink"
+                   target="_blank" rel="noopener"
                    color="white">
               <q-avatar size="42px">
                 <img src="~/assets/icons/sdhq.svg">
@@ -535,7 +541,8 @@ useMeta(() => {
             <q-btn v-if="!useLocalReportForm" color="secondary" glossy
                    icon="fas fa-file-invoice"
                    label="Submit Report"
-                   :href="githubSubmitReportLink" target="_blank" />
+                   :href="githubSubmitReportLink"
+                   target="_blank" rel="noopener" />
             <q-btn v-else color="secondary" glossy
                    icon="fas fa-file-invoice"
                    label="Submit Report"
@@ -860,7 +867,7 @@ useMeta(() => {
                                   v-ripple="!report.external"
                                   tag="a"
                                   :href="`${githubListReportsLink}+author%3A${report.user.login}` "
-                                  target="_blank"
+                                  target="_blank" rel="noopener"
                                   class="q-ma-none q-pa-none q-pl-xs">
                             <q-item-section side>
                               <q-avatar rounded size="48px">
@@ -891,7 +898,7 @@ useMeta(() => {
                             <q-item-section>
                               <q-item-label caption>
                                 <a v-if="!report.external"
-                                   :href="report.html_url" target="_blank" rel="noopener noreferrer"
+                                   :href="report.html_url" target="_blank" rel="noopener"
                                    style="text-decoration: none;">
                                   <q-chip square clickable class="q-ma-none q-pr-xs">
                                     <q-avatar icon="fab fa-github" text-color="white" />
@@ -899,7 +906,7 @@ useMeta(() => {
                                   </q-chip>
                                 </a>
                                 <a v-else
-                                   :href="report.html_url" target="_blank" rel="noopener noreferrer"
+                                   :href="report.html_url" target="_blank" rel="noopener"
                                    style="text-decoration: none;">
                                   <q-chip square clickable class="q-ma-none q-pr-xs">
                                     <q-avatar text-color="white">
@@ -930,7 +937,7 @@ useMeta(() => {
                                     class="full-width-sm"
                                     icon="fab fa-github"
                                     :href="githubSubmitReportLink"
-                                    target="_blank"
+                                    target="_blank" rel="noopener"
                                     label="Submit a Report"
                                     color="white"
                                     text-color="black"

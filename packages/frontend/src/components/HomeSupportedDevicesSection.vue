@@ -177,7 +177,7 @@ onUnmounted(() => {
               class="q-mb-md"
               icon="fab fa-github"
               href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-              target="_blank"
+              target="_blank" rel="noopener"
               label="Request a New Device"
               color="white"
               text-color="black"

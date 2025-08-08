@@ -11,8 +11,8 @@ export default defineComponent({
   props: {
     statSelection: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const listTitle = ref('')
@@ -63,9 +63,9 @@ export default defineComponent({
       simPcgamingwiki,
       currentPage,
       itemsPerPage,
-      paginatedResults
+      paginatedResults,
     }
-  }
+  },
 })
 </script>
 
@@ -162,7 +162,8 @@ export default defineComponent({
                        class="q-ma-none"
                        round flat
                        :icon="simSteam"
-                       :href="`https://store.steampowered.com/app/${metricResult.app_id}`" target="_blank"
+                       :href="`https://store.steampowered.com/app/${metricResult.app_id}`"
+                       target="_blank" rel="noopener"
                        color="white">
                   <q-tooltip>View on Steam</q-tooltip>
                 </q-btn>
@@ -170,7 +171,8 @@ export default defineComponent({
                        class="q-ma-none"
                        round flat
                        :icon="simProtondb"
-                       :href="`https://www.protondb.com/app/${metricResult.app_id}?device=steamDeck`" target="_blank"
+                       :href="`https://www.protondb.com/app/${metricResult.app_id}?device=steamDeck`"
+                       target="_blank" rel="noopener"
                        color="white">
                   <q-tooltip>View on ProtonDB</q-tooltip>
                 </q-btn>
@@ -178,7 +180,9 @@ export default defineComponent({
                        class="q-ma-none"
                        round flat
                        :icon="simSteamdb"
-                       :href="`https://steamdb.info/app/${metricResult.app_id}/charts/`" target="_blank" color="white">
+                       :href="`https://steamdb.info/app/${metricResult.app_id}/charts/`"
+                       target="_blank" rel="noopener"
+                       color="white">
                   <q-tooltip>View on SteamDB</q-tooltip>
                 </q-btn>
                 <q-btn v-if="metricResult.game_name"
@@ -186,7 +190,8 @@ export default defineComponent({
                        round flat
                        :icon="simPcgamingwiki"
                        :href="getPCGamingWikiUrlFromGameName(metricResult.game_name)"
-                       target="_blank" color="white">
+                       target="_blank" rel="noopener"
+                       color="white">
                   <q-tooltip>View on PCGamingWiki</q-tooltip>
                 </q-btn>
               </q-item-label>

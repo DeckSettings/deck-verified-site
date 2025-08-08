@@ -100,23 +100,25 @@ onUnmounted(() => {
             </h2>
 
             <p>
-              Use the <strong><a href="https://github.com/DeckSettings/decky-game-settings" target="_blank">
+              Use the <strong><a href="https://github.com/DeckSettings/decky-game-settings"
+                                 target="_blank" rel="noopener">
               Deck Settings </a></strong>
               plugin for Decky Loader to explore game reports right from your handheld device—whether you’re on a
               <strong>Steam Deck</strong>, <strong>ROG Ally</strong>, <strong>Lenovo Legion Go</strong>,
               or any compatible PC running
               <strong><a href="https://help.steampowered.com/en/faqs/view/65B4-2AA3-5F37-4227"
-                         target="_blank">SteamOS</a></strong>,
-              <strong><a href="https://cachyos.org/" target="_blank">CachyOS</a></strong>,
-              <strong><a href="https://nobaraproject.org/" target="_blank">Nobara</a></strong>,
-              <strong><a href="https://bazzite.gg/" target="_blank">Bazzite</a></strong>,
+                         target="_blank" rel="noopener">SteamOS</a></strong>,
+              <strong><a href="https://cachyos.org/" target="_blank" rel="noopener">CachyOS</a></strong>,
+              <strong><a href="https://nobaraproject.org/" target="_blank" rel="noopener">Nobara</a></strong>,
+              <strong><a href="https://bazzite.gg/" target="_blank" rel="noopener">Bazzite</a></strong>,
               or similar Linux-based gaming distributions.
               The plugin integrates seamlessly with Steam's Game Mode, giving you instant access to community provided
               guides and notes right in your handheld UI.
             </p>
             <p>
               Not only can you view detailed reports for your games, but the plugin also includes embedded
-              YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/" target="_blank">SDHQ</a>
+              YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/"
+                                                        target="_blank" rel="noopener">SDHQ</a>
               game settings reviews, and the ability to filter reports by specific devices or view them across all
               supported platforms. Whether you're trying to optimise for battery life or unlock higher FPS, the Deck
               Settings plugin puts this community's knowledge at your fingertips without even needing to exit your
