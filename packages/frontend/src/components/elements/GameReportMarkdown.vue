@@ -53,6 +53,17 @@ export default defineComponent({
       return `<a href="${href}"${titleAttr}>${text}</a>`
     }
 
+    // Override if we are provided with an image
+    renderer.image = function(image: Tokens.Image): string {
+      const { href: src, text: alt = '' } = image
+      // Only care about user-attachments URLs (safer not to display things not hosted on GitHub)
+      if (typeof src === 'string' && src.startsWith('https://github.com/user-attachments/')) {
+        additionalImages.value.push({ src, alt })
+      }
+      // Empty/Drop the string
+      return ''
+    }
+
     // Override <img> HTML tags before sanitization
     renderer.html = function(token: Tokens.HTML): string {
       const html = token.text
@@ -67,7 +78,7 @@ export default defineComponent({
           additionalImages.value.push({ src, alt })
         }
       }
-      // drop all raw HTML so <img> doesn’t survive sanitization
+      // drop all raw HTML - We never need to allow this
       return ''
     }
 
