@@ -224,6 +224,7 @@ export interface GitHubIssue {
   };
   labels: GitHubIssueLabel[];
   user: GitHubUser;
+  closed: boolean;
   created_at: string;
   updated_at: string;
 }

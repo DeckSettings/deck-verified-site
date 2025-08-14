@@ -446,7 +446,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
     external_reviews: [],
   }
 
-  // Start with initial discovered values.
+  // Start with initially discovered values.
   let discoveredAppId: number | null = appId ? Number(appId) : null
   let discoveredGameName: string | null = gameName
 

@@ -153,6 +153,10 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
     if (hasInvalidLabel) {
       continue
     }
+    // Check if the issue is closed (currently commented out because we are filtering at the GitHub API results)
+    // if (issue.closed) {
+    //   continue
+    // }
     const parsedIssueData = await parseReportBody(issue.body, reportBodySchema, hardwareInfo)
     projectDetails.reports.push({
       id: issue.id,
@@ -458,6 +462,7 @@ export const fetchProject = async (
                         login
                         avatar_url: avatarUrl
                       }
+                      closed
                       createdAt
                       updatedAt
                     }
@@ -544,6 +549,10 @@ export const fetchProject = async (
         }
         for (const node of project.items.nodes) {
           if (node.content.__typename === 'Issue' && node.content.body) {
+            if (node.content.closed) {
+              // Ignore any issues that are closed
+              continue
+            }
             projectData.issues.push({
               id: node.content.databaseId,
               title: node.content.title,
@@ -555,6 +564,7 @@ export const fetchProject = async (
               },
               labels: node.content.labels.nodes,
               user: node.content.author,
+              closed: node.content.closed,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
             })
