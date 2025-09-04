@@ -79,6 +79,15 @@ body:
     validations:
       required: true
 
+  #   > Max GPU Clock
+  - type: input
+    id: max_gpu_clk
+    attributes:
+      label: Max TDP Clock
+      description: What is the maximum GPU Clock (in MHz) that this device can be set to?
+    validations:
+      required: true
+
   #   > Device Images
   - type: textarea
     id: device_images
