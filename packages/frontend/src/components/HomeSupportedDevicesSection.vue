@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { CSSProperties } from 'vue'
 import { useQuasar } from 'quasar'
 
+const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const $q = useQuasar()
 
 const props = defineProps({
@@ -27,25 +28,25 @@ type SlideStylesMap = Record<number, SlideStyle>
 const slides = ref<Slide[]>([
   {
     id: 1,
-    image: 'https://deckverified.games/deck-verified/devices/valve-steam-deck-shadow.png',
+    image: `${baseUrl.value}/devices/valve-steam-deck-shadow.png`,
     title: 'Steam Deck (LCD/OLED)',
     description: '...',
   },
   {
     id: 2,
-    image: 'https://deckverified.games/deck-verified/devices/asus-rog-ally-shadow.png',
+    image: `${baseUrl.value}/devices/asus-rog-ally-shadow.png`,
     title: 'ASUS ROG Ally',
     description: '...',
   },
   {
     id: 3,
-    image: 'https://deckverified.games/deck-verified/devices/asus-rog-ally-x-shadow.png',
+    image: `${baseUrl.value}/devices/asus-rog-ally-x-shadow.png`,
     title: 'ASUS ROG Ally X',
     description: '...',
   },
   {
     id: 4,
-    image: 'https://deckverified.games/deck-verified/devices/lenovo-legion-go-shadow.png',
+    image: `${baseUrl.value}/devices/lenovo-legion-go-shadow.png`,
     title: 'Lenovo Legion Go',
     description: '...',
   },

@@ -7,8 +7,9 @@ import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
 import ReportForm from 'components/ReportForm.vue'
 
+const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
-const gameBackground = ref(`${import.meta.env.BASE_URL}/hero-background2.jpg`)
+const gameBackground = ref(`${baseUrl.value}/hero-background2.jpg`)
 
 const fetchGames = async () => {
   gamesWithReports.value = await fetchGamesWithReports(0, 100)
@@ -52,9 +53,9 @@ onBeforeUnmount(() => {
 /*METADATA*/
 const metaTitle = ref('Games with Reports')
 const metaDescription = ref('Browse a list of games with user-submitted performance reports and settings for handheld gaming devices like the Steam Deck, ROG Ally, and Legion Go.')
-const metaLink = ref('https://deckverified.games/deck-verified/games-with-reports')
-const metaLogo = ref('https://deckverified.games/deck-verified/logo2.png')
-const metaImage = ref('https://deckverified.games/deck-verified/hero-image.png')
+const metaLink = ref('https://deckverified.games/games-with-reports')
+const metaLogo = ref('https://deckverified.games/logo2.png')
+const metaImage = ref('https://deckverified.games/hero-image.png')
 const metaAlt = ref('Handheld PC Collection')
 const metaImageType = ref('image/png')
 const metaImageWidth = ref('700')

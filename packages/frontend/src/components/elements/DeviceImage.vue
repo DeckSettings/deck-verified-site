@@ -15,7 +15,7 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const baseUrl = ref(`${import.meta.env.BASE_URL}`)
+    const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
     const placeholderImage = props.shadow ? `${baseUrl.value}/devices/device-placeholder-shadow.png` : `${baseUrl.value}/devices/device-placeholder.png`
 
     const imageSource = computed(() => {

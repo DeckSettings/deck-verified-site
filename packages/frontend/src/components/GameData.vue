@@ -351,8 +351,8 @@ onBeforeUnmount(() => {
 /*METADATA*/
 const metaTitle = computed(() => `${gameName.value || 'Game Report'}`)
 const metaDescription = computed(() => `Community reports for ${gameName.value} with settings and optimizations for handheld gaming PCs such as the Steam Deck, ROG Ally, and more.`)
-const metaLink = computed(() => `https://deckverified.games/deck-verified/${appId.value ? `app/${appId.value}` : `game/${encodeURIComponent(gameName.value)}`}`)
-const metaLogo = ref('https://deckverified.games/deck-verified/logo2.png')
+const metaLink = computed(() => `https://deckverified.games/${appId.value ? `app/${appId.value}` : `game/${encodeURIComponent(gameName.value)}`}`)
+const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('')
 const metaAlt = ref('')
 const metaImageType = ref('')

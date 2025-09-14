@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 
-const baseUrl = ref(`${import.meta.env.BASE_URL}`)
+const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-background2.jpg`)
 
 // Reactive state to control the visibility of the background image

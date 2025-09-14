@@ -12,6 +12,6 @@ RUN npm run build
 
 FROM nginx:alpine
 
-COPY --from=build /app/packages/frontend/dist/spa /usr/share/nginx/html/deck-verified
+COPY --from=build /app/packages/frontend/dist/spa /usr/share/nginx/html
 
 COPY ./packages/frontend/docker/nginx/nginx.conf /etc/nginx/nginx.conf

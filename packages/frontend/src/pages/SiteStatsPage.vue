@@ -6,7 +6,8 @@ import NavBackButton from 'components/elements/NavBackButton.vue'
 import ReportForm from 'components/ReportForm.vue'
 import StatsGameDetailsRequestsList from 'components/StatsGameDetailsRequestsList.vue'
 
-const gameBackground = ref(`${import.meta.env.BASE_URL}/hero-background2.jpg`)
+const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
+const gameBackground = ref(`${baseUrl.value}/hero-background2.jpg`)
 const reportFormDialogOpen = ref<boolean>(false)
 
 const openDialog = () => {
@@ -39,9 +40,9 @@ onBeforeUnmount(() => {
 /*METADATA*/
 const metaTitle = ref('Site & API Stats')
 const metaDescription = ref('Discover detailed statistics about Deck Verified’s website and API. Explore metrics on game requests, usage trends, and performance data to gain insights into platform activity and user behavior.')
-const metaLink = ref('https://deckverified.games/deck-verified/site-stats')
-const metaLogo = ref('https://deckverified.games/deck-verified/logo2.png')
-const metaImage = ref('https://deckverified.games/deck-verified/hero-image.png')
+const metaLink = ref('https://deckverified.games/site-stats')
+const metaLogo = ref('https://deckverified.games/logo2.png')
+const metaImage = ref('https://deckverified.games/hero-image.png')
 const metaAlt = ref('Deck Verified Site Statistics')
 const metaImageType = ref('image/png')
 const metaImageWidth = ref('700')
@@ -55,7 +56,7 @@ useMeta(() => {
       keywords: {
         name: 'keywords',
         content:
-          'site stats, api stats, website analytics, api analytics, performance metrics, usage statistics, game request metrics, Deck Verified, metrics dashboard, platform activity'
+          'site stats, api stats, website analytics, api analytics, performance metrics, usage statistics, game request metrics, Deck Verified, metrics dashboard, platform activity',
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
@@ -75,7 +76,7 @@ useMeta(() => {
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
       twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
-      twitterImage: { name: 'twitter:image', content: metaImage.value }
+      twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
 
     link: { canonical: { rel: 'canonical', href: metaLink.value } },
@@ -95,12 +96,12 @@ useMeta(() => {
             'name': 'Deck Verified',
             'logo': {
               '@type': 'ImageObject',
-              'url': metaLogo.value
-            }
-          }
-        })
-      }
-    }
+              'url': metaLogo.value,
+            },
+          },
+        }),
+      },
+    },
   }
 })
 </script>

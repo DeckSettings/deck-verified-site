@@ -57,8 +57,8 @@ export default defineConfig((ctx) => {
 
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
-      // Set the root public path to /deck-verified/*
-      publicPath: 'deck-verified',
+      // Serve app at domain root
+      publicPath: '/',
       // analyze: true,
       // env: {},
       // rawDefine: {}
