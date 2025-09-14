@@ -838,8 +838,8 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const baseUrl = `${proto}://${req.get('host')}`
     const lastModDate = format(new Date(), 'yyyy-MM-dd') // Current date for lastmod
     const staticPages = [
-      { loc: `${baseUrl}/deck-verified/`, priority: '1.0' },
-      { loc: `${baseUrl}/deck-verified/games-with-reports`, priority: '0.8' },
+      { loc: `${baseUrl}/`, priority: '1.0' },
+      { loc: `${baseUrl}/games-with-reports`, priority: '0.8' },
     ]
 
     // Fetch all games with reports from RedisSearch
@@ -847,7 +847,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const gamePages = gamesWithReports
       .filter((game) => game.appId) // Ensure appId exists
       .map((game) => ({
-        loc: `${baseUrl}/deck-verified/app/${game.appId}`,
+        loc: `${baseUrl}/app/${game.appId}`,
         priority: '0.7',
       }))
 
