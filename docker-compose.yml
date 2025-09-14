@@ -83,6 +83,7 @@ services:
       - "9021:9021"
     depends_on:
       - api
+      - web-ssr
     networks:
       - private-net
     healthcheck:
