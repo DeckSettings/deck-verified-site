@@ -12,7 +12,7 @@ import {
   SteamStoreAppDetails,
   SteamGame, HardwareInfo,
   SDHQReview,
-  SDGVideoReview
+  SDGVideoReview,
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
@@ -20,9 +20,9 @@ import { isValidNumber } from './helpers'
 export const redisClient: RedisClientType = createClient({
   socket: {
     host: config.redisHost,
-    port: config.redisPort
+    port: config.redisPort,
   },
-  password: config.redisPassword
+  password: config.redisPassword,
 })
 
 /**
@@ -75,12 +75,12 @@ export const createRedisSearchIndex = async (): Promise<void> => {
       {
         appsearch: { type: SchemaFieldTypes.TEXT, SORTABLE: true },
         appname: { type: SchemaFieldTypes.TEXT, SORTABLE: true },
-        reportcount: { type: SchemaFieldTypes.NUMERIC, SORTABLE: true }
+        reportcount: { type: SchemaFieldTypes.NUMERIC, SORTABLE: true },
       },
       {
         ON: 'HASH',
-        PREFIX: 'game:'
-      }
+        PREFIX: 'game:',
+      },
     )
 
     logger.info('RedisSearch index created successfully.')
@@ -136,7 +136,7 @@ export const storeGameInRedis = async (options: {
       appid: appId ?? existingData.appid ?? '',
       appbanner: banner ?? existingData.appbanner ?? '',
       appposter: poster ?? existingData.appposter ?? '',
-      reportcount: newReportCount.toString() // Always store as a string for Redis
+      reportcount: newReportCount.toString(), // Always store as a string for Redis
     }
 
     await redisClient.hSet(gameId, updatedData)
@@ -156,7 +156,7 @@ export const searchGamesInRedis = async (
   appId: string | null = null,
   gameName: string | null = null,
   from: number | null = null,
-  limit: number | null = null
+  limit: number | null = null,
 ): Promise<GameSearchCache[]> => {
   if (!searchTerm && !appId && !gameName) {
     throw new Error('Search term is required.')
@@ -192,8 +192,8 @@ export const searchGamesInRedis = async (
       'games_idx',
       query,
       {
-        LIMIT: { from: validatedFrom, size: validatedLimit }
-      }
+        LIMIT: { from: validatedFrom, size: validatedLimit },
+      },
     )
 
     if (results.total === 0) {
@@ -206,7 +206,7 @@ export const searchGamesInRedis = async (
       appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
       banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null,
       poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null,
-      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null
+      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null,
     }))
   } catch (error) {
     logger.error('Error during search:', error)
@@ -222,7 +222,7 @@ export const getGamesWithReports = async (
   from: number = 0,
   limit: number = 100,
   orderBy: 'appname' | 'reportcount' = 'reportcount',
-  direction: 'ASC' | 'DESC' = 'DESC'
+  direction: 'ASC' | 'DESC' = 'DESC',
 ): Promise<GameSearchCache[]> => {
   try {
     // Validate and sanitize limit
@@ -236,8 +236,8 @@ export const getGamesWithReports = async (
       '@reportcount:[1 +inf]',
       {
         SORTBY: { BY: sortByField, DIRECTION: direction },
-        LIMIT: { from, size: sanitizedLimit }
-      }
+        LIMIT: { from, size: sanitizedLimit },
+      },
     )
 
     if (results.total === 0) {
@@ -250,7 +250,7 @@ export const getGamesWithReports = async (
       appId: typeof doc.value.appid === 'string' && doc.value.appid !== '' ? doc.value.appid : null,
       banner: typeof doc.value.appbanner === 'string' && doc.value.appbanner !== '' ? doc.value.appbanner : null,
       poster: typeof doc.value.appposter === 'string' && doc.value.appposter !== '' ? doc.value.appposter : null,
-      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null
+      reportCount: doc.value.reportcount && doc.value.reportcount !== '' ? Number(doc.value.reportcount) : null,
     }))
   } catch (error) {
     logger.error('Error retrieving games with reports:', error)
@@ -263,7 +263,7 @@ export const getGamesWithReports = async (
  */
 export const logAggregatedMetric = async (
   metricName: string,
-  metricValue: string
+  metricValue: string,
 ): Promise<void> => {
   // Use today's date in YYYY-MM-DD format to separate daily logs
   const today = new Date().toISOString().split('T')[0]
@@ -285,7 +285,7 @@ export const logAggregatedMetric = async (
 export const getAggregatedMetrics = async (
   metricName: string,
   days: number = 7,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<{ metricValue: string; count: number }[]> => {
   // Limit the days to 7 maximum
   days = Math.min(days, 7)
@@ -316,7 +316,7 @@ export const getAggregatedMetrics = async (
     // `results` is now an array of objects like { value: '...', score: '...' }
     const aggregated = results.map((item: { value: string; score: number | string }) => ({
       metricValue: item.value,
-      count: Number(item.score)
+      count: Number(item.score),
     }))
 
     return aggregated
@@ -601,7 +601,7 @@ export const redisLookupGitHubProjectDetails = async (appId: string | null = nul
 export const redisCacheSteamAppDetails = async (
   data: SteamStoreAppDetails | Record<string, never>,
   appId: string,
-  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching Steam app details.')
@@ -644,7 +644,7 @@ export const redisLookupSteamAppDetails = async (appId: string): Promise<SteamSt
 export const redisCacheSteamSearchSuggestions = async (
   data: SteamGame[],
   searchTerm: string,
-  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching a Steam suggestion list.')
@@ -661,7 +661,7 @@ export const redisCacheSteamSearchSuggestions = async (
  * Retrieves a cached list of Steam game search suggestions from Redis.
  */
 export const redisLookupSteamSearchSuggestions = async (
-  searchTerm: string
+  searchTerm: string,
 ): Promise<SteamGame[] | null> => {
   if (!searchTerm) {
     throw new Error('A search term is required.')
@@ -687,7 +687,7 @@ export const redisLookupSteamSearchSuggestions = async (
 export const redisCacheSDHQReview = async (
   data: SDHQReview[],
   appId: string,
-  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching SDHQ review.')
@@ -729,7 +729,7 @@ export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[]
 export const redisCacheSDGReview = async (
   data: SDGVideoReview[],
   appId: string,
-  cacheTime: number = 60 * 60 * 24 * 2 // Default to 2 days
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching SDG review.')

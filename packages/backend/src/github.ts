@@ -160,6 +160,7 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
     const parsedIssueData = await parseReportBody(issue.body, reportBodySchema, hardwareInfo)
     projectDetails.reports.push({
       id: issue.id,
+      number: issue.number,
       title: issue.title,
       html_url: issue.html_url,
       data: parsedIssueData,
@@ -193,10 +194,10 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
   const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
   const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
-    m.banner     == null ||
-    m.poster     == null ||
-    m.hero       == null ||
-    m.background == null;
+    m.banner == null ||
+    m.poster == null ||
+    m.hero == null ||
+    m.background == null
 
   return Promise.all(
     reports.items.map(async (report) => {
@@ -245,6 +246,7 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
       }
       return {
         id: report.id,
+        number: report.number,
         title: report.title,
         html_url: report.html_url,
         data: parsedIssueData,
@@ -441,6 +443,7 @@ export const fetchProject = async (
                     __typename
                     ... on Issue {
                       databaseId
+                      number
                       title
                       url
                       body
@@ -555,6 +558,7 @@ export const fetchProject = async (
             }
             projectData.issues.push({
               id: node.content.databaseId,
+              number: node.content.number,
               title: node.content.title,
               html_url: node.content.url,
               body: node.content.body,

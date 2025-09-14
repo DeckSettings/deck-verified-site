@@ -5,7 +5,7 @@ import path from 'path'
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
 const requiredEnvVars = [
-  'GH_TOKEN'
+  'GH_TOKEN',
 ]
 const missingVars: string[] = []
 
@@ -30,7 +30,7 @@ const config = {
   defaultCacheTime: parseInt(process.env.DEFAULT_CACHE_TIME || '600', 10),
   proxyCount: parseInt(process.env.REVERSE_PROXY_COUNT || '0', 10),
   enableRateLimiter: (process.env.DISABLE_RATE_LIMITER !== 'true'),
-  runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true')
+  runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true'),
 }
 
 export default config

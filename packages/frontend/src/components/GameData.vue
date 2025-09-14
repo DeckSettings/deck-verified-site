@@ -198,6 +198,7 @@ watch(
         if (includeExternalReports.value) {
           reports.push({
             id: review.id,
+            number: 0,
             title: review.title,
             html_url: review.html_url,
             data: review.data as Partial<GameReportData>,

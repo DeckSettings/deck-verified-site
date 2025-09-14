@@ -33,6 +33,7 @@ export interface GameSearchResult {
 
 export interface GameReport {
   id: number;
+  number: number;
   title: string;
   html_url: string;
   data: GameReportData;
@@ -215,6 +216,7 @@ interface GitHubIssueTemplateBodyTextarea {
 
 export interface GitHubIssue {
   id: number;
+  number: number;
   title: string;
   html_url: string;
   body: string;
