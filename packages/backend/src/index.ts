@@ -839,7 +839,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const lastModDate = format(new Date(), 'yyyy-MM-dd') // Current date for lastmod
     const staticPages = [
       { loc: `${baseUrl}/`, priority: '1.0' },
-      { loc: `${baseUrl}/games-with-reports`, priority: '0.8' },
+      { loc: `${baseUrl}/steam-deck-settings`, priority: '0.8' },
     ]
 
     // Fetch all games with reports from RedisSearch

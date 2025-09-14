@@ -349,8 +349,8 @@ onBeforeUnmount(() => {
 })
 
 /*METADATA*/
-const metaTitle = computed(() => `${gameName.value || 'Game Report'}`)
-const metaDescription = computed(() => `Community reports for ${gameName.value} with settings and optimizations for handheld gaming PCs such as the Steam Deck, ROG Ally, and more.`)
+const metaTitle = computed(() => `${gameName.value ? `${gameName.value} – Steam Deck settings & performance` : 'Game Report – Steam Deck settings'}`)
+const metaDescription = computed(() => `Best Steam Deck settings and community performance reports for ${gameName.value}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`)
 const metaLink = computed(() => `https://deckverified.games/${appId.value ? `app/${appId.value}` : `game/${encodeURIComponent(gameName.value)}`}`)
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('')
@@ -435,15 +435,17 @@ useMeta(() => {
         type: 'application/ld+json',
         innerHTML: JSON.stringify({
           '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          'name': 'Deck Verified',
-          'url': metaLink.value,
-          'description': metaDescription.value,
-          'image': metaImage.value,
-          'publisher': {
+          '@type': 'VideoGame',
+          name: gameName.value || 'Unknown Game',
+          url: metaLink.value,
+          image: metaImage.value || undefined,
+          gamePlatform: ['Steam Deck'],
+          operatingSystem: 'SteamOS',
+          sameAs: appId.value ? [`https://store.steampowered.com/app/${appId.value}`] : undefined,
+          publisher: {
             '@type': 'Organization',
-            'name': 'Deck Verified',
-            'logo': {
+            name: 'Deck Verified',
+            logo: {
               '@type': 'ImageObject',
               'url': metaLogo.value,
             },

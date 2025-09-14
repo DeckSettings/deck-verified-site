@@ -30,8 +30,8 @@ const sectionBackgrounds = computed(() => {
 })
 
 /*METADATA*/
-const metaTitle = ref('Welcome')
-const metaDescription = ref('Welcome to Deck Verified is an open-source, community-driven database of performance reports, settings, and tweaks for handheld gaming PCs like the Steam Deck, ROG Ally, and Legion Go.')
+const metaTitle = ref('Steam Deck Game Settings & Performance Reports')
+const metaDescription = ref('Find the best Steam Deck settings for popular PC games. Community-driven performance reports, graphics tweaks, and battery life tips for Steam Deck, ROG Ally, and Legion Go.')
 const metaLink = ref('https://deckverified.games/')
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('https://deckverified.games/hero-image.png')

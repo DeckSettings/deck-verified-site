@@ -47,7 +47,7 @@ onUnmounted(() => {
   <div ref="contentContainer" class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
     <div class="col-xs-12 col-md-6 text-left q-pt-md q-px-md q-pb-none">
       <h1 class="text-h3 q-mb-lg q-mt-none" :class="{'text-center': $q.screen.lt.sm}">
-        Welcome to Deck Verified!
+        Steam Deck Game Settings & Performance Reports
       </h1>
       <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
         <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimize performance on
@@ -93,7 +93,7 @@ onUnmounted(() => {
       <img :src="`${baseUrl}/hero-image.png`" alt="Hero Image" class="hero-image">
     </div>
     <div class="full-width row justify-center q-mb-lg q-px-md">
-      <q-btn
+<!--      <q-btn
         :class="{'full-width': $q.screen.lt.sm}"
         :size="$q.screen.lt.sm ? 'md': 'lg'"
         icon="view_kanban"
@@ -103,7 +103,20 @@ onUnmounted(() => {
         no-caps
         glossy
         :to="{ name: 'games-with-reports' }"
-      />
+      />-->
+      <div class="q-ml-md q-mt-sm q-mt-none-md">
+        <q-btn
+          :class="{'full-width q-mt-sm': $q.screen.lt.sm}"
+          :size="$q.screen.lt.sm ? 'md': 'lg'"
+          icon="tune"
+          label="Browse Steam Deck Settings"
+          color="secondary"
+          text-color="white"
+          no-caps
+          glossy
+          :to="{ name: 'steam-deck-settings' }"
+        />
+      </div>
     </div>
   </div>
 </template>

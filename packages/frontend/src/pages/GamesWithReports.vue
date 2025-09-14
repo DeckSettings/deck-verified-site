@@ -51,12 +51,12 @@ onBeforeUnmount(() => {
 })
 
 /*METADATA*/
-const metaTitle = ref('Games with Reports')
-const metaDescription = ref('Browse a list of games with user-submitted performance reports and settings for handheld gaming devices like the Steam Deck, ROG Ally, and Legion Go.')
-const metaLink = ref('https://deckverified.games/games-with-reports')
+const metaTitle = ref('Steam Deck Game Settings (Community Reports)')
+const metaDescription = ref('Browse Steam Deck game settings and community performance reports. Find graphics presets, FPS targets, and battery life tips for top PC games on Steam Deck, ROG Ally, and Legion Go, and other handhelds.')
+const metaLink = ref('https://deckverified.games/steam-deck-settings')
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('https://deckverified.games/hero-image.png')
-const metaAlt = ref('Handheld PC Collection')
+const metaAlt = ref('Steam Deck game settings reports')
 const metaImageType = ref('image/png')
 const metaImageWidth = ref('700')
 const metaImageHeight = ref('330')
@@ -68,7 +68,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: 'Steam Deck, ROG Ally, gaming performance, game settings, handheld gaming, battery life, FPS, graphics presets, ProtonDB, Linux gaming, compatibility settings, game optimization',
+        content: 'Steam Deck settings, Steam Deck game settings, Steam Deck performance, FPS, battery life, graphics presets, game optimization, Proton, Linux gaming',
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
@@ -98,15 +98,16 @@ useMeta(() => {
         type: 'application/ld+json',
         innerHTML: JSON.stringify({
           '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          'name': 'Deck Verified',
-          'url': metaLink.value,
-          'description': metaDescription.value,
-          'image': metaImage.value,
-          'publisher': {
+          '@type': 'VideoGame',
+          name: 'Deck Verified - Game reports',
+          url: metaLink.value,
+          image: metaImage.value || undefined,
+          gamePlatform: ['Steam Deck'],
+          operatingSystem: 'SteamOS',
+          publisher: {
             '@type': 'Organization',
-            'name': 'Deck Verified',
-            'logo': {
+            name: 'Deck Verified',
+            logo: {
               '@type': 'ImageObject',
               'url': metaLogo.value,
             },
@@ -125,15 +126,15 @@ useMeta(() => {
     <NavBackButton />
     <div class="page-content-container">
       <div class="row items-center justify-between q-mb-md">
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-7">
           <div class="text-h3 q-ml-xl q-mt-xl q-mb-sm">
-            Games with Reports
+            Steam Deck Game Settings
           </div>
           <div class="q-ml-xl q-mb-sm">
-            All games with community-submitted reports
+            Community-tested graphics settings and performance targets for popular PC games on Steam Deck.
           </div>
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-5">
           <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
             <div v-if="$q.screen.gt.sm" class="col-12 col-md-6 flex justify-end">
               <q-btn
@@ -185,7 +186,7 @@ useMeta(() => {
             v-ripple>
             <router-link
               :to="game.appId ? `/app/${game.appId}` : `/game/${encodeURIComponent(game.gameName)}`"
-              class="no-decoration ">
+              class="no-decoration">
               <div class="cursor-pointer relative-position column full-height">
                 <q-img
                   v-if="game.metadata.poster"
