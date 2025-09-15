@@ -22,6 +22,8 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
 import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import { useMeta } from 'quasar'
+import SecondaryButton from 'components/elements/SecondaryButton.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 dayjs.extend(relativeTime)
 
@@ -395,67 +397,59 @@ useMeta(() => {
           {{ gameName }}
         </h1>
         <div class="q-pa-md">
-          <div class="row justify-center">
-            <q-btn v-if="githubProjectSearchLink"
-                   class="q-my-md"
-                   round flat
-                   :icon="simGithub"
-                   :href="githubProjectSearchLink ?? ''"
-                   target="_blank" rel="noopener"
-                   color="white">
-              <q-tooltip>View Reports on Github</q-tooltip>
-            </q-btn>
-            <q-btn v-if="appId"
-                   class="q-my-md"
-                   round flat
-                   :icon="simSteam"
-                   :href="`https://store.steampowered.com/app/${appId}`"
-                   target="_blank" rel="noopener"
-                   color="white">
+          <!-- START EXTERNAL LINKS -->
+          <div class="row q-col-gutter-xs" :class="$q.screen.lt.md ? 'justify-center' : ''">
+            <SecondaryButton v-if="githubProjectSearchLink"
+                             :icon="simGithub"
+                             label="GitHub Reports"
+                             :href="githubProjectSearchLink ?? ''"
+                             target="_blank" rel="noopener">
+              <q-tooltip>View reports on GitHub</q-tooltip>
+            </SecondaryButton>
+            <SecondaryButton v-if="appId"
+                             :icon="simSteam"
+                             label="Steam Store"
+                             :href="`https://store.steampowered.com/app/${appId}`"
+                             target="_blank" rel="noopener">
               <q-tooltip>View on Steam</q-tooltip>
-            </q-btn>
-            <q-btn v-if="appId"
-                   class="q-my-md"
-                   round flat
-                   :icon="simProtondb"
-                   :href="`https://www.protondb.com/app/${appId}?device=steamDeck`"
-                   target="_blank" rel="noopener"
-                   color="white">
+            </SecondaryButton>
+            <SecondaryButton v-if="appId"
+                             :icon="simProtondb"
+                             label="ProtonDB"
+                             :href="`https://www.protondb.com/app/${appId}?device=steamDeck`"
+                             target="_blank" rel="noopener">
               <q-tooltip>View on ProtonDB</q-tooltip>
-            </q-btn>
-            <q-btn v-if="gameName"
-                   class="q-my-md"
-                   round flat
-                   :icon="simPcgamingwiki"
-                   :href="getPCGamingWikiUrlFromGameName(gameName)"
-                   target="_blank" rel="noopener"
-                   color="white">
+            </SecondaryButton>
+            <SecondaryButton v-if="gameName"
+                             :icon="simPcgamingwiki"
+                             label="PCGamingWiki"
+                             :href="getPCGamingWikiUrlFromGameName(gameName)"
+                             target="_blank" rel="noopener">
               <q-tooltip>View on PCGamingWiki</q-tooltip>
-            </q-btn>
-            <q-btn v-if="sdhqLink"
-                   class="q-my-md"
-                   round flat
-                   :href="sdhqLink"
-                   target="_blank" rel="noopener"
-                   color="white">
-              <q-avatar size="42px">
+            </SecondaryButton>
+            <SecondaryButton v-if="sdhqLink"
+                             :href="sdhqLink"
+                             target="_blank" rel="noopener">
+              <q-avatar size="20px" class="q-mr-sm">
                 <img src="~/assets/icons/sdhq.svg">
               </q-avatar>
+              <span>SteamDeckHQ</span>
               <q-tooltip>View Game Review on SteamDeckHQ</q-tooltip>
-            </q-btn>
+            </SecondaryButton>
           </div>
+          <!-- END EXTERNAL LINKS -->
+          <!-- START SUBMIT REPORT BUTTON -->
           <div class="row justify-center">
-            <q-btn v-if="!useLocalReportForm" color="secondary" glossy
-                   :class="$q.screen.lt.md ? '': 'full-width'"
-                   icon="fas fa-file-invoice"
-                   label="Submit Report"
-                   :href="githubSubmitReportLink"
-                   target="_blank" rel="noopener" />
-            <q-btn v-else color="secondary" glossy
-                   :class="$q.screen.lt.md ? '': 'full-width'"
-                   icon="fas fa-file-invoice"
-                   label="Submit Report"
-                   @click="openDialog" />
+            <PrimaryButton v-if="!useLocalReportForm"
+                           icon="fas fa-file-invoice"
+                           label="Submit Report"
+                           :href="githubSubmitReportLink"
+                           target="_blank" rel="noopener" />
+            <PrimaryButton v-else
+                           full-width
+                           icon="fas fa-file-invoice"
+                           label="Submit Report"
+                           @click="openDialog" />
             <q-dialog class="q-ma-none q-pa-none report-dialog"
                       full-height
                       :full-width="$q.screen.lt.md"
@@ -469,6 +463,8 @@ useMeta(() => {
                           :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}" />
             </q-dialog>
           </div>
+          <!-- END SUBMIT REPORT BUTTON -->
+          <!-- START PAGE TEXT -->
           <div v-if="!$q.screen.lt.md" class="q-mt-lg text-left">
             <div class="q-mt-md">
               <h3 class="text-h6">Discover Community Game Reports</h3>
@@ -494,6 +490,7 @@ useMeta(() => {
               </p>
             </div>
           </div>
+          <!-- END PAGE TEXT -->
         </div>
       </div>
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">

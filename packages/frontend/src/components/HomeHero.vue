@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import SecondaryButton from 'components/elements/SecondaryButton.vue'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-background2.jpg`)
@@ -60,29 +62,20 @@ onUnmounted(() => {
         delivers real-world performance reports, graphics settings, controller mappings, and compatibility notes.
       </p>
       <div class="q-pb-md" :class="{'text-center': $q.screen.lt.sm}">
-        <q-btn
-          class="q-mr-md q-mt-md"
-          :class="{'full-width': $q.screen.lt.sm}"
+        <SecondaryButton
+          :full-width="$q.screen.lt.sm"
           icon="fab fa-github"
           href="https://github.com/DeckSettings/game-reports-steamos"
           target="_blank" rel="noopener"
           label="View Reports Source"
-          color="white"
-          text-color="black"
-          no-caps
-          glossy
         />
-        <q-btn
-          class="q-mr-md q-mt-md"
-          :class="{'full-width q-mt-sm': $q.screen.lt.sm}"
+        <SecondaryButton
+          :full-width="$q.screen.lt.sm"
+          :class="{'q-mt-sm' : $q.screen.lt.sm}"
           icon="fab fa-github"
           href="https://github.com/DeckSettings/deck-verified-site"
           target="_blank" rel="noopener"
           label="View Website Source"
-          color="white"
-          text-color="black"
-          no-caps
-          glossy
         />
         <p class="text-caption q-mt-md" :class="{'text-center': $q.screen.lt.sm}">
           All game report data and website source code are available on GitHub. Feel free to contribute!
@@ -93,27 +86,14 @@ onUnmounted(() => {
       <img :src="`${baseUrl}/hero-image.png`" alt="Hero Image" class="hero-image">
     </div>
     <div class="full-width row justify-center q-mb-lg q-px-md">
-<!--      <q-btn
-        :class="{'full-width': $q.screen.lt.sm}"
-        :size="$q.screen.lt.sm ? 'md': 'lg'"
-        icon="view_kanban"
-        label="View All Games With Reports"
-        color="secondary"
-        text-color="white"
-        no-caps
-        glossy
-        :to="{ name: 'games-with-reports' }"
-      />-->
       <div class="q-ml-md q-mt-sm q-mt-none-md">
-        <q-btn
-          :class="{'full-width q-mt-sm': $q.screen.lt.sm}"
+        <PrimaryButton
+          color="secondary"
+          :full-width="$q.screen.lt.sm"
+          :class="{'q-mt-sm' : $q.screen.lt.sm}"
           :size="$q.screen.lt.sm ? 'md': 'lg'"
           icon="tune"
           label="Browse Steam Deck Settings"
-          color="secondary"
-          text-color="white"
-          no-caps
-          glossy
           :to="{ name: 'steam-deck-settings' }"
         />
       </div>
