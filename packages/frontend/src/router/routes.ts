@@ -22,6 +22,21 @@ const routes: RouteRecordRaw[] = [
     children: [{ path: '', name: 'site-stats', component: () => import('pages/SiteStatsPage.vue') }],
   },
   {
+    path: '/about',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'about', component: () => import('pages/AboutPage.vue') }],
+  },
+  {
+    path: '/privacy-policy',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'privacy-policy', component: () => import('pages/PrivacyPolicyPage.vue') }],
+  },
+  {
+    path: '/terms-of-service',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'terms-of-service', component: () => import('pages/TermsOfServicePage.vue') }],
+  },
+  {
     path: '/app/:appId',
     component: () => import('layouts/MainLayout.vue'),
     children: [{ path: '', name: 'game-page-by-app-id', component: () => import('pages/GamePage.vue') }],

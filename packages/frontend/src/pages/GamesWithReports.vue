@@ -69,7 +69,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: 'Steam Deck settings, Steam Deck game settings, Steam Deck performance, FPS, battery life, graphics presets, game optimization, Proton, Linux gaming',
+        content: 'Steam Deck settings, Steam Deck game settings, Steam Deck performance, FPS, battery life, graphics presets, game optimisation, Proton, Linux gaming',
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 

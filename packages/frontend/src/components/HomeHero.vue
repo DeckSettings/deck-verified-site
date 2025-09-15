@@ -52,7 +52,7 @@ onUnmounted(() => {
         Steam Deck Game Settings & Performance Reports
       </h1>
       <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
-        <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimize performance on
+        <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimise performance on
         handheld
         gaming PCs such as the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong>, <strong>Lenovo Legion
         Go</strong>, and dozens of other handheld gaming PCs — with new device support added via community request.

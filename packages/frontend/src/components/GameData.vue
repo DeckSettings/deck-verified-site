@@ -311,7 +311,7 @@ useMeta(() => {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
         name: 'keywords',
-        content: `${gameName.value}, Steam Deck, ROG Ally, performance, settings, compatibility, optimization`,
+        content: `${gameName.value}, Steam Deck, ROG Ally, performance, settings, compatibility, optimisation`,
       },
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
