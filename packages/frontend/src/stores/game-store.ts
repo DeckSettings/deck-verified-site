@@ -77,25 +77,37 @@ export const useGameStore = defineStore('game', {
     },
 
     async ensureLoaded(currentRoute: RouteLocationNormalizedLoaded): Promise<void> {
-      if (this.isLoaded && this.gameData) return
-
-      // Labels
-      const labels = await fetchLabels()
-      this.deviceLabels = labels.filter((l) => l.name.startsWith('device:'))
-      this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
-
-      // Parse route
+      // Parse intended target from route first
       let parsedGameName: string | null = null
       let parsedAppId: string | null = null
       if (currentRoute.path.startsWith('/app/')) {
         parsedAppId = String(currentRoute.params.appId || '')
-        this.appId = parsedAppId
       } else if (currentRoute.path.startsWith('/game/')) {
         parsedGameName = decodeURIComponent(String(currentRoute.params.gameName || ''))
-        this.gameName = parsedGameName
       }
 
-      // Fetch game data
+      // If we already have data for this exact target, skip re-fetch
+      if (
+        this.gameData && (
+          (parsedAppId && this.appId === parsedAppId) ||
+          (parsedGameName && this.gameName === parsedGameName)
+        )
+      ) {
+        return
+      }
+
+      // Ensure labels are loaded once
+      if (this.deviceLabels.length === 0 || this.launcherLabels.length === 0) {
+        const labels = await fetchLabels()
+        this.deviceLabels = labels.filter((l) => l.name.startsWith('device:'))
+        this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
+      }
+
+      // Update store keys from route
+      this.appId = parsedAppId
+      this.gameName = parsedGameName || this.gameName
+
+      // Fetch game data for the new target
       const fetched = (parsedAppId || parsedGameName)
         ? await fetchGameData(parsedGameName, parsedAppId)
         : null
@@ -104,7 +116,6 @@ export const useGameStore = defineStore('game', {
 
         if (fetched.gameName) {
           this.gameName = fetched.gameName
-          this.githubSubmitReportLink = `${this.githubSubmitReportLink}&game_name=${encodeURIComponent(this.gameName)}`
         }
         if (fetched.projectNumber) {
           this.githubProjectSearchLink = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${fetched.projectNumber}`
@@ -129,13 +140,17 @@ export const useGameStore = defineStore('game', {
             })
           }
 
-          if (this.appId) {
-            this.githubSubmitReportLink = `${this.githubSubmitReportLink}&app_id=${this.appId}`
-          }
         }
 
         // Initialise default page metadata now that core fields are known
         this.setDefaultGameMetadata()
+
+        // Refresh the GitHub submit link with current context
+        const baseSubmit = 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800'
+        const params: string[] = []
+        if (this.gameName) params.push(`game_name=${encodeURIComponent(this.gameName)}`)
+        if (this.appId) params.push(`app_id=${encodeURIComponent(this.appId)}`)
+        this.githubSubmitReportLink = params.length ? `${baseSubmit}&${params.join('&')}` : baseSubmit
       }
 
       this.isLoaded = true
