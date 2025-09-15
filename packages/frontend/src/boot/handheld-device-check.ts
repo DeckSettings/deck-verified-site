@@ -9,6 +9,10 @@ declare module 'quasar' {
 }
 
 export default boot(() => {
+  // Guard for SSR: only run on client where navigator exists
+  if (typeof navigator === 'undefined') {
+    return
+  }
   const ua = navigator.userAgent || ''
   Platform.steamdeck = ua.includes('Steam Deck')
   // Optionally, if you want Steam Deck to act like mobile:

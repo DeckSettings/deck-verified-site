@@ -13,7 +13,7 @@ export default defineConfig((ctx) => {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
-      'handheld-device-check',
+      { path: 'handheld-device-check', server: false },
       'i18n',
       'axios',
     ],
