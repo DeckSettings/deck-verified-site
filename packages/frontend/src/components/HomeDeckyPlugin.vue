@@ -95,7 +95,7 @@ onUnmounted(() => {
 
         <div class="text-col">
           <div class="text-panel" ref="textContainerRef">
-            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.md}">
+            <h2 class="text-h2 q-mb-md q-mt-none" :class="{'text-h4': $q.screen.lt.md}">
               Browse Game Reports Directly from Your Handheld
             </h2>
 
@@ -164,6 +164,10 @@ onUnmounted(() => {
 
 .video-wrapper {
   width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .video-content {
@@ -173,11 +177,25 @@ onUnmounted(() => {
 }
 
 .text-panel {
-  max-width: 600px;
+  max-width: 640px;
   width: 100%;
   text-align: left;
   box-sizing: border-box;
-  padding: 0;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.text-panel a {
+  color: var(--q-primary);
+  text-decoration-color: color-mix(in srgb, var(--q-primary) 50%, transparent);
+}
+.text-panel a:hover {
+  text-decoration: underline;
 }
 
 /* -sm- */
@@ -192,7 +210,7 @@ onUnmounted(() => {
   }
 
   .text-panel {
-    padding: 1.5rem;
+    padding: 16px 18px;
     text-align: center;
   }
 }

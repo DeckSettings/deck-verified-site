@@ -120,6 +120,12 @@ useMeta(() => {
       <HomeDeckyPlugin />
     </FullPageSection>
 
+    <!--<FullPageSection
+          backgroundColour="black"
+          :scrollLockDuration="1">
+          <GamemodeUIVideo />
+        </FullPageSection>-->
+
     <ScrollToTop />
   </q-page>
 </template>

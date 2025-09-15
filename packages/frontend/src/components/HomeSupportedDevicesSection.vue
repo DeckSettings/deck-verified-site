@@ -10,6 +10,8 @@ const $q = useQuasar()
 const props = defineProps({
   backgroundImageUrl: { type: String, default: '' },
   transition: { type: String, default: '1s' },
+  // Minimum viewport height to enable scroll-driven animation
+  minViewportHeight: { type: Number, default: 680 },
 })
 
 interface Slide {
@@ -127,15 +129,28 @@ const checkScroll = () => {
 }
 
 onMounted(() => {
-  if (!$q.platform.is.mobile) {
-    window.addEventListener('scroll', checkScroll)
+  const bindOrUnbindScroll = () => {
+    const tallEnough = window.innerHeight >= (props.minViewportHeight || 0)
+    const shouldBind = tallEnough
+    // ensure we don't double-bind
+    window.removeEventListener('scroll', checkScroll)
+    if (shouldBind) {
+      window.addEventListener('scroll', checkScroll)
+    }
+    // Run once to set initial state
+    checkScroll()
   }
-  checkScroll()
+
+  bindOrUnbindScroll()
+  window.addEventListener('resize', bindOrUnbindScroll)
+  window.addEventListener('orientationchange', bindOrUnbindScroll)
 })
 onUnmounted(() => {
-  if (!$q.platform.is.mobile) {
-    window.removeEventListener('scroll', checkScroll)
-  }
+  window.removeEventListener('scroll', checkScroll)
+  window.removeEventListener('resize', () => {
+  })
+  window.removeEventListener('orientationchange', () => {
+  })
 })
 </script>
 
@@ -155,7 +170,7 @@ onUnmounted(() => {
       <div class="row items-center justify-center" style="width:100%">
         <div class="col-12 col-md-6 flex items-center justify-center">
           <div class="info-wrapper" :class="{'text-center': $q.screen.lt.sm}">
-            <h2 class="text-h2 q-mb-md" :class="{'text-h4': $q.screen.lt.md}">
+            <h2 class="text-h2 q-mb-md q-mt-none" :class="{'text-h4': $q.screen.lt.md}">
               Devices Available for Community Reporting
             </h2>
             <p>
@@ -237,10 +252,13 @@ onUnmounted(() => {
   background-repeat: no-repeat;
   visibility: visible;
   transition: opacity 0.5s ease-in-out;
+  /* Fade the background itself at top/bottom so content never looks overlaid */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
 }
 
 .background-image.is-visible {
-  opacity: 0.3;
+  opacity: 0.24;
 }
 
 .device-section {
@@ -260,17 +278,21 @@ onUnmounted(() => {
 .pin-wrapper::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 5%, var(--q-primary) 30%, var(--q-accent) 70%, transparent 95%);
+  inset: 0;
+  background-repeat: no-repeat;
 }
 
 .info-wrapper {
-  max-width: 820px;
-  margin-left: 48px;
+  max-width: 840px;
+  margin-left: 40px;
   z-index: 3;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .carousel-wrapper {
@@ -287,38 +309,38 @@ onUnmounted(() => {
 
 .carousel-card {
   position: absolute;
-  width: 480px;
+  width: 520px;
+  max-width: 100%;
   z-index: 10;
   transition: opacity 0.1s ease, transform 0.1s ease;
   background: transparent;
-  /*color: #333;
-  background: #EEE;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-  border-radius: 8px;*/
 }
 
 .card-image {
   position: relative;
-  left: 7%;
+  left: 4%;
   width: 100%;
   object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
 }
 
 /* -md- */
 @media (max-width: 1024px) {
   .pin-wrapper::before {
-    background: linear-gradient(to bottom, transparent, var(--q-accent) 30%, var(--q-primary) 70%, transparent 95%);
+    /*background: radial-gradient(90% 70% at 50% 20%, rgba(0, 0, 0, 0.35), transparent 70%),
+    linear-gradient(to right, var(--q-dark) 0%, transparent 20%, transparent 80%, var(--q-dark) 100%),
+    linear-gradient(to top, var(--q-dark) 0%, transparent 40%);*/
   }
 
   .info-wrapper {
-    margin-top: 7vh;
-    max-width: 720px;
-    margin-left: 10px;
-    margin-right: 10px;
+    margin-top: 6vh;
+    max-width: 760px;
+    margin-inline: 10px;
+    padding: 16px 18px;
   }
 
   .carousel-wrapper {
-    height: 40vh;
+    height: 48vh;
   }
 }
 
@@ -338,8 +360,9 @@ onUnmounted(() => {
   }
 
   .info-wrapper {
-    margin-top: 7vh;
-    max-width: 520px;
+    margin-top: 5vh;
+    max-width: 560px;
+    padding: 14px 16px;
   }
 }
 </style>
