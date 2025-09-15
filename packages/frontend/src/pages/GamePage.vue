@@ -2,8 +2,18 @@
 import GameData from 'components/GameData.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
+import { useGameStore } from 'src/stores/game-store'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
+import type { Pinia } from 'pinia'
 
-/*METADATA - Found in GameData component as it is dynamically generated per game*/
+
+// Quasar preFetch (SSR + client) to ensure game data is loaded before render
+defineOptions({
+  async preFetch({ store, currentRoute }: { store: Pinia; currentRoute: RouteLocationNormalizedLoaded }) {
+    const s = useGameStore(store)
+    await s.ensureLoaded(currentRoute)
+  },
+})
 </script>
 
 <template>

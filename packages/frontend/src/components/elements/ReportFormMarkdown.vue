@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import createDOMPurify from 'dompurify'
 
 
 export default defineComponent({
@@ -14,33 +14,37 @@ export default defineComponent({
   },
   setup(props) {
     const parsedMarkdown = marked(props.markdown)
-    const sanitisedParsedMarkdown = DOMPurify.sanitize(String(parsedMarkdown), {
-      ALLOWED_TAGS: [
-        'div',
-        'span',
-        'code',
-        'p',
-        'strong',
-        'del',
-        'em',
-        'sup',
-        'mark',
-        'b',
-        'a',
-        'img',
-        'ul',
-        'li',
-        'ol',
-        'h4',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6'
-      ],
-      ALLOWED_ATTR: ['class', 'src', 'href', 'alt']
-    })
+    let sanitisedParsedMarkdown = String(parsedMarkdown)
+    if (typeof window !== 'undefined') {
+      const DOMPurify = createDOMPurify(window as unknown as Window & typeof globalThis)
+      sanitisedParsedMarkdown = DOMPurify.sanitize(String(parsedMarkdown), {
+        ALLOWED_TAGS: [
+          'div',
+          'span',
+          'code',
+          'p',
+          'strong',
+          'del',
+          'em',
+          'sup',
+          'mark',
+          'b',
+          'a',
+          'img',
+          'ul',
+          'li',
+          'ol',
+          'h4',
+          'h1',
+          'h2',
+          'h3',
+          'h4',
+          'h5',
+          'h6'
+        ],
+        ALLOWED_ATTR: ['class', 'src', 'href', 'alt']
+      })
+    }
     return {
       parsedMarkdown,
       sanitisedParsedMarkdown

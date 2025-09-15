@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { RouteParamsGeneric } from 'vue-router'
 import {
   simGithub,
   simSteam,
   simProtondb,
   simPcgamingwiki,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
-import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
+import { useGameStore } from 'src/stores/game-store'
 import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
 import type {
   GameReport,
@@ -32,17 +31,30 @@ interface ExtendedGameReport extends Omit<GameReport, 'data'> {
   external?: boolean;
 }
 
+const isClient = typeof window !== 'undefined'
 const route = useRoute()
+const gameStore = useGameStore()
 
-const appId = ref<string | null>(null)
-const gameName = ref<string>('')
-const gameData = ref<GameDetails | null>(null)
-const highestRatedGameReport = ref<Partial<GameReportData> | null>(null)
-const gameBackground = ref<string | null>(null)
-const gamePoster = ref<string | null>(null)
-const gameBanner = ref<string | null>(null)
-const githubProjectSearchLink = ref<string | null>(null)
-const githubSubmitReportLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800')
+// Load Pinia store state
+const appId = computed<string | null>(() => gameStore.appId)
+const gameName = computed<string>(() => gameStore.gameName)
+const gameData = computed<GameDetails | null>(() => gameStore.gameData)
+
+const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
+  const gd = gameData.value
+  if (!gd || !gd.reports || gd.reports.length === 0) return null
+  const internalOnly = gd.reports.slice().sort((a, b) => {
+    const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+    const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+    return bLikes - aLikes
+  })
+  return internalOnly[0]?.data ?? null
+})
+const gameBackground = computed<string | null>(() => gameStore.gameBackground)
+//const gamePoster = computed<string | null>(() => gameStore.gamePoster)
+const gameBanner = computed<string | null>(() => gameStore.gameBanner)
+const githubProjectSearchLink = computed<string | null>(() => gameStore.githubProjectSearchLink)
+const githubSubmitReportLink = computed<string>(() => gameStore.githubSubmitReportLink)
 const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
 
 const useLocalReportForm = ref<boolean>(true)
@@ -53,7 +65,7 @@ const includeExternalReports = ref(route.query.includeExternalReports === 'true'
 const sdhqLink = ref('')
 
 const selectedDevice = ref('all')
-const deviceLabels = ref<GitHubIssueLabel[]>([])
+const deviceLabels = computed<GitHubIssueLabel[]>(() => gameStore.deviceLabels)
 const deviceOptions = computed(() => {
   if (deviceLabels.value) {
     const options = deviceLabels.value
@@ -61,56 +73,38 @@ const deviceOptions = computed(() => {
         label: label.description || label.name || 'Unknown',
         value: label.name,
       }))
-      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })) // Case-insensitive sorting
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
     return [{ label: 'All', value: 'all' }, ...options]
   }
-  // Default fallback to 'all' if no device lables are defined
   return [{ label: 'All', value: 'all' }]
 })
 
 const selectedLauncher = ref('all')
-const launcherLabels = ref<GitHubIssueLabel[]>([])
+const launcherLabels = computed<GitHubIssueLabel[]>(() => gameStore.launcherLabels)
 const launcherOptions = computed(() => {
   if (launcherLabels.value) {
-    let options = launcherLabels.value
-      .map(label => ({
-        label: label.description || label.name || 'Unknown',
-        value: label.name,
-      }))
-    // Separate out the 'launcher:other' option
+    let options = launcherLabels.value.map(label => ({
+      label: label.description || label.name || 'Unknown',
+      value: label.name,
+    }))
     const otherOption = options.find(option => option.value === 'launcher:other')
-    if (otherOption) {
-      options = options.filter(option => option.value !== 'launcher:other')
-    }
-    // Sort options alphabetically (case-insensitive)
+    if (otherOption) options = options.filter(option => option.value !== 'launcher:other')
     options = options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
-    // Add the 'launcher:other' option back at the end
-    if (otherOption) {
-      options.push(otherOption)
-    }
-    // Include the 'All' option at the beginning
+    if (otherOption) options.push(otherOption)
     return [{ label: 'All', value: 'all' }, ...options]
   }
-  // Default fallback to 'all' if no launcher lables are defined
   return [{ label: 'All', value: 'all' }]
 })
 
-// Toggle function for sorting
-const sortOption = ref('none')
-const sortOrder = ref('off') // 'desc', 'asc', 'off'
-const toggleSortOrder = (option: string) => {
+const sortOption = ref<'none' | 'reactions' | 'updated'>('none')
+const sortOrder = ref<'off' | 'asc' | 'desc'>('off')
+const toggleSortOrder = (option: 'reactions' | 'updated') => {
   if (sortOption.value !== option) {
-    sortOrder.value = 'desc'
     sortOption.value = option
+    sortOrder.value = 'desc'
     return
   }
-  if (sortOrder.value === 'off') {
-    sortOrder.value = 'desc'
-  } else if (sortOrder.value === 'desc') {
-    sortOrder.value = 'asc'
-  } else {
-    sortOrder.value = 'off'
-  }
+  sortOrder.value = sortOrder.value === 'off' ? 'desc' : sortOrder.value === 'desc' ? 'asc' : 'off'
 }
 
 const hasSystemConfig = (report: ExtendedGameReport) => {
@@ -121,7 +115,6 @@ const hasSystemConfig = (report: ExtendedGameReport) => {
     report.data.custom_launch_options
   )
 }
-
 const hasPerformanceSettings = (report: ExtendedGameReport) => {
   return (
     report.data.frame_limit ||
@@ -138,120 +131,96 @@ const hasPerformanceSettings = (report: ExtendedGameReport) => {
 
 const hasReports = computed(() => {
   if (!gameData.value) return false
-
-  // Internal reports: if reports is still null (loading) or if there are any internal reports.
-  const internalReports = gameData.value.reports
-  const hasInternalReports =
-    internalReports === null ||
-    (Array.isArray(internalReports) && internalReports.length > 0)
-
-  // External reports: if the flag is set and there is at least one external review.
-  const hasExternalReports =
+  const internal = gameData.value.reports
+  const hasInternal = internal === null || (Array.isArray(internal) && internal.length > 0)
+  const hasExternal =
     includeExternalReports.value &&
     Array.isArray(gameData.value.external_reviews) &&
     gameData.value.external_reviews.length > 0
-
-  return hasInternalReports || hasExternalReports
+  return hasInternal || hasExternal
 })
 
-// Reactive reports list with `reportVisible`
-const filteredReports = reactive<ExtendedGameReport[]>([])
+/** SSR-stable, pure computed reports pipeline */
+const filteredReports = computed<ExtendedGameReport[]>(() => {
+  const gd = gameData.value
+  if (!gd || !gd.reports) return []
 
-// Watch gameData and other filters to update filteredReports
-watch(
-  [gameData, selectedDevice, selectedLauncher, sortOption, sortOrder],
-  ([newGameData, device, launcher, sortOpt, sortOrd]) => {
-    if (!newGameData || !newGameData.reports) {
-      filteredReports.splice(0, filteredReports.length) // Clear the array
-      return
-    }
+  const expandedId = parseInt(route.query.expandedId as string, 10)
 
-    const expandedId = parseInt(route.query.expandedId as string, 10)
-    let reports: ExtendedGameReport[] = newGameData.reports.map((report) => ({
-      ...report,
-      reportVisible: expandedId === report.id,
-    }))
+  let reports: ExtendedGameReport[] = gd.reports.map((report) => ({
+    ...report,
+    reportVisible: expandedId === report.id,
+  }))
 
-    // Filter by device selector
-    if (device !== 'all' && device) {
-      reports = reports.filter(report =>
-        report.labels.some(label => label.name === device),
-      )
-    }
+  // Filter by device selector
+  if (selectedDevice.value !== 'all' && selectedDevice.value) {
+    reports = reports.filter(report =>
+      report.labels.some(label => label.name === selectedDevice.value),
+    )
+  }
 
-    // Filter by launcher selector
-    if (launcher !== 'all' && launcher) {
-      reports = reports.filter(report =>
-        report.labels.some(label => label.name === launcher),
-      )
-    }
+  // Filter by launcher selector
+  if (selectedLauncher.value !== 'all' && selectedLauncher.value) {
+    reports = reports.filter(report =>
+      report.labels.some(label => label.name === selectedLauncher.value),
+    )
+  }
 
-    // Extract the data from the highest rated report using only internal reports
-    setHighestRatedGameReport(reports as GameReport[])
+  // Append any external reports
+  if (Array.isArray(gd.external_reviews) && includeExternalReports.value) {
+    gd.external_reviews.forEach((review: ExternalGameReview) => {
+      if (review.source.name === 'SDHQ') {
+        // This only sets a ref; safe for SSR
+        sdhqLink.value = review.html_url
+      }
+      reports.push({
+        id: review.id,
+        number: 0,
+        title: review.title,
+        html_url: review.html_url,
+        data: review.data as Partial<GameReportData>,
+        user: {
+          login: review.source.name,
+          avatar_url: review.source.avatar_url,
+          report_count: review.source.report_count || 0,
+        },
+        created_at: review.created_at,
+        updated_at: review.updated_at,
+        // Never mark an external report as visible
+        reportVisible: false,
+        // Use metadata from parent game data
+        metadata: {
+          poster: gd.metadata.poster,
+          hero: gd.metadata.hero,
+          banner: gd.metadata.banner,
+          background: gd.metadata.background,
+        },
+        reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+        labels: [],
+        external: true,
+      })
+    })
+  }
 
-    // Append any external reports
-    if (Array.isArray(newGameData.external_reviews)) {
-      newGameData.external_reviews.forEach((review: ExternalGameReview) => {
-        if (review.source.name === 'SDHQ') {
-          sdhqLink.value = review.html_url
-        }
-        if (includeExternalReports.value) {
-          reports.push({
-            id: review.id,
-            number: 0,
-            title: review.title,
-            html_url: review.html_url,
-            data: review.data as Partial<GameReportData>,
-            user: {
-              login: review.source.name,
-              avatar_url: review.source.avatar_url,
-              report_count: review.source.report_count || 0,
-            },
-            created_at: review.created_at,
-            updated_at: review.updated_at,
-            // Never mark an external report as visible
-            reportVisible: false,
-            // Use metadata from parent game data
-            metadata: {
-              poster: newGameData.metadata.poster,
-              hero: newGameData.metadata.hero,
-              banner: newGameData.metadata.banner,
-              background: newGameData.metadata.background,
-            },
-            // Insert empty fillter data for things that will not exist from external reports
-            reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
-            labels: [],
-            // Mark this report as external for additional template formating changes
-            external: true,
-          })
-        }
+  // Sort logic
+  if (sortOrder.value !== 'off') {
+    if (sortOption.value === 'reactions') {
+      reports = reports.slice().sort((a, b) => {
+        const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+        const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+        return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes
+      })
+    } else if (sortOption.value === 'updated') {
+      reports = reports.slice().sort((a, b) => {
+        const aUpdated = new Date(a.updated_at).getTime()
+        const bUpdated = new Date(b.updated_at).getTime()
+        return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
       })
     }
+  }
 
-    // Sort logic
-    if (sortOrd !== 'off') {
-      if (sortOpt === 'reactions') {
-        reports = reports.sort((a, b) => {
-          const aLikes =
-            a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-          const bLikes =
-            b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-          return sortOrd === 'asc' ? aLikes - bLikes : bLikes - aLikes
-        })
-      } else if (sortOpt === 'updated') {
-        reports = reports.sort((a, b) => {
-          const aUpdated = new Date(a.updated_at).getTime()
-          const bUpdated = new Date(b.updated_at).getTime()
-          return sortOrd === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
-        })
-      }
-    }
-
-    // Update the reactive array
-    filteredReports.splice(0, filteredReports.length, ...reports)
-  },
-  { immediate: true }, // Trigger immediately on initialization
-)
+  return reports
+})
 
 const lastUpdated = (dateString: string | null): string => {
   if (!dateString) return 'Unknown'
@@ -259,99 +228,51 @@ const lastUpdated = (dateString: string | null): string => {
   return updatedAt.isValid() ? `${updatedAt.fromNow()}` : 'Unknown'
 }
 
-const initGameData = async (params: RouteParamsGeneric) => {
-
-  const labels = await fetchLabels()
-  deviceLabels.value = labels.filter(label => label.name.startsWith('device:'))
-  launcherLabels.value = labels.filter(label => label.name.startsWith('launcher:'))
-
-  let parsedGameName = null
-  let parsedAppId = null
-  if (route.path.startsWith('/app/')) {
-    parsedAppId = params.appId as string
-    appId.value = parsedAppId
-  } else if (route.path.startsWith('/game/')) {
-    parsedGameName = decodeURIComponent(params.gameName as string)
-    gameName.value = parsedGameName
-  }
-  const fetchedGameData = await fetchGameData(parsedGameName, parsedAppId)
-  // Fill in details from game data
-  if (fetchedGameData) {
-    gameData.value = fetchedGameData
-    if (gameData.value.gameName) {
-      gameName.value = gameData.value.gameName
-      githubSubmitReportLink.value = `${githubSubmitReportLink.value}&game_name=${encodeURIComponent(gameName.value)}`
-    }
-    if (gameData.value.projectNumber) {
-      githubProjectSearchLink.value = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${gameData.value.projectNumber}`
-    }
-    if (gameData.value.metadata) {
-      gameBackground.value = gameData.value.metadata.hero
-      gamePoster.value = gameData.value.metadata.poster
-      // TODO: Add header image in place of poster image on larger screens
-      gameBanner.value = gameData.value.metadata.banner
-      githubSubmitReportLink.value = `${githubSubmitReportLink.value}&app_id=${appId.value}`
-    }
-    setHighestRatedGameReport(fetchedGameData.reports)
-  }
-  if (route.query.openReportForm === 'true' && !dialogAutoOpened.value) {
-    dialogAutoOpened.value = true
-    openDialog()
-  }
-}
-
-const setHighestRatedGameReport = (reports: GameReport[]) => {
-  const popularReport = reports.sort((a: GameReport, b: GameReport) => {
-    const aLikes =
-      a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-    const bLikes =
-      b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-    return aLikes - bLikes
-  })
-  if (popularReport && popularReport.length > 0 && popularReport[0] !== undefined) {
-    highestRatedGameReport.value = popularReport[0].data
-  }
-}
-
 const openDialog = () => {
-  // Push a dummy state so that "back" will trigger popstate
-  history.pushState({ dialog: true }, '')
+  // Dialog can render in SSR markup as closed; opening is client-only UX
   reportFormDialogOpen.value = true
+  if (isClient && 'history' in window) {
+    history.pushState({ dialog: true }, '')
+  }
 }
-
 const closeDialog = () => {
   reportFormDialogOpen.value = false
-  // Remove the dummy state
-  if (history.state && history.state.dialog) {
+  if (isClient && history.state && history.state.dialog) {
     history.back()
   }
 }
-
 const onPopState = () => {
-  if (reportFormDialogOpen.value) {
-    closeDialog()
-  }
+  if (reportFormDialogOpen.value) closeDialog()
 }
 
-watch(
-  () => route.params,
-  async (newParams) => {
-    await initGameData(newParams)
-  },
-)
-
+// Client-only effects
 onMounted(async () => {
-  window.addEventListener('popstate', onPopState)
-  await initGameData(route.params)
+  if (isClient) {
+    window.addEventListener('popstate', onPopState)
+
+    // Auto-open dialog only on the client
+    if (route.query.openReportForm === 'true' && !dialogAutoOpened.value) {
+      dialogAutoOpened.value = true
+      openDialog()
+    }
+  }
+
+  // Ensure data exists on first client render as well (SSR already fetched via onServerPrefetch)
+  if (!gameData.value && typeof gameStore.ensureLoaded === 'function') {
+    await gameStore.ensureLoaded(route)
+  }
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('popstate', onPopState)
+  if (isClient) {
+    window.removeEventListener('popstate', onPopState)
+  }
 })
 
 /*METADATA*/
-const metaTitle = computed(() => `${gameName.value ? `${gameName.value} – Steam Deck settings & performance` : 'Game Report – Steam Deck settings'}`)
-const metaDescription = computed(() => `Best Steam Deck settings and community performance reports for ${gameName.value}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`)
-const metaLink = computed(() => `https://deckverified.games/${appId.value ? `app/${appId.value}` : `game/${encodeURIComponent(gameName.value)}`}`)
+const fallbackName = computed(() => gameName.value || (appId.value ? `App ${appId.value}` : ''))
+const metaTitle = computed(() => `${fallbackName.value ? `${fallbackName.value} – Steam Deck settings & performance` : 'Game Report – Steam Deck settings'}`)
+const metaDescription = computed(() => `Best Steam Deck settings and community performance reports for ${fallbackName.value || 'this game'}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`)
+const metaLink = computed(() => `https://deckverified.games${route.path}`)
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('')
 const metaAlt = ref('')
@@ -359,25 +280,18 @@ const metaImageType = ref('')
 const metaImageWidth = ref('')
 const metaImageHeight = ref('')
 
-// Function to update image properties dynamically
+// Client-only helper
 function updateImageProperties(url: string) {
+  if (!isClient) return
   const img = new Image()
   img.onload = () => {
     metaImageWidth.value = String(img.naturalWidth)
     metaImageHeight.value = String(img.naturalHeight)
-
-    // Determine the MIME type from the URL's extension (as a simple heuristic)
-    if (url.match(/\.(jpe?g)$/i)) {
-      metaImageType.value = 'image/jpeg'
-    } else if (url.match(/\.png$/i)) {
-      metaImageType.value = 'image/png'
-    } else if (url.match(/\.webp$/i)) {
-      metaImageType.value = 'image/webp'
-    } else if (url.match(/\.gif$/i)) {
-      metaImageType.value = 'image/gif'
-    } else {
-      metaImageType.value = '' // Fallback if you cannot determine it
-    }
+    if (url.match(/\.(jpe?g)$/i)) metaImageType.value = 'image/jpeg'
+    else if (url.match(/\.png$/i)) metaImageType.value = 'image/png'
+    else if (url.match(/\.webp$/i)) metaImageType.value = 'image/webp'
+    else if (url.match(/\.gif$/i)) metaImageType.value = 'image/gif'
+    else metaImageType.value = '' // Fallback if you cannot determine it
   }
   img.onerror = () => {
     // Handle errors (set defaults, log error, etc.)

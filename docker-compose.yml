@@ -56,7 +56,7 @@ services:
 
   # --- FRONTEND ---
   web-ssr:
-    image: ghcr.io/decksettings/deck-verified-web:latest
+    image: ghcr.io/decksettings/deck-verified-web-ssr:latest
     build:
       context: .
       dockerfile: ./packages/frontend/docker/ssr.Dockerfile
@@ -72,6 +72,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    environment:
+      # Used by SSR to call the API directly instead of hitting the SSR server
+      SSR_API_ORIGIN: http://api:9022
 
   # --- FRONTEND ---
   web:

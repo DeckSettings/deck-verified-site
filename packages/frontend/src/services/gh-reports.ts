@@ -12,6 +12,15 @@ import type {
 } from '../../../shared/src/game'
 import { defineStore } from 'pinia'
 
+// Build absolute API URLs during SSR to avoid hitting the SSR server itself
+const SSR = typeof window === 'undefined'
+// Prefer configurable origin, fall back to production domain
+const SSR_API_ORIGIN = SSR
+  ? (process.env.PUBLIC_BASE_URL || (process.env.SSR_API_ORIGIN) || 'https://deckverified.games')
+  : ''
+// Build API URL depending on if we are running as SSR or SPA
+const apiUrl = (path: string) => SSR ? `${SSR_API_ORIGIN}${path}` : path
+
 export interface Report {
   id: number;
   data: GameReportData;
@@ -37,7 +46,7 @@ export const useReportsStore = defineStore('reports', {
 })
 
 export const fetchRecentReports = async (): Promise<Report[]> => {
-  const url = '/deck-verified/api/v1/recent_reports'
+  const url = apiUrl('/deck-verified/api/v1/recent_reports')
   try {
     const response = await fetch(url)
     const data = await response.json() as GameReport[]
@@ -60,7 +69,7 @@ export const fetchRecentReports = async (): Promise<Report[]> => {
 }
 
 export const fetchPopularReports = async (): Promise<Report[]> => {
-  const url = '/deck-verified/api/v1/popular_reports'
+  const url = apiUrl('/deck-verified/api/v1/popular_reports')
   try {
     const response = await fetch(url)
     const data = await response.json() as GameReport[]
@@ -83,7 +92,7 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
 }
 
 export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameDetails | null> => {
-  let url = '/deck-verified/api/v1/game_details'
+  let url = apiUrl('/deck-verified/api/v1/game_details')
   if (appId) {
     url += `?appid=${appId}&include_external=true`
   } else if (gameName) {
@@ -94,14 +103,19 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
 
   try {
     const response = await fetch(url)
+    if (response.status === 204) {
+      return null
+    }
     if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch project data: ${response.status} - ${errorBody}`)
       throw new Error('Failed to fetch project data')
     }
-    const data = await response.json() as GameDetails
+    const text = await response.text()
+    if (!text) return null
+    const data = JSON.parse(text) as GameDetails
     if (data) {
-      console.debug('Game data:', data)
+      console.debug('Game data:', JSON.stringify(data))
       return data
     } else {
       console.error('Unable to find game data by AppID/Game Name')
@@ -114,7 +128,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
 }
 
 export const fetchGamesWithReports = async (from: number, limit: number): Promise<GameSearchResult[] | null> => {
-  const url = `/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}&orderBy=appname&orderDirection=ASC`
+  const url = apiUrl(`/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}&orderBy=appname&orderDirection=ASC`)
   try {
     const response = await fetch(url)
     if (response.status === 204) {
@@ -134,7 +148,7 @@ export const fetchGamesWithReports = async (from: number, limit: number): Promis
 }
 
 export const searchGames = async (searchString: string | null, includeExternal: boolean = false): Promise<GameSearchResult[] | null> => {
-  let url = '/deck-verified/api/v1/search_games'
+  let url = apiUrl('/deck-verified/api/v1/search_games')
   if (searchString) {
     url += `?term=${encodeURIComponent(searchString)}`
   } else {
@@ -164,7 +178,7 @@ export const searchGames = async (searchString: string | null, includeExternal: 
 
 export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
   try {
-    const response = await fetch('/deck-verified/api/v1/report_form')
+    const response = await fetch(apiUrl('/deck-verified/api/v1/report_form'))
     if (response.status === 204) {
       // 204 - No Content
       console.log('No results found')
@@ -174,7 +188,9 @@ export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
       throw new Error('Failed to fetch project data')
     }
-    return await response.json() as GameReportForm
+    const text = await response.text()
+    if (!text) return null
+    return JSON.parse(text) as GameReportForm
   } catch (error) {
     console.error('Error fetching project data:', error)
     throw error
@@ -194,7 +210,7 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
 
   try {
     console.debug('Fetching labels from backend')
-    const response = await fetch('/deck-verified/api/v1/issue_labels')
+    const response = await fetch(apiUrl('/deck-verified/api/v1/issue_labels'))
     const data = await response.json()
     labels = data
     lastFetchTime = currentTime
@@ -206,7 +222,7 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
 }
 
 export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number): Promise<GameDetailsRequestMetricResult[]> => {
-  const url = `/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}`
+  const url = apiUrl(`/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}`)
   try {
     const response = await fetch(url)
     if (response.status === 204) {
