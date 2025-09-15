@@ -30,7 +30,7 @@
 
           <div class="row items-center q-gutter-sm">
             <q-btn round dense unelevated color="white" text-color="black" icon="fab fa-github"
-                   href="https://github.com/DeckSettings/deck-verified-site" target="_blank" rel="noopener" />
+                   href="https://github.com/sponsors/Josh5" target="_blank" rel="noopener" />
             <q-btn round dense unelevated color="white" text-color="black" icon="fas fa-mug-hot"
                    href="https://ko-fi.com/josh5coffee" target="_blank" rel="noopener" />
             <q-btn round dense unelevated color="white" text-color="black" icon="fab fa-patreon"
