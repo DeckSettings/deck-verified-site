@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import SteamDeckConsoleVideo from 'components/elements/SteamDeckConsoleVideo.vue'
 
 const videoUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.mp4', import.meta.url).href
+const previewImageUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.jpg', import.meta.url).href
 const videoLoaded = ref(false)
 
 const sectionRef = ref<HTMLElement | null>(null)
@@ -71,10 +73,14 @@ onUnmounted(() => {
 <template>
   <div ref="sectionRef" class="device-section">
     <div class="pin-wrapper">
-      <div class="split-container">
-
-        <div class="video-col">
-          <div class="video-wrapper">
+      <div class="split-container row items-center q-col-gutter-xl">
+        <div class="video-col col-12 col-md-6 col-lg-8">
+          <SteamDeckConsoleVideo
+            v-if="!$q.screen.lt.lg"
+            :imageUrl="previewImageUrl"
+            :videoUrl="videoUrl"
+          />
+          <div v-else class="video-wrapper">
             <video
               width="1200"
               height="800"
@@ -93,7 +99,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="text-col">
+        <div class="text-col col-12 col-md-6 col-lg-4">
           <div class="text-panel" ref="textContainerRef">
             <h2 class="text-h2 q-mb-md q-mt-none" :class="{'text-h4': $q.screen.lt.md}">
               Browse Game Reports Directly from Your Handheld
@@ -148,17 +154,11 @@ onUnmounted(() => {
 }
 
 .split-container {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
   width: 100%;
   max-width: 2000px;
 }
 
-.video-col,
 .text-col {
-  flex: 1 1 50%;
-  display: flex;
   justify-content: center;
 }
 
@@ -177,7 +177,6 @@ onUnmounted(() => {
 }
 
 .text-panel {
-  max-width: 640px;
   width: 100%;
   text-align: left;
   box-sizing: border-box;
@@ -194,6 +193,7 @@ onUnmounted(() => {
   color: var(--q-primary);
   text-decoration-color: color-mix(in srgb, var(--q-primary) 50%, transparent);
 }
+
 .text-panel a:hover {
   text-decoration: underline;
 }
@@ -202,11 +202,6 @@ onUnmounted(() => {
 @media (max-width: 600px) {
   .device-section {
     padding: 0 0.1rem;
-  }
-
-  .split-container {
-    flex-direction: column;
-    gap: 1.5rem;
   }
 
   .text-panel {
