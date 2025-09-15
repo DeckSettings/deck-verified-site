@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { CSSProperties } from 'vue'
 import { useQuasar } from 'quasar'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const $q = useQuasar()
@@ -170,21 +171,21 @@ onUnmounted(() => {
               quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
               estimated battery life and total play time are calculated based on the report data.
             </p>
-            <p>
+            <p class="q-mb-none">
               Don’t see your device yet? Contributing support is quick and easy.
               Just open a request on GitHub and we'll help you get it added.
             </p>
-            <q-btn
-              class="q-mb-md"
-              icon="fab fa-github"
-              href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-              target="_blank" rel="noopener"
-              label="Request a New Device"
-              color="white"
-              text-color="black"
-              no-caps
-              glossy
-            />
+            <div class="q-px-xl">
+              <PrimaryButton
+                color="primary"
+                full-width
+                icon="fab fa-github"
+                label="Request a New Device"
+                href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+                target="_blank" rel="noopener">
+                <q-tooltip>View on ProtonDB</q-tooltip>
+              </PrimaryButton>
+            </div>
             <p>
               Once approved, your device will appear in the list—ready for game reports, performance data, and settings
               shared by the community.

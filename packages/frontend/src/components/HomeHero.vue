@@ -77,7 +77,9 @@ onUnmounted(() => {
           target="_blank" rel="noopener"
           label="View Website Source"
         />
-        <p class="text-caption q-mt-md" :class="{'text-center': $q.screen.lt.sm}">
+        <p
+          class="text-caption q-mt-none text-italic"
+          :class="$q.screen.lt.sm ? 'text-center q-mt-sm': 'q-ml-sm'">
           All game report data and website source code are available on GitHub. Feel free to contribute!
         </p>
       </div>

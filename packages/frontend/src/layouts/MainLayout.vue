@@ -1,7 +1,7 @@
 <template>
   <q-layout view="hHh lpR fFf">
 
-    <q-header bordered class="bg-primary text-white">
+    <q-header class="app-header text-white">
       <q-toolbar class="header-toolbar q-px-sm q-py-md q-px-sm-lg q-py-sm-lg">
         <div class="logo-container">
           <router-link to="/">
@@ -29,11 +29,23 @@ import HeaderSearch from 'components/HeaderSearch.vue'
 </script>
 
 <style scoped>
+.app-header {
+  background: color-mix(in srgb, var(--q-dark) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid color-mix(in srgb, white 12%, transparent);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
 .header-toolbar {
-  background: linear-gradient(to bottom, var(--q-primary), var(--q-accent));
+  background: transparent;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  gap: 8px;
 }
 
 .logo-container {
