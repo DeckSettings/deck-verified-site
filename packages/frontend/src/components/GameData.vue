@@ -446,11 +446,13 @@ useMeta(() => {
           </div>
           <div class="row justify-center">
             <q-btn v-if="!useLocalReportForm" color="secondary" glossy
+                   :class="$q.screen.lt.md ? '': 'full-width'"
                    icon="fas fa-file-invoice"
                    label="Submit Report"
                    :href="githubSubmitReportLink"
                    target="_blank" rel="noopener" />
             <q-btn v-else color="secondary" glossy
+                   :class="$q.screen.lt.md ? '': 'full-width'"
                    icon="fas fa-file-invoice"
                    label="Submit Report"
                    @click="openDialog" />
@@ -466,6 +468,31 @@ useMeta(() => {
                           :gameBackground="gameBackground ? gameBackground : ''"
                           :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}" />
             </q-dialog>
+          </div>
+          <div v-if="!$q.screen.lt.md" class="q-mt-lg text-left">
+            <div class="q-mt-md">
+              <h3 class="text-h6">Discover Community Game Reports</h3>
+              <p>
+                Browse <strong>community-submitted reports</strong> for
+                <strong>{{ gameName || 'this game' }}</strong>, including recommended
+                <strong>performance settings</strong>, <strong>system configurations</strong>,
+                and <strong>in-game options</strong>. Compare how different players optimise
+                <strong>frame rates</strong>, <strong>battery life</strong>, and overall
+                performance on Steam Deck and other Linux handhelds.
+              </p>
+              <p>
+                Use the filters above to check for reports by <strong>device</strong> or
+                <strong>launcher</strong>, and sort them by <strong>most liked</strong> or
+                <strong>recently updated</strong>. Since this is a new community effort,
+                some games may only have a few reports — your contribution can help others
+                discover better ways to play {{ gameName || 'this title' }}.
+              </p>
+              <p>
+                Have your own tested setup? Click <em>Submit Report</em> to share your
+                configuration and help others discover the best way to play
+                {{ gameName || 'this game' }} on Steam Deck.
+              </p>
+            </div>
           </div>
         </div>
       </div>
