@@ -27,7 +27,7 @@ dayjs.extend(relativeTime)
 
 interface ExtendedGameReport extends Omit<GameReport, 'data'> {
   data: Partial<GameReportData>;
-  reportVisible: boolean;
+  reportVisible?: boolean;
   external?: boolean;
 }
 
@@ -140,16 +140,22 @@ const hasReports = computed(() => {
   return hasInternal || hasExternal
 })
 
+// Expanded state per-report id
+const expanded = ref<Record<number, boolean>>({})
+function isExpanded(id: number) {
+  return !!expanded.value[id]
+}
+function setExpanded(id: number, val: boolean) {
+  expanded.value[id] = val
+}
+
 /** SSR-stable, pure computed reports pipeline */
 const filteredReports = computed<ExtendedGameReport[]>(() => {
   const gd = gameData.value
   if (!gd || !gd.reports) return []
 
-  const expandedId = parseInt(route.query.expandedId as string, 10)
-
   let reports: ExtendedGameReport[] = gd.reports.map((report) => ({
     ...report,
-    reportVisible: expandedId === report.id,
   }))
 
   // Filter by device selector
@@ -185,9 +191,7 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
           report_count: review.source.report_count || 0,
         },
         created_at: review.created_at,
-        updated_at: review.updated_at,
-        // Never mark an external report as visible
-        reportVisible: false,
+      updated_at: review.updated_at,
         // Use metadata from parent game data
         metadata: {
           poster: gd.metadata.poster,
@@ -254,6 +258,12 @@ onMounted(async () => {
     if (route.query.openReportForm === 'true' && !dialogAutoOpened.value) {
       dialogAutoOpened.value = true
       openDialog()
+    }
+
+    // Pre-expand a report from query param
+    const expandedId = parseInt(route.query.expandedId as string, 10)
+    if (!Number.isNaN(expandedId)) {
+      expanded.value[expandedId] = true
     }
   }
 
@@ -531,7 +541,8 @@ useMeta(() => {
                 <q-item
                   v-for="report in filteredReports" :key="report.id"
                   class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
-                  <q-expansion-item v-model="report.reportVisible"
+                  <q-expansion-item :model-value="isExpanded(report.id)"
+                                    @update:model-value="(v) => setExpanded(report.id, v)"
                                     dense class="full-width"
                                     expand-icon-class="self-end"
                                     header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs">
