@@ -16,9 +16,66 @@ export const useGameStore = defineStore('game', {
     gameBanner: null as string | null,
     githubProjectSearchLink: null as string | null,
     githubSubmitReportLink: 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800',
+
+    // Page-level SEO/social metadata (client-safe updates only)
+    metadata: {
+      title: '' as string,
+      description: '' as string,
+      image: '' as string,
+      imageAlt: '' as string,
+      imageType: '' as string,
+      imageWidth: '' as string,
+      imageHeight: '' as string,
+    },
   }),
 
   actions: {
+    setMetadata(partial: Partial<{
+      title: string
+      description: string
+      image: string
+      imageAlt: string
+      imageType: string
+      imageWidth: string
+      imageHeight: string
+    }>) {
+      this.metadata = { ...this.metadata, ...partial }
+    },
+
+    // Convenience: set reasonable defaults based on the current game name
+    setDefaultGameMetadata() {
+      const fallbackName = this.gameName || (this.appId ? `App ${this.appId}` : '')
+      const title = fallbackName
+        ? `${fallbackName} – Steam Deck settings & performance`
+        : 'Game Report – Steam Deck settings'
+      const description = `Best Steam Deck settings and community performance reports for ${fallbackName || 'this game'}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`
+      this.setMetadata({ title, description })
+    },
+
+    // Client-only: probe image for dimensions and MIME type
+    updateImageMetadataFromUrl(url: string) {
+      if (typeof window === 'undefined' || !url) return
+      try {
+        const img = new Image()
+        img.onload = () => {
+          const imageWidth = String((img as HTMLImageElement).naturalWidth)
+          const imageHeight = String((img as HTMLImageElement).naturalHeight)
+          let imageType = ''
+          if (/\.(jpe?g)$/i.test(url)) imageType = 'image/jpeg'
+          else if (/\.png$/i.test(url)) imageType = 'image/png'
+          else if (/\.webp$/i.test(url)) imageType = 'image/webp'
+          else if (/\.gif$/i.test(url)) imageType = 'image/gif'
+          this.setMetadata({ imageWidth, imageHeight, imageType })
+        }
+        img.onerror = () => {
+          this.setMetadata({ imageWidth: '', imageHeight: '', imageType: '' })
+        }
+        img.src = url
+      } catch {
+        // Swallow errors silently; keep prior metadata
+      }
+    },
+
     async ensureLoaded(currentRoute: RouteLocationNormalizedLoaded): Promise<void> {
       if (this.isLoaded && this.gameData) return
 
@@ -56,10 +113,29 @@ export const useGameStore = defineStore('game', {
           this.gameBackground = fetched.metadata.hero || null
           this.gamePoster = fetched.metadata.poster || null
           this.gameBanner = fetched.metadata.banner || null
+
+          // Seed metadata image fields so components have initial values (SSR-safe)
+          const imgUrl = this.gameBanner || this.gameBackground || this.gamePoster || ''
+          if (imgUrl) {
+            let imageType = ''
+            if (/\.(jpe?g)$/i.test(imgUrl)) imageType = 'image/jpeg'
+            else if (/\.png$/i.test(imgUrl)) imageType = 'image/png'
+            else if (/\.webp$/i.test(imgUrl)) imageType = 'image/webp'
+            else if (/\.gif$/i.test(imgUrl)) imageType = 'image/gif'
+            this.setMetadata({
+              image: imgUrl,
+              imageAlt: `${this.gameName || (this.appId ? `App ${this.appId}` : 'Game')} - Game Banner`,
+              imageType,
+            })
+          }
+
           if (this.appId) {
             this.githubSubmitReportLink = `${this.githubSubmitReportLink}&app_id=${this.appId}`
           }
         }
+
+        // Initialise default page metadata now that core fields are known
+        this.setDefaultGameMetadata()
       }
 
       this.isLoaded = true

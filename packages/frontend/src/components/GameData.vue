@@ -142,9 +142,11 @@ const hasReports = computed(() => {
 
 // Expanded state per-report id
 const expanded = ref<Record<number, boolean>>({})
+
 function isExpanded(id: number) {
   return !!expanded.value[id]
 }
+
 function setExpanded(id: number, val: boolean) {
   expanded.value[id] = val
 }
@@ -191,7 +193,7 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
           report_count: review.source.report_count || 0,
         },
         created_at: review.created_at,
-      updated_at: review.updated_at,
+        updated_at: review.updated_at,
         // Use metadata from parent game data
         metadata: {
           poster: gd.metadata.poster,
@@ -279,47 +281,25 @@ onBeforeUnmount(() => {
 })
 
 /*METADATA*/
-const fallbackName = computed(() => gameName.value || (appId.value ? `App ${appId.value}` : ''))
-const metaTitle = computed(() => `${fallbackName.value ? `${fallbackName.value} – Steam Deck settings & performance` : 'Game Report – Steam Deck settings'}`)
-const metaDescription = computed(() => `Best Steam Deck settings and community performance reports for ${fallbackName.value || 'this game'}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`)
+const metaTitle = computed(() => gameStore.metadata.title || 'Game Report – Steam Deck settings')
+const metaDescription = computed(() => gameStore.metadata.description || 'Best Steam Deck settings and community performance reports for this game. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.')
 const metaLink = computed(() => `https://deckverified.games${route.path}`)
 const metaLogo = ref('https://deckverified.games/logo2.png')
-const metaImage = ref('')
-const metaAlt = ref('')
-const metaImageType = ref('')
-const metaImageWidth = ref('')
-const metaImageHeight = ref('')
+const metaImage = computed(() => gameStore.metadata.image)
+const metaImageAlt = computed(() => gameStore.metadata.imageAlt)
+const metaImageType = computed(() => gameStore.metadata.imageType)
+const metaImageWidth = computed(() => gameStore.metadata.imageWidth)
+const metaImageHeight = computed(() => gameStore.metadata.imageHeight)
 
-// Client-only helper
-function updateImageProperties(url: string) {
-  if (!isClient) return
-  const img = new Image()
-  img.onload = () => {
-    metaImageWidth.value = String(img.naturalWidth)
-    metaImageHeight.value = String(img.naturalHeight)
-    if (url.match(/\.(jpe?g)$/i)) metaImageType.value = 'image/jpeg'
-    else if (url.match(/\.png$/i)) metaImageType.value = 'image/png'
-    else if (url.match(/\.webp$/i)) metaImageType.value = 'image/webp'
-    else if (url.match(/\.gif$/i)) metaImageType.value = 'image/gif'
-    else metaImageType.value = '' // Fallback if you cannot determine it
-  }
-  img.onerror = () => {
-    // Handle errors (set defaults, log error, etc.)
-    metaImageWidth.value = ''
-    metaImageHeight.value = ''
-    metaImageType.value = ''
-  }
-  img.src = url
-}
-
-// Watch for changes to the gameBanner URL
+// Watch for changes to the gameBanner URL and update store metadata
 watch(gameBanner, (newUrl) => {
-  if (newUrl) {
-    metaImage.value = newUrl
-    metaAlt.value = `${gameName.value} - Game Banner`
-    updateImageProperties(newUrl)
-  }
-})
+    if (newUrl) {
+      gameStore.setMetadata({ image: newUrl, imageAlt: `${gameName.value} - Game Banner` })
+      gameStore.updateImageMetadataFromUrl(newUrl)
+    }
+  },
+  { immediate: true },
+)
 
 useMeta(() => {
   return {
@@ -338,7 +318,7 @@ useMeta(() => {
       ogType: { property: 'og:type', content: 'website' },
       ogImage: { property: 'og:image', content: metaImage.value },
       ogImageType: { property: 'og:image:type', content: metaImageType.value },
-      ogImageAlt: { property: 'og:image:alt', content: metaAlt.value },
+      ogImageAlt: { property: 'og:image:alt', content: metaImageAlt.value },
       ogImageWidth: { property: 'og:image:width', content: metaImageWidth.value },
       ogImageHeight: { property: 'og:image:height', content: metaImageHeight.value },
       ogUrl: { property: 'og:url', content: metaLink.value },
@@ -387,9 +367,9 @@ useMeta(() => {
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
       <div class="col-xs-12 col-md-12 text-center q-pa-md">
-        <div v-if="!$q.platform.is.mobile" class="text-h4 game-title">
+        <h1 v-if="!$q.platform.is.mobile" class="text-h2 game-title">
           {{ gameName }}
-        </div>
+        </h1>
       </div>
       <div class="col-xs-12 col-md-4 text-center q-pa-md-sm q-pa-xs-none self-start game-links">
         <div class="game-image-container row justify-center">
@@ -411,9 +391,9 @@ useMeta(() => {
             alt="Game Image">
           </q-img>
         </div>
-        <div v-if="$q.platform.is.mobile" class="game-title">
+        <h1 v-if="$q.platform.is.mobile" class="text-h6 game-title">
           {{ gameName }}
-        </div>
+        </h1>
         <div class="q-pa-md">
           <div class="row justify-center">
             <q-btn v-if="githubProjectSearchLink"
@@ -899,8 +879,7 @@ useMeta(() => {
 }
 
 .game-title {
-  font-size: 2.5em;
-  font-weight: bold;
+  margin-top: 0;
   margin-bottom: 15px;
   text-shadow: 2px 2px 4px black;
 }
