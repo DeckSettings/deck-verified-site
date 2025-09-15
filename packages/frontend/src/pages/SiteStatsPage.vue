@@ -5,6 +5,7 @@ import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
 import ReportForm from 'components/ReportForm.vue'
 import StatsGameDetailsRequestsList from 'components/StatsGameDetailsRequestsList.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const gameBackground = ref(`${baseUrl.value}/hero-background2.jpg`)
@@ -124,13 +125,10 @@ useMeta(() => {
         <div class="col-12 col-md-6">
           <div class="column">
             <div class="col q-mt-lg" :class="$q.screen.lt.md ? 'self-center': 'self-end q-mr-xl'">
-              <q-btn
-                glossy
+              <PrimaryButton
                 :size="$q.screen.lt.sm ? 'md': 'lg'"
                 icon="fas fa-file-invoice"
                 label="Submit Report"
-                color="secondary"
-                text-color="white"
                 @click="openDialog"
               />
               <q-dialog class="q-ma-none q-pa-none report-dialog"
@@ -151,7 +149,7 @@ useMeta(() => {
       </div>
     </div>
 
-    <div style="max-width: 2000px; margin: 0 auto" class="row q-col-gutter-md q-row-gutter-md q-px-lg-xl">
+    <div class="row">
       <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
         <StatsGameDetailsRequestsList statSelection="withReports" />
       </div>

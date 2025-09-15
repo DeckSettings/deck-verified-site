@@ -6,6 +6,7 @@ import type { GameSearchResult } from '../../../shared/src/game'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'
 import ReportForm from 'components/ReportForm.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
@@ -137,24 +138,18 @@ useMeta(() => {
         <div class="col-12 col-md-5">
           <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
             <div v-if="$q.screen.gt.sm" class="col-12 col-md-6 flex justify-end">
-              <q-btn
-                glossy
+              <PrimaryButton
                 size="lg"
                 icon="fas fa-chart-bar"
                 label="View Site Stats"
-                color="secondary"
-                text-color="white"
                 :to="{ name: 'site-stats' }"
               />
             </div>
             <div class="col-12 col-md-6 flex justify-center">
-              <q-btn
-                glossy
+              <PrimaryButton
                 :size="$q.screen.lt.sm ? 'md': 'lg'"
                 icon="fas fa-file-invoice"
                 label="Submit Report"
-                color="secondary"
-                text-color="white"
                 @click="openDialog"
               />
               <q-dialog class="q-ma-none q-pa-none report-dialog"
@@ -261,8 +256,17 @@ useMeta(() => {
 }
 
 .game-result {
-  background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 5px 5px 10px black;
+  background: color-mix(in srgb, var(--q-dark) 55%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+.game-result:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--q-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--q-dark) 50%, transparent);
 }
 
 .no-decoration {
@@ -273,5 +277,9 @@ useMeta(() => {
 
 .no-decoration * {
   text-decoration: none !important; /* Removes underline from all child elements */
+}
+
+.game-image {
+  border-bottom: 1px solid color-mix(in srgb, white 8%, transparent);
 }
 </style>
