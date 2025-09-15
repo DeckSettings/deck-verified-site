@@ -42,7 +42,6 @@ import HeaderSearch from 'components/HeaderSearch.vue'
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
   gap: 8px;

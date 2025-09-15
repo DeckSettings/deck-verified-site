@@ -101,12 +101,9 @@ export default defineComponent({
 
 
 <template>
-  <q-card
-    class="my-card text-white"
-    style="background: radial-gradient(circle, #35a2ff 0%, var(--q-primary) 100%)">
-    <q-card-section>
+  <q-card class="home-reports-card text-white">
+    <q-card-section class="home-reports-header">
       <div class="text-h6">{{ listTitle }}</div>
-      <div class="text-subtitle2"></div>
     </q-card-section>
 
     <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
@@ -117,6 +114,7 @@ export default defineComponent({
             :key="report.id"
             clickable
             v-ripple
+            class="report-item"
             :class="{ 'q-pl-md': $q.platform.is.mobile }"
             :to="report.data.app_id ? `/app/${report.data.app_id}?expandedId=${report.id}` : `/game/${encodeURIComponent(report.data.game_name)}?expandedId=${report.id}`"
           >
@@ -257,6 +255,33 @@ export default defineComponent({
 </template>
 
 <style scoped>
+.home-reports-card {
+  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.home-reports-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-item {
+  border-radius: 12px;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+  border: 1px solid transparent;
+}
+.report-item:hover {
+  background-color: color-mix(in srgb, var(--q-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--q-primary) 35%, transparent);
+  transform: translateY(-1px);
+}
+
 .game-info-section {
   display: flex;
   flex-direction: column;
@@ -269,7 +294,8 @@ export default defineComponent({
 }
 
 .game-poster {
-  background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 3px 3px 10px black;
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
 }
 </style>
