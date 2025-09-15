@@ -65,7 +65,7 @@ onUnmounted(() => {
         <SecondaryButton
           :full-width="$q.screen.lt.sm"
           icon="fab fa-github"
-          href="https://github.com/DeckSettings/game-reports-steamos"
+          href="https://github.com/DeckSettings/game-reports-steamos/issues"
           target="_blank" rel="noopener"
           label="View Reports Source"
         />
