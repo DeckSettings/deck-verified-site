@@ -466,7 +466,7 @@ useMeta(() => {
           </div>
           <!-- END SUBMIT REPORT BUTTON -->
           <!-- START PAGE TEXT -->
-          <div v-if="!$q.screen.lt.md" class="q-mt-lg text-left">
+          <div class="q-mt-lg text-left gt-sm">
             <div class="q-mt-md">
               <h3 class="text-h6">Discover Community Game Reports</h3>
               <p>
