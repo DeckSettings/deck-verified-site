@@ -774,7 +774,7 @@ export const fetchBlogReviewSummary = async (gameDetails: Partial<GameDetails>):
   })()
 
   // Fetch cache data
-  const key = `${baseKey}:${hash}`
+  const key = `${baseKey} - ${hash}`
   const cachedData = await redisLookupReportsSummaryBlog(key)
   if (cachedData) {
     return cachedData.reports_summary

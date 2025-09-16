@@ -790,12 +790,12 @@ export const redisLookupSDGReview = async (appId: string): Promise<SDGVideoRevie
 
 /**
  * Caches an object of the reports summary blog in Redis.
- * The cached data is stored for 14 days to improve search performance and reduce API calls.
+ * The cached data is stored for 6 months to improve API performance and reduce API calls.
  */
 export const redisCacheReportsSummaryBlog = async (
   data: BloggerReportSummary,
   key: string,
-  cacheTime: number = 60 * 60 * 24 * 14, // Default to 14 days
+  cacheTime: number = 60 * 60 * 24 * 182, // Default to 6 months
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching the reports summary blog.')
