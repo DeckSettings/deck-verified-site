@@ -664,7 +664,8 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     // Transform the results by extracting app_id and game_name from metricValue
     const transformedMetrics = await Promise.all(
       aggregatedMetrics.map(async metric => {
-        const [rawAppId, rawGameName] = metric.metricValue.split(':')
+        // IMPORTANT: Ensure we only split the first occurrence of ':'. Some games contain a : in the name.
+        const [rawAppId, rawGameName] = metric.metricValue.split(/:(.+)/).slice(0, 2)
         const app_id =
           rawAppId === '_' || rawAppId.trim() === '' || isNaN(Number(rawAppId))
             ? null
