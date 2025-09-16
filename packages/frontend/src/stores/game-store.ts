@@ -31,6 +31,28 @@ export const useGameStore = defineStore('game', {
   }),
 
   actions: {
+    // Clear per-game fields before loading a new target
+    resetGameState() {
+      this.isLoaded = false
+      this.reportsSummary = null
+      this.gameData = null
+      this.gameBackground = null
+      this.gamePoster = null
+      this.gameBanner = null
+      this.githubProjectSearchLink = null
+      // keep githubSubmitReportLink default
+      // keep device/launcher labels (global cache)
+      this.metadata = {
+        title: '',
+        description: '',
+        image: '',
+        imageAlt: '',
+        imageType: '',
+        imageWidth: '',
+        imageHeight: '',
+      }
+    },
+
     setMetadata(partial: Partial<{
       title: string
       description: string
@@ -43,7 +65,7 @@ export const useGameStore = defineStore('game', {
       this.metadata = { ...this.metadata, ...partial }
     },
 
-    // Convenience: set reasonable defaults based on the current game name
+    // Set reasonable defaults based on the current game name
     setDefaultGameMetadata() {
       const fallbackName = this.gameName || (this.appId ? `App ${this.appId}` : '')
       const title = fallbackName
@@ -53,7 +75,7 @@ export const useGameStore = defineStore('game', {
       this.setMetadata({ title, description })
     },
 
-    // Client-only: probe image for dimensions and MIME type
+    // CLIENT ONLY: probe image for dimensions and MIME type
     updateImageMetadataFromUrl(url: string) {
       if (typeof window === 'undefined' || !url) return
       try {
@@ -73,7 +95,7 @@ export const useGameStore = defineStore('game', {
         }
         img.src = url
       } catch {
-        // Swallow errors silently; keep prior metadata
+        // Do nothing
       }
     },
 
@@ -104,23 +126,29 @@ export const useGameStore = defineStore('game', {
         this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
       }
 
+      // RESET state for new target BEFORE fetching
+      this.resetGameState()
+
       // Update store keys from route
       this.appId = parsedAppId
-      this.gameName = parsedGameName || this.gameName
+      this.gameName = parsedGameName || ''
 
       // Fetch game data for the new target
       const fetched = (parsedAppId || parsedGameName)
         ? await fetchGameData(parsedGameName, parsedAppId)
         : null
+
       if (fetched) {
         this.gameData = fetched
 
         if (fetched.gameName) {
           this.gameName = fetched.gameName
         }
+
         if (fetched.projectNumber) {
           this.githubProjectSearchLink = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${fetched.projectNumber}`
         }
+
         if (fetched.metadata) {
           this.gameBackground = fetched.metadata.hero || null
           this.gamePoster = fetched.metadata.poster || null
@@ -141,14 +169,13 @@ export const useGameStore = defineStore('game', {
             })
           }
         }
-        if (fetched.reports_summary) {
-          this.reportsSummary = fetched.reports_summary
-        }
+
+        this.reportsSummary = fetched.reports_summary ?? null
 
         // Initialise default page metadata now that core fields are known
         this.setDefaultGameMetadata()
 
-        // Refresh the GitHub submit link with current context
+        // Update submit link
         const baseSubmit = 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800'
         const params: string[] = []
         if (this.gameName) params.push(`game_name=${encodeURIComponent(this.gameName)}`)
