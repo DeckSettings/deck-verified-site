@@ -8,6 +8,7 @@ export const useGameStore = defineStore('game', {
     isLoaded: false as boolean,
     appId: null as string | null,
     gameName: '' as string,
+    reportsSummary: null as string | null,
     gameData: null as GameDetails | null,
     deviceLabels: [] as GitHubIssueLabel[],
     launcherLabels: [] as GitHubIssueLabel[],
@@ -139,7 +140,9 @@ export const useGameStore = defineStore('game', {
               imageType,
             })
           }
-
+        }
+        if (fetched.reports_summary) {
+          this.reportsSummary = fetched.reports_summary
         }
 
         // Initialise default page metadata now that core fields are known

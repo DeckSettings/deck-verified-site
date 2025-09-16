@@ -101,6 +101,7 @@ export interface GameDetails {
   metadata: GameMetadata;
   reports: GameReport[];
   external_reviews: ExternalGameReview[];
+  reports_summary: string | null;
 }
 
 export interface GitHubProjectGameDetails extends Omit<GameDetails, 'external_reviews'> {
@@ -438,4 +439,8 @@ export interface GameDetailsRequestMetricResult {
   count: number;
   metadata?: GameMetadata;
   report_count?: number;
+}
+
+export interface BloggerReportSummary {
+  reports_summary: string | null;
 }

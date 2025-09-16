@@ -13,6 +13,7 @@ import {
   SteamGame, HardwareInfo,
   SDHQReview,
   SDGVideoReview,
+  BloggerReportSummary,
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
@@ -96,6 +97,29 @@ export const escapeRedisKey = (input: string): string => {
   // Comment with backslash the characters ,.<>{}[]"':;!@#$%^&*()-+=~ and whitespace
   return input.toString().toLowerCase().trim().replace(/[,.<>{}\[\]"':;!@#$%^&*()\-+=\~\s]/g, '\\$&')
 }
+
+/**
+ * Try to acquire a short-lived distributed lock in Redis.
+ *
+ * @param key Base key (will be escaped internally).
+ * @param ttlSeconds Expiration time for the lock in seconds. Defaults to 60.
+ * @returns true if lock was acquired, false otherwise.
+ */
+export const acquireRedisLock = async (
+  key: string,
+  ttlSeconds = 60,
+): Promise<boolean> => {
+  const lockKey = `lock:${escapeRedisKey(key)}`
+  try {
+    // Redis v4: set(key, value, { NX: true, EX: seconds })
+    const res = await redisClient.set(lockKey, '1', { NX: true, EX: ttlSeconds })
+    return res === 'OK'
+  } catch (e) {
+    logger.warn(`Failed to acquire lock for ${key}:`, e)
+    return false
+  }
+}
+
 
 /**
  * Stores game data in Redis as a hash entry.
@@ -760,6 +784,48 @@ export const redisLookupSDGReview = async (appId: string): Promise<SDGVideoRevie
     }
   } catch (error) {
     logger.error('Redis error while fetching cached SDG review:', error)
+  }
+  return null
+}
+
+/**
+ * Caches an object of the reports summary blog in Redis.
+ * The cached data is stored for 14 days to improve search performance and reduce API calls.
+ */
+export const redisCacheReportsSummaryBlog = async (
+  data: BloggerReportSummary,
+  key: string,
+  cacheTime: number = 60 * 60 * 24 * 14, // Default to 14 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching the reports summary blog.')
+  }
+  if (!key) {
+    throw new Error('An key is required to cache the reports summary blog.')
+  }
+
+  const redisKey = `reports_summary_blog:${escapeRedisKey(key)}`
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached the reports summary blog for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Retrieves a cached object of the reports summary blog for a given App ID.
+ */
+export const redisLookupReportsSummaryBlog = async (key: string): Promise<BloggerReportSummary | null> => {
+  if (!key) {
+    throw new Error('An key is required to lookup the reports summary blog.')
+  }
+
+  const redisKey = `reports_summary_blog:${escapeRedisKey(key)}`
+  try {
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved the reports summary blog for "${key}" from Redis cache`)
+      return JSON.parse(cachedData) as BloggerReportSummary
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached the reports summary blog:', error)
   }
   return null
 }

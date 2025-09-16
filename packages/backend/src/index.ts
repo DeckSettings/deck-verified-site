@@ -25,6 +25,7 @@ import {
   generateImageLinksFromAppId,
   generateSDHQReviewData,
   generateSDGReviewData,
+  fetchBlogReviewSummary,
 } from './helpers'
 import type {
   AggregateMetricResponse,
@@ -554,6 +555,15 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
           ...(returnData.external_reviews || []),
           ...sdgVideoReviews,
         ]
+      }
+    }
+
+    // Add blog summary of report data
+    returnData.reports_summary = null
+    if (includeExternal) {
+      const reportsSummary = await fetchBlogReviewSummary(returnData)
+      if (reportsSummary && reportsSummary.length > 0) {
+        returnData.reports_summary = reportsSummary
       }
     }
 

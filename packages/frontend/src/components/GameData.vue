@@ -40,6 +40,7 @@ const gameStore = useGameStore()
 // Load Pinia store state
 const appId = computed<string | null>(() => gameStore.appId)
 const gameName = computed<string>(() => gameStore.gameName)
+const gameReportsSummary = computed<string | null>(() => gameStore.reportsSummary)
 const gameData = computed<GameDetails | null>(() => gameStore.gameData)
 
 const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
@@ -487,6 +488,12 @@ useMeta(() => {
                 Have your own tested setup? Click <em>Submit Report</em> to share your
                 configuration and help others discover the best way to play
                 {{ gameName || 'this game' }} on Steam Deck.
+              </p>
+            </div>
+            <div v-if="gameReportsSummary">
+              <h3 class="text-h6">Reports Summary</h3>
+              <p>
+                {{ gameReportsSummary }}
               </p>
             </div>
           </div>

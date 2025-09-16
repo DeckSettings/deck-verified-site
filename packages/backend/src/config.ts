@@ -31,6 +31,7 @@ const config = {
   proxyCount: parseInt(process.env.REVERSE_PROXY_COUNT || '0', 10),
   enableRateLimiter: (process.env.DISABLE_RATE_LIMITER !== 'true'),
   runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true'),
+  bloggerApiKey: process.env.BLOGGER_API_KEY || null,
 }
 
 export default config
