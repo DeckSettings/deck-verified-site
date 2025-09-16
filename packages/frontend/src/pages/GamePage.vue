@@ -11,7 +11,14 @@ import type { Pinia } from 'pinia'
 defineOptions({
   async preFetch({ store, currentRoute }: { store: Pinia; currentRoute: RouteLocationNormalizedLoaded }) {
     const s = useGameStore(store)
-    await s.ensureLoaded(currentRoute)
+    if (process.env.SERVER) {
+      // SSR: block so bots get full HTML
+      await s.ensureLoaded(currentRoute)
+    } else {
+      // Client nav: switch page immediately, fetch in background
+      s.resetGameState()                 // clear old game instantly
+      void s.ensureLoaded(currentRoute)  // fire & forget (no await)
+    }
   },
 })
 </script>

@@ -397,7 +397,7 @@ useMeta(() => {
         <h1 v-if="$q.platform.is.mobile" class="text-h6 game-title">
           {{ gameName }}
         </h1>
-        <div class="q-pa-md">
+        <div v-if="gameData" class="q-pa-md">
           <!-- START EXTERNAL LINKS -->
           <div class="row q-col-gutter-xs" :class="$q.screen.lt.md ? 'justify-center' : ''">
             <SecondaryButton v-if="githubProjectSearchLink"

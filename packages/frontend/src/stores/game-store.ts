@@ -95,7 +95,7 @@ export const useGameStore = defineStore('game', {
         }
         img.src = url
       } catch {
-        // Do nothing
+        /* ignore errors */
       }
     },
 
@@ -119,13 +119,6 @@ export const useGameStore = defineStore('game', {
         return
       }
 
-      // Ensure labels are loaded once
-      if (this.deviceLabels.length === 0 || this.launcherLabels.length === 0) {
-        const labels = await fetchLabels()
-        this.deviceLabels = labels.filter((l) => l.name.startsWith('device:'))
-        this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
-      }
-
       // RESET state for new target BEFORE fetching
       this.resetGameState()
 
@@ -133,10 +126,22 @@ export const useGameStore = defineStore('game', {
       this.appId = parsedAppId
       this.gameName = parsedGameName || ''
 
-      // Fetch game data for the new target
+      // Fetch labels without blocking the reset (only if needed)
+      const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)
+        ? fetchLabels().then((labels) => {
+          this.deviceLabels = labels.filter((l) => l.name.startsWith('device:'))
+          this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
+        }).catch(() => {
+          /* ignore errors */
+        })
+        : Promise.resolve()
+
+      // Fetch game data (this one you await in SSR; on client it's fire-and-forget)
       const fetched = (parsedAppId || parsedGameName)
         ? await fetchGameData(parsedGameName, parsedAppId)
         : null
+
+      await labelsPromise
 
       if (fetched) {
         this.gameData = fetched

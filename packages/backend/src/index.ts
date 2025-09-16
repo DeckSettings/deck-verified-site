@@ -560,11 +560,17 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Add blog summary of report data
     returnData.reports_summary = null
-    if (includeExternal) {
+    if (
+      includeExternal &&
+      ((returnData.reports?.length ?? 0) > 0 ||
+        (returnData.external_reviews?.length ?? 0) > 0)
+    ) {
       const reportsSummary = await fetchBlogReviewSummary(returnData)
       if (reportsSummary && reportsSummary.length > 0) {
         returnData.reports_summary = reportsSummary
       }
+    } else {
+      logger.info('Skipping blog summary for game details result as we have no reports or external reviews')
     }
 
     // Log the metric for the game details lookup
