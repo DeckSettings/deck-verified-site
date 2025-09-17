@@ -8,9 +8,8 @@ import type {
   GitHubIssueLabel,
   GitHubUser,
   GameReportForm,
-  GameDetailsRequestMetricResult
+  GameDetailsRequestMetricResult,
 } from '../../../shared/src/game'
-import { defineStore } from 'pinia'
 
 // Build absolute API URLs during SSR to avoid hitting the SSR server itself
 const SSR = typeof window === 'undefined'
@@ -21,8 +20,8 @@ const SSR_API_ORIGIN = SSR
 // Build API URL depending on if we are running as SSR or SPA
 const apiUrl = (path: string) => SSR ? `${SSR_API_ORIGIN}${path}` : path
 
-export interface Report {
-  id: number;
+export interface HomeReport {
+  id: number | null;
   data: GameReportData;
   metadata: GameMetadata;
   reactions: GameReportReactions;
@@ -30,22 +29,7 @@ export interface Report {
   reviewScore: string;
 }
 
-export const useReportsStore = defineStore('reports', {
-  state: () => ({
-    recent: [] as Report[],
-    popular: [] as Report[],
-  }),
-  actions: {
-    async loadRecent() {
-      this.recent = await fetchRecentReports()
-    },
-    async loadPopular() {
-      this.popular = await fetchPopularReports()
-    }
-  }
-})
-
-export const fetchRecentReports = async (): Promise<Report[]> => {
+export const fetchRecentReports = async (): Promise<HomeReport[]> => {
   const url = apiUrl('/deck-verified/api/v1/recent_reports')
   try {
     const response = await fetch(url)
@@ -59,7 +43,7 @@ export const fetchRecentReports = async (): Promise<Report[]> => {
         metadata: report.metadata,
         reactions: report.reactions,
         user: report.user,
-        reviewScore
+        reviewScore,
       }
     })
   } catch (error) {
@@ -68,7 +52,7 @@ export const fetchRecentReports = async (): Promise<Report[]> => {
   }
 }
 
-export const fetchPopularReports = async (): Promise<Report[]> => {
+export const fetchPopularReports = async (): Promise<HomeReport[]> => {
   const url = apiUrl('/deck-verified/api/v1/popular_reports')
   try {
     const response = await fetch(url)
@@ -82,7 +66,7 @@ export const fetchPopularReports = async (): Promise<Report[]> => {
         metadata: report.metadata,
         reactions: report.reactions,
         user: report.user,
-        reviewScore
+        reviewScore,
       }
     })
   } catch (error) {
@@ -221,8 +205,11 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
   }
 }
 
-export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number): Promise<GameDetailsRequestMetricResult[]> => {
-  const url = apiUrl(`/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}`)
+export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number, limit: number | null): Promise<GameDetailsRequestMetricResult[]> => {
+  let url = apiUrl(`/deck-verified/api/v1/metric/game_details?days=${days}&min_report_count=${min_report_count}&max_report_count=${max_report_count}`)
+  if (limit) {
+    url += '&limit=' + limit
+  }
   try {
     const response = await fetch(url)
     if (response.status === 204) {

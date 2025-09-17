@@ -57,7 +57,7 @@ export interface GameReportReactions {
 export interface GameReportData {
   summary: string;
   game_name: string;
-  app_id: number;
+  app_id: number | null;
   launcher: string;
   target_framerate: string;
   average_battery_power_draw: string | null;

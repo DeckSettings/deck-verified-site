@@ -7,7 +7,7 @@ import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 import FullPageSection from 'components/elements/FullPageSection.vue'
-import { useReportsStore } from 'src/services/gh-reports'
+import { useReportsStore } from 'stores/reports-store'
 
 const $q = useQuasar()
 
@@ -107,7 +107,7 @@ useMeta(() => {
           <HomeReportsList reportSelection="recentlyUpdated" />
         </div>
         <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
-          <HomeReportsList reportSelection="popular" />
+          <HomeReportsList reportSelection="views" />
         </div>
       </div>
     </FullPageSection>
