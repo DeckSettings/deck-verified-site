@@ -100,7 +100,7 @@ const maxRequestCount = computed(() => {
           <div class="column full-width">
             <!-- Top content -->
             <div class="row items-start justify-between q-col-gutter-sm no-wrap">
-              <div class="col">
+              <div class="col" style="white-space: nowrap; overflow: hidden;">
                 <div class="text-h6 q-mb-xs">
                   {{ metricResult.game_name || '<< Game Name Not Yet Parsed >>' }}
                 </div>
@@ -209,12 +209,18 @@ const maxRequestCount = computed(() => {
 .game-info-section {
   display: flex;
   flex-direction: column;
-  height: 150px;
 }
 
 .game-poster {
   background-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
   border-radius: 8px;
+}
+
+/* -md- */
+@media (min-width: 1024px) {
+  .game-info-section {
+    height: 150px;
+  }
 }
 </style>

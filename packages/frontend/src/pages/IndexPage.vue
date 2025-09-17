@@ -8,6 +8,22 @@ import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 import FullPageSection from 'components/elements/FullPageSection.vue'
 import { useReportsStore } from 'stores/reports-store'
+import type { Pinia } from 'pinia'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
+
+
+// Quasar preFetch (SSR + client) to ensure game data is loaded before render
+defineOptions({
+  async preFetch({ store }: { store: Pinia; currentRoute: RouteLocationNormalizedLoaded }) {
+    const s = useReportsStore(store)
+    if (process.env.SERVER) {
+      // SSR: block so bots get full HTML
+      await s.loadPopular()
+      await s.loadRecent()
+      await s.loadViews()
+    }
+  },
+})
 
 const $q = useQuasar()
 
@@ -103,10 +119,10 @@ useMeta(() => {
 
     <FullPageSection backgroundImageUrl="">
       <div class="row">
-        <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
+        <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
           <HomeReportsList reportSelection="recentlyUpdated" />
         </div>
-        <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
+        <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
           <HomeReportsList reportSelection="views" />
         </div>
       </div>

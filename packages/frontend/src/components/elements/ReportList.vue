@@ -187,7 +187,7 @@ const getReportUrl = (report: HomeReport) => {
           </q-item-label>
         </q-item-section>
 
-        <q-item-section v-if="!$q.platform.is.mobile" side top>
+        <q-item-section side top class="gt-xs">
           <q-chip
             size="sm"
             color="brown"
@@ -234,7 +234,6 @@ const getReportUrl = (report: HomeReport) => {
 .game-info-section {
   display: flex;
   flex-direction: column;
-  height: 150px;
 }
 
 .game-poster {
@@ -246,5 +245,12 @@ const getReportUrl = (report: HomeReport) => {
 .device-image {
   margin-left: 90px;
   margin-bottom: 7px;
+}
+
+/* -md- */
+@media (min-width: 1024px) {
+  .game-info-section {
+    height: 150px;
+  }
 }
 </style>
