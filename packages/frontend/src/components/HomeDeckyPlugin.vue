@@ -155,7 +155,6 @@ onUnmounted(() => {
 
 .split-container {
   width: 100%;
-  max-width: 2000px;
 }
 
 .text-col {

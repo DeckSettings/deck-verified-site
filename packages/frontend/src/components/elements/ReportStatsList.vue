@@ -5,6 +5,9 @@ import type { GameDetailsRequestMetricResult } from '../../../../shared/src/game
 import { simSteam, simSteamdb, simProtondb, simPcgamingwiki } from 'quasar-extras-svg-icons/simple-icons-v14'
 import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const props = defineProps({
   reportsStatsList: {
@@ -40,6 +43,12 @@ const maxRequestCount = computed(() => {
 //  return `rgb(${red}, ${green}, 0)`
 //}
 
+const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: string | null }) => {
+  if (!$q.platform.is.mobile) return ''
+  if (metricResult.app_id) return `/app/${metricResult.app_id}`
+  if (metricResult.game_name) return `/game/${encodeURIComponent(metricResult.game_name)}`
+  return ''
+}
 </script>
 
 <template>
@@ -48,9 +57,11 @@ const maxRequestCount = computed(() => {
       <q-item
         v-for="(metricResult, index) in paginatedResults"
         :key="index"
-        v-ripple
         class="report-item"
         :class="{ 'q-pl-md': $q.platform.is.mobile }"
+        v-ripple
+        :clickable="$q.platform.is.mobile"
+        :to="getGameDataUrl(metricResult)"
       >
         <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
           <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
@@ -96,7 +107,7 @@ const maxRequestCount = computed(() => {
           </div>
         </q-item-section>
 
-        <q-item-section top class="q-ml-sm game-info-section col">
+        <q-item-section top class="col q-ml-sm game-info-section overflow-hidden">
           <div class="column full-width">
             <!-- Top content -->
             <div class="row items-start justify-between q-col-gutter-sm no-wrap">
@@ -111,10 +122,11 @@ const maxRequestCount = computed(() => {
               </div>
               <div class="col-auto self-start">
                 <SecondaryButton
+                  class="gt-sm"
                   icon="open_in_new"
                   label="View Reports"
                   target="_blank"
-                  :to="metricResult.app_id ? `/app/${metricResult.app_id}` : metricResult.game_name ? `/game/${encodeURIComponent(metricResult.game_name)}` : ``"
+                  :to="getGameDataUrl(metricResult)"
                 />
               </div>
             </div>
@@ -132,7 +144,7 @@ const maxRequestCount = computed(() => {
                   size="sm"
                   track-color="grey-3"
                 />
-                <div class="row q-gutter-sm q-mt-xs">
+                <div class="row gt-sm q-gutter-sm q-mt-xs">
                   <q-btn v-if="metricResult.app_id"
                          class="q-ma-none"
                          round flat

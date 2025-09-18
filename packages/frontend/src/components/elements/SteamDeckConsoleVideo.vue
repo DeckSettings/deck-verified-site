@@ -184,7 +184,7 @@ const screenStyle = computed(() => {
 
 .sdk-console {
   position: relative;
-  max-width: 960px;
+  max-width: 1500px;
   width: 100%;
   transform-origin: center center;
   transition: transform 0.2s ease-out;

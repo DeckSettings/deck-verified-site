@@ -564,7 +564,10 @@ useMeta(() => {
                           <!-- Avatar Section -->
                           <div class="col-auto q-ml-md">
                             <q-avatar>
-                              <DeviceImage :device="report.data.device ? report.data.device : ''" />
+                              <DeviceImage
+                                :device="report.data.device ? report.data.device : ''"
+                                :dropShadow="false"
+                                size="small" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->
@@ -628,7 +631,10 @@ useMeta(() => {
                           <!-- Avatar Section -->
                           <div class="col-auto">
                             <q-avatar>
-                              <DeviceImage :device="report.data.device ? report.data.device : ''" />
+                              <DeviceImage
+                                :device="report.data.device ? report.data.device : ''"
+                                :dropShadow="false"
+                                size="small" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->

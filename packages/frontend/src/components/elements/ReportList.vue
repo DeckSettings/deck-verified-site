@@ -76,10 +76,10 @@ const getReportUrl = (report: HomeReport) => {
       <q-item
         v-for="report in reportsList"
         :key="report.id ?? report.data.app_id ?? report.data.game_name"
-        clickable
-        v-ripple
         class="report-item"
         :class="{ 'q-pl-md': $q.platform.is.mobile }"
+        v-ripple
+        clickable
         :to="getReportUrl(report)"
       >
         <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
@@ -126,11 +126,11 @@ const getReportUrl = (report: HomeReport) => {
           </div>
           <q-item-label v-if="$q.platform.is.mobile"
                         class="absolute-bottom-left q-ml-sm q-mb-lg">
-            <DeviceImage :device="report.data.device" :shadow="true" />
+            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" />
           </q-item-label>
           <q-item-label v-else
-                        class="absolute-bottom-left device-image">
-            <DeviceImage :device="report.data.device" :shadow="true" />
+                        class="absolute-bottom-left device-image-wrapper">
+            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" />
           </q-item-label>
         </q-item-section>
 
@@ -242,7 +242,7 @@ const getReportUrl = (report: HomeReport) => {
   border-radius: 8px;
 }
 
-.device-image {
+.device-image-wrapper {
   margin-left: 90px;
   margin-bottom: 7px;
 }
