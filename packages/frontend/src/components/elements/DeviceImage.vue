@@ -16,6 +16,11 @@ const props = defineProps({
     required: false,
     default: 'small',
   },
+  width: {
+    type: String,
+    required: false,
+    default: '400px',
+  },
 })
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
@@ -47,10 +52,10 @@ const imageSource = computed(() => {
 const altText = computed(() => {
   return `${props.device} Image`
 })
-const computedClass = computed(() => {
-  const classes = ['device-image'] as string[]
-  if (props.dropShadow) classes.push('device-image-with-shadow')
-  return classes
+const computedStyle = computed(() => {
+  const style = [`width: ${props.width};`] as string[]
+  if (props.dropShadow) style.push('filter: drop-shadow(7px 7px 3px rgba(0, 0, 0, 0.5));')
+  return style
 })
 </script>
 
@@ -58,16 +63,10 @@ const computedClass = computed(() => {
   <q-img
     :src="imageSource"
     :alt="altText"
-    :class="computedClass"
+    :style="computedStyle"
   />
 </template>
 
 <style scoped>
-.device-image {
-  width: 80px;
-}
 
-.device-image-with-shadow {
-  filter: drop-shadow(7px 7px 3px rgba(0, 0, 0, 0.5));
-}
 </style>

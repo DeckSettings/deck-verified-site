@@ -1,368 +1,350 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import type { CSSProperties } from 'vue'
-import { useQuasar } from 'quasar'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
+import { gsap } from 'gsap'
+import ScrollTrigger from 'gsap/ScrollTrigger'
+import { CSSPlugin } from 'gsap/CSSPlugin'
+import DeviceImage from 'components/elements/DeviceImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
-const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
-const $q = useQuasar()
+gsap.registerPlugin(ScrollTrigger, CSSPlugin)
 
-const props = defineProps({
-  backgroundImageUrl: { type: String, default: '' },
-  transition: { type: String, default: '1s' },
-  // Minimum viewport height to enable scroll-driven animation
-  minViewportHeight: { type: Number, default: 680 },
-})
-
-interface Slide {
-  id: number
-  image: string
-  title: string
-  description: string
+type DeviceItem = {
+  device: string
+  width: number
+  top: number
+  left?: string
+  right?: string
+  scrollSpeed?: number
+  enter?: {
+    side?: 'left' | 'right'
+    offset?: number
+    ease?: string
+    duration?: number
+  }
+  appearOffset?: number
+  opacity?: number
+  rotate?: number
 }
 
-interface SlideStyle extends CSSProperties {
-  opacity: number
-  transform: string
+const DEVICE_ITEMS: DeviceItem[] = [
+  {
+    device: 'Steam Deck LCD (256GB/512GB)',
+    width: 100,
+    top: 20,
+    left: '30%',
+    scrollSpeed: 10,
+    enter: { side: 'left', offset: 200, ease: 'power3.out' },
+    appearOffset: 0,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'ROG Ally Z1 Extreme',
+    width: 400,
+    top: 280,
+    right: '20%',
+    scrollSpeed: 40,
+    enter: { side: 'right', offset: 250, ease: 'power3.out' },
+    appearOffset: 200,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'Legion Go',
+    width: 140,
+    top: 300,
+    left: '12%',
+    scrollSpeed: 14,
+    enter: { side: 'right', offset: 400, ease: 'power3.out' },
+    appearOffset: 420,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'ROG Ally X',
+    width: 150,
+    top: 520,
+    right: '10%',
+    scrollSpeed: 15,
+    enter: { side: 'left', offset: 120, ease: 'power3.out' },
+    appearOffset: 640,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'Zone',
+    width: 150,
+    top: 720,
+    right: '28%',
+    scrollSpeed: 15,
+    enter: { side: 'right', offset: 140, ease: 'power3.out' },
+    appearOffset: 740,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'Steam Deck OLED',
+    width: 300,
+    top: 820,
+    left: '-8%',
+    scrollSpeed: 30,
+    enter: { side: 'left', offset: 140, ease: 'power3.out' },
+    appearOffset: 840,
+    opacity: 1,
+    rotate: 0,
+  },
+]
+
+const containerRef = ref<HTMLElement | null>(null)
+const cardRef = ref<HTMLElement | null>(null)
+const deviceRefs = ref<(HTMLElement | null)[]>([])
+const scaleFactor = ref(1)
+
+type GSAPContext = ReturnType<typeof gsap.context>
+let ctx: GSAPContext | null = null
+
+function setDeviceRef(el: Element | ComponentPublicInstance | null, index: number) {
+  deviceRefs.value[index] = el instanceof HTMLElement ? el : null
 }
 
-type SlideStylesMap = Record<number, SlideStyle>
+const cardTravelPx = 64
+const SCALE_BREAKPOINT = 1024
+const MIN_WIDTH_FACTOR = 1
+const MAX_WIDTH_FACTOR = 1.7
 
-const slides = ref<Slide[]>([
-  {
-    id: 1,
-    image: `${baseUrl.value}/devices/valve-steam-deck-shadow.png`,
-    title: 'Steam Deck (LCD/OLED)',
-    description: '...',
-  },
-  {
-    id: 2,
-    image: `${baseUrl.value}/devices/asus-rog-ally-shadow.png`,
-    title: 'ASUS ROG Ally',
-    description: '...',
-  },
-  {
-    id: 3,
-    image: `${baseUrl.value}/devices/asus-rog-ally-x-shadow.png`,
-    title: 'ASUS ROG Ally X',
-    description: '...',
-  },
-  {
-    id: 4,
-    image: `${baseUrl.value}/devices/lenovo-legion-go-shadow.png`,
-    title: 'Lenovo Legion Go',
-    description: '...',
-  },
-])
-
-const bgStyle = computed(() => {
-  const layers = []
-  if (props.backgroundImageUrl) {
-    layers.push(`url(${props.backgroundImageUrl})`)
+function calculateScaleFactor(width: number) {
+  if (width < SCALE_BREAKPOINT) {
+    return MIN_WIDTH_FACTOR
   }
-  return {
-    backgroundImage: layers.join(','),
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    transitionDuration: props.transition || '1s',
-  }
-})
 
-const sectionRef = ref<HTMLElement | null>(null)
-const scrollY = ref(0)
-const windowHeight = ref(0)
-const isBackgroundVisible = ref(false)
+  const ratio = width / SCALE_BREAKPOINT
+  return Math.min(MAX_WIDTH_FACTOR, Math.max(MIN_WIDTH_FACTOR, ratio))
+}
 
-const SCALE_AMOUNT = 0.1  // shrink by up to 10%
-const SPEED = 1.9
+function updateScaleFactor() {
+  if (typeof window === 'undefined') return
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+  scaleFactor.value = calculateScaleFactor(viewportWidth)
+  ScrollTrigger.refresh()
+}
 
-const slideStyles = computed<SlideStylesMap>(() => {
-  const styles: SlideStylesMap = {}
-  const vh = windowHeight.value
-  const halfV = vh / 2
-  const top = sectionRef.value?.offsetTop ?? 0
-
-  // 1) compute relative scroll so 0 = pin point
-  const relY = (scrollY.value - (top - halfV)) * SPEED
-
-  // 2) which “slide window” are we in?
-  const idx = Math.floor(relY / vh)
-  const prog = ((relY % vh) + vh) % vh / vh
-
-  slides.value.forEach((_, i) => {
-    if (i === idx) {
-      // slide-in at full opacity
-      const p = Math.min(Math.max(prog, 0), 1)
-      styles[i] = {
-        opacity: 1,
-        transform: `translateX(${vh * (1 - p)}px) scale(1)`,
-      }
-    } else if (i === idx - 1) {
-      // fade & shrink out
-      const p = Math.min(Math.max(prog, 0), 1)
-      styles[i] = {
-        opacity: 1 - p,
-        transform: `translateX(0) scale(${1 - p * SCALE_AMOUNT})`,
-      }
-    } else if (relY >= (i + 1) * vh) {
-      // done
-      styles[i] = { opacity: 0, transform: `translateX(0) scale(1)` }
-    } else {
-      // not done yet
-      styles[i] = { opacity: 0, transform: `translateX(${vh}px) scale(1)` }
-    }
-  })
-
-  return styles
-})
-
-const checkScroll = () => {
-  if (!sectionRef.value) return
-
-  const rect = sectionRef.value.getBoundingClientRect()
-  scrollY.value = window.scrollY
-  windowHeight.value = window.innerHeight
-
-  // Show the background if any part of the section is in the viewport
-  isBackgroundVisible.value = rect.bottom > 0 && rect.top < windowHeight.value
+function getDeviceWidth(item: DeviceItem) {
+  const computedWidth = Math.round(item.width * scaleFactor.value)
+  return `${computedWidth}px`
 }
 
 onMounted(() => {
-  const bindOrUnbindScroll = () => {
-    const tallEnough = window.innerHeight >= (props.minViewportHeight || 0)
-    const shouldBind = tallEnough
-    // ensure we don't double-bind
-    window.removeEventListener('scroll', checkScroll)
-    if (shouldBind) {
-      window.addEventListener('scroll', checkScroll)
-    }
-    // Run once to set initial state
-    checkScroll()
+  const scope = containerRef.value
+  if (!scope) return
+
+  updateScaleFactor()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateScaleFactor)
   }
 
-  bindOrUnbindScroll()
-  window.addEventListener('resize', bindOrUnbindScroll)
-  window.addEventListener('orientationchange', bindOrUnbindScroll)
+  ctx = gsap.context(() => {
+    const trigger = scope
+
+    const cardEl = cardRef.value
+
+    if (cardEl) {
+      gsap.fromTo(cardEl, {
+        y: -(cardTravelPx / 2),
+      }, {
+        y: cardTravelPx / 2,
+        ease: 'none',
+        scrollTrigger: {
+          trigger,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: true,
+        },
+      })
+    }
+
+    deviceRefs.value.forEach((deviceEl, index) => {
+      if (!deviceEl) return
+      const config = DEVICE_ITEMS[index]
+      if (!config) return
+
+      const speed = config.scrollSpeed ?? 2
+      const travel = cardTravelPx * speed
+      const cardHeight = cardEl?.offsetHeight ?? 0
+      const crossoverDistance = (cardHeight / 2) + (travel / 2)
+      const enterConfig = config.enter ?? {}
+      const baseOpacity = config.opacity ?? 0.35
+      const entryOffset = Math.abs(enterConfig.offset ?? 200)
+      const entrySide = enterConfig.side ?? 'left'
+      const entryFromX = entrySide === 'right' ? entryOffset : -entryOffset
+      const entryEase = enterConfig.ease ?? 'power3.out'
+      const entryDuration = enterConfig.duration ?? 0.9
+      const appearOffset = config.appearOffset ?? (index * 200)
+      const appearStart = () => `top+=${Math.round(appearOffset)}px bottom`
+
+      gsap.set(deviceEl, {
+        rotate: config.rotate ?? 0,
+        x: entryFromX,
+        opacity: 0,
+        y: crossoverDistance,
+      })
+
+      gsap.to(deviceEl, {
+        x: 0,
+        opacity: baseOpacity,
+        duration: entryDuration,
+        ease: entryEase,
+        scrollTrigger: {
+          trigger,
+          start: appearStart,
+          toggleActions: 'play none none reverse',
+        },
+      })
+
+      gsap.fromTo(deviceEl, {
+        y: crossoverDistance,
+      }, {
+        y: -crossoverDistance,
+        ease: 'none',
+        scrollTrigger: {
+          trigger,
+          start: appearStart,
+          end: 'bottom top',
+          scrub: true,
+        },
+        immediateRender: false,
+      })
+    })
+  }, scope)
 })
-onUnmounted(() => {
-  window.removeEventListener('scroll', checkScroll)
-  window.removeEventListener('resize', () => {
-  })
-  window.removeEventListener('orientationchange', () => {
-  })
+
+onBeforeUnmount(() => {
+  ctx?.revert()
+  ctx = null
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateScaleFactor)
+  }
 })
+
+function getDeviceStyle(item: DeviceItem) {
+  return {
+    top: `${item.top}px`,
+    left: item.left,
+    right: item.right,
+    zIndex: Math.max(1, Math.round((item.width ?? 0) / 10)),
+    opacity: item.opacity ?? 0.3,
+  }
+}
 </script>
 
 <template>
-  <section
-    ref="sectionRef"
-    class="device-section"
-    :style="{ height: `${slides.length * 100}vh` }"
-  >
-    <div
-      class="background-image"
-      :class="{ 'is-visible': isBackgroundVisible }"
-      :style="bgStyle"
-    />
-
-    <div class="pin-wrapper">
-      <div class="row items-center justify-center" style="width:100%">
-        <div class="col-12 col-md-6 flex items-center justify-center">
-          <div class="info-wrapper" :class="{'text-center': $q.screen.lt.sm}">
-            <h2 class="text-h2 q-mb-md q-mt-none" :class="{'text-h4': $q.screen.lt.md}">
-              Devices Available for Community Reporting
-            </h2>
-            <p>
-              This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
-              the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
-              Whether you’re hunting for settings that deliver smoother performance or longer battery life, or you want
-              to record and share your own optimised configurations, you’ve come to the right place.
-            </p>
-            <p>
-              Game reports for a device can include performance tweaks such as TDP limits, VRR and frame-rate caps,
-              manual GPU-clock adjustments, undervolting and more. They also provide guidance on in-game graphics and
-              display settings, including resolution choices, FSR or XeSS upscaling, frame generation and texture
-              quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
-              estimated battery life and total play time are calculated based on the report data.
-            </p>
-            <p class="q-mb-none">
-              Don’t see your device yet? Contributing support is quick and easy.
-              Just open a request on GitHub and we'll help you get it added.
-            </p>
-            <div class="q-px-xl">
-              <PrimaryButton
-                color="primary"
-                full-width
-                icon="fab fa-github"
-                label="Request a New Device"
-                href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-                target="_blank" rel="noopener">
-                <q-tooltip>View on ProtonDB</q-tooltip>
-              </PrimaryButton>
-            </div>
-            <p>
-              Once approved, your device will appear in the list—ready for game reports, performance data, and settings
-              shared by the community.
-            </p>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6 flex items-center justify-center">
-          <div class="carousel-wrapper">
-
-            <q-card
-              v-for="(slide, i) in slides"
-              :key="slide.id"
-              class="carousel-card"
-              :style="slideStyles[i]"
-              flat>
-              <img
-                :src="slide.image"
-                alt=""
-                class="card-image"
-                loading="lazy"
-              />
-
-              <!--<q-card-section>
-                    <div class="text-h6">{{ slide.title }}</div>
-                  </q-card-section>-->
-            </q-card>
-          </div>
-        </div>
+  <div ref="containerRef" class="supported-devices">
+    <div class="supported-devices__device-layer" aria-hidden="true">
+      <div
+        v-for="(item, index) in DEVICE_ITEMS"
+        :key="index"
+        class="supported-devices__device"
+        :style="getDeviceStyle(item)"
+        :ref="el => setDeviceRef(el, index)"
+      >
+        <DeviceImage
+          :device="item.device"
+          :width="getDeviceWidth(item)"
+          size="large"
+          drop-shadow
+        />
       </div>
     </div>
-  </section>
+    <q-card ref="cardRef" class="supported-devices__card">
+      <q-card-section>
+        <h2 class="text-h3 q-ma-none text-center">
+          Devices Available for Community Reporting
+        </h2>
+      </q-card-section>
+      <q-card-section>
+        <p>
+          This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
+          the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
+          Whether you’re hunting for settings that deliver smoother performance or longer battery life, or you want
+          to record and share your own optimised configurations, you’ve come to the right place.
+        </p>
+        <p>
+          Game reports for a device can include performance tweaks such as TDP limits, VRR and frame-rate caps,
+          manual GPU-clock adjustments, undervolting and more. They also provide guidance on in-game graphics and
+          display settings, including resolution choices, FSR or XeSS upscaling, frame generation and texture
+          quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
+          estimated battery life and total play time are calculated based on the report data.
+        </p>
+        <p class="q-mb-none">
+          Don’t see your device yet? Contributing support is quick and easy.
+          Just open a request on GitHub and we'll help you get it added.
+        </p>
+        <div class="q-px-xl">
+          <PrimaryButton
+            color="primary"
+            full-width
+            icon="fab fa-github"
+            label="Request a New Device"
+            href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+            target="_blank" rel="noopener">
+            <q-tooltip>View on ProtonDB</q-tooltip>
+          </PrimaryButton>
+        </div>
+        <p>
+          Once approved, your device will appear in the list—ready for game reports, performance data, and settings
+          shared by the community.
+        </p>
+      </q-card-section>
+    </q-card>
+  </div>
 </template>
 
 <style scoped>
-.background-image {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  z-index: 0;
-  opacity: 0;
-  transition-property: opacity;
-  transition-timing-function: ease-in-out;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  visibility: visible;
-  transition: opacity 0.5s ease-in-out;
-  /* Fade the background itself at top/bottom so content never looks overlaid */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
-}
-
-.background-image.is-visible {
-  opacity: 0.24;
-}
-
-.device-section {
+.supported-devices {
   position: relative;
-  padding-block-start: 50vh;
-  padding-block-end: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 640px;
+  align-items: center;
+  margin-top: 0;
+  margin-bottom: 50px;
 }
 
-.pin-wrapper {
-  position: sticky;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 100%;
-  z-index: 3;
-}
-
-.pin-wrapper::before {
-  content: '';
+.supported-devices__device-layer {
   position: absolute;
   inset: 0;
-  background-repeat: no-repeat;
+  overflow: visible;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.info-wrapper {
-  max-width: 840px;
-  margin-left: 40px;
-  z-index: 3;
-  padding: 20px 24px;
-  border-radius: 16px;
+.supported-devices__device {
+  position: absolute;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.supported-devices__card {
+  position: relative;
+  max-width: 900px;
+  width: 100%;
+  z-index: 1000;
   background: color-mix(in srgb, var(--q-dark) 60%, transparent);
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-}
-
-.carousel-wrapper {
-  position: relative;
-  width: 100%;
-  height: 70vh;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
 }
 
-
-.carousel-card {
-  position: absolute;
-  width: 520px;
-  max-width: 100%;
-  z-index: 10;
-  transition: opacity 0.1s ease, transform 0.1s ease;
-  background: transparent;
-}
-
-.card-image {
-  position: relative;
-  left: 4%;
-  width: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
-}
-
-/* -md- */
-@media (max-width: 1024px) {
-  .pin-wrapper::before {
-    /*background: radial-gradient(90% 70% at 50% 20%, rgba(0, 0, 0, 0.35), transparent 70%),
-    linear-gradient(to right, var(--q-dark) 0%, transparent 20%, transparent 80%, var(--q-dark) 100%),
-    linear-gradient(to top, var(--q-dark) 0%, transparent 40%);*/
-  }
-
-  .info-wrapper {
-    margin-top: 6vh;
-    max-width: 760px;
-    margin-inline: 10px;
-    padding: 16px 18px;
-  }
-
-  .carousel-wrapper {
-    height: 48vh;
-  }
-}
-
-/* -steam deck- */
-@media (max-width: 855px) {
-  .device-section {
-    padding-block-start: 100vh;
-    padding-block-end: 10vh;
-  }
-}
-
-/* -sm- */
-@media (max-width: 600px) {
-  .device-section {
-    padding-block-start: 70vh;
-    padding-block-end: 10vh;
-  }
-
-  .info-wrapper {
-    margin-top: 5vh;
-    max-width: 560px;
-    padding: 14px 16px;
+@media (min-width: 1024px) {
+  .supported-devices {
+    align-items: flex-start;
+    margin-left: 100px;
+    margin-top: 200px;
+    margin-bottom: 300px;
   }
 }
 </style>

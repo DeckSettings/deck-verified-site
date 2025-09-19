@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useMeta, useQuasar } from 'quasar'
-import HomeReportsList from 'components/HomeReportsList.vue'
+import { colors, useMeta, useQuasar } from 'quasar'
 import HomeHero from 'components/HomeHero.vue'
+import HomePageSection from 'components/HomePageSection.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
-import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
-import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
-import FullPageSection from 'components/elements/FullPageSection.vue'
+import HomeReportsList from 'components/HomeReportsList.vue'
 import { useReportsStore } from 'stores/reports-store'
 import type { Pinia } from 'pinia'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
+import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
+import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 
 
 // Quasar preFetch (SSR + client) to ensure game data is loaded before render
@@ -28,22 +28,32 @@ defineOptions({
 const $q = useQuasar()
 
 const reportStore = useReportsStore()
-onMounted(() => {
-  reportStore.loadRecent()
-})
-const sectionBackgrounds = computed(() => {
-  return reportStore.popular.map(rpt => {
-    const heroUrl = rpt.metadata.hero ?? rpt.metadata.poster
-    const posterUrl = rpt.metadata.poster ?? rpt.metadata.hero
-    const fallback = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1817070/library_hero.jpg'
 
+onMounted(async () => {
+  await reportStore.loadViews()
+})
+const fallbackSectionBackground = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1817070/library_hero.jpg'
+
+const sectionBackgrounds = computed<string[]>(() => {
+  return reportStore.views.map(rpt => {
+    const heroUrl = rpt.metadata?.hero || rpt.metadata?.poster
+    const posterUrl = rpt.metadata?.poster || rpt.metadata?.hero
     if ($q.screen.width < 1024) {
-      return posterUrl ?? fallback
-    } else {
-      return heroUrl ?? fallback
+      return posterUrl || fallbackSectionBackground
     }
+    return heroUrl || fallbackSectionBackground
   })
 })
+
+const primaryColor = colors.getPaletteColor('primary')
+
+function getSectionBackground(index: number): string {
+  const backgrounds = sectionBackgrounds.value
+  if (!backgrounds.length) {
+    return fallbackSectionBackground
+  }
+  return backgrounds[index] ?? fallbackSectionBackground
+}
 
 /*METADATA*/
 const metaTitle = ref('Steam Deck Game Settings & Performance Reports')
@@ -115,32 +125,48 @@ useMeta(() => {
 
 <template>
   <q-page class="bg-dark text-white q-pb-xl">
-    <HomeHero />
+    <div>
+      <HomePageSection>
+        <HomeHero />
+      </HomePageSection>
+    </div>
 
-    <FullPageSection backgroundImageUrl="">
-      <div class="row">
-        <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
-          <HomeReportsList reportSelection="recentlyUpdated" />
+    <div>
+      <HomePageSection
+        section-title="reports">
+        <div class="row">
+          <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
+            <HomeReportsList reportSelection="recentlyUpdated" />
+          </div>
+          <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
+            <HomeReportsList reportSelection="views" />
+          </div>
         </div>
-        <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
-          <HomeReportsList reportSelection="views" />
-        </div>
-      </div>
-    </FullPageSection>
+      </HomePageSection>
+    </div>
 
-    <HomeSupportedDevicesSection :backgroundImageUrl="sectionBackgrounds[0] ?? ''" />
+    <div style="margin-top:300px;">
+      <HomePageSection
+        :add-debug-markers="false"
+        section-title="devices"
+        :bg-show-start-pos="'top center'"
+        :bg-show-end-pos="'bottom center'"
+        :background-colour="primaryColor"
+        :background-image="getSectionBackground(2)">
+        <HomeSupportedDevicesSection />
+      </HomePageSection>
+    </div>
 
-    <FullPageSection
-      backgroundColour="black"
-      :scrollLockDuration="1">
-      <HomeDeckyPlugin />
-    </FullPageSection>
-
-    <!--<FullPageSection
-          backgroundColour="black"
-          :scrollLockDuration="1">
-          <GamemodeUIVideo />
-        </FullPageSection>-->
+    <div>
+      <HomePageSection
+        :add-debug-markers="false"
+        section-title="devices"
+        :bg-show-start-pos="'top bottom-=200px'"
+        :background-colour="primaryColor"
+        :background-image="getSectionBackground(3)">
+        <HomeDeckyPlugin />
+      </HomePageSection>
+    </div>
 
     <ScrollToTop />
   </q-page>

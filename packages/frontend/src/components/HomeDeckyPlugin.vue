@@ -1,26 +1,42 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
 import SteamDeckConsoleVideo from 'components/elements/SteamDeckConsoleVideo.vue'
 
 const videoUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.mp4', import.meta.url).href
 const previewImageUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.jpg', import.meta.url).href
+
 const videoLoaded = ref(false)
 
-const sectionRef = ref<HTMLElement | null>(null)
-const textContainerRef = ref<HTMLElement | null>(null)
-let typingTimer: number | null = null
+const containerRef = ref<HTMLElement | null>(null)
+const cardTextRef = ref<HTMLElement | null>(null)
+const mobileVideoRef = ref<HTMLVideoElement | null>(null)
+const typingTimer = ref<number | null>(null)
+let intersectionObserver: IntersectionObserver | null = null
 
-async function typeNodes(
-  parentEl: HTMLElement,
-  nodes: ChildNode[],
-  speed = 1,
-): Promise<void> {
+function setCardTextRef(el: Element | ComponentPublicInstance | null) {
+  if (!el) {
+    cardTextRef.value = null
+    return
+  }
+  if (el instanceof HTMLElement) {
+    cardTextRef.value = el
+    return
+  }
+  cardTextRef.value = ('$el' in el && el.$el instanceof HTMLElement)
+    ? el.$el
+    : null
+}
+
+async function typeNodes(parentEl: HTMLElement, nodes: ChildNode[], speed = 1): Promise<void> {
   for (const node of nodes) {
     if (node.nodeType === Node.TEXT_NODE) {
       const txt = (node as Text).textContent || ''
       for (let i = 0; i < txt.length; i++) {
         parentEl.append(txt[i]!)
-        await new Promise(r => typingTimer = window.setTimeout(r, speed))
+        await new Promise<void>(resolve => {
+          typingTimer.value = window.setTimeout(() => resolve(), speed)
+        })
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as HTMLElement
@@ -35,177 +51,302 @@ async function typeNodes(
 }
 
 onMounted(() => {
-  const container = textContainerRef.value
-  if (!container) return
+  const initialiseTyping = () => {
+    const cardText = cardTextRef.value
+    const section = containerRef.value
+    if (!cardText || !section) return false
 
-  const paragraphs = Array.from(container.querySelectorAll('p'))
-  const nodesList = paragraphs.map(p => Array.from(p.childNodes))
+    const paragraphs = Array.from(cardText.querySelectorAll('p'))
+    const nodesList = paragraphs.map(p => Array.from(p.childNodes))
 
-  paragraphs.forEach(p => {
-    const h = p.getBoundingClientRect().height
-    p.style.minHeight = `${h}px`
-    p.innerHTML = ''
-    p.style.visibility = 'hidden'
-  })
+    paragraphs.forEach(p => {
+      const h = p.getBoundingClientRect().height
+      p.style.minHeight = `${h}px`
+      p.innerHTML = ''
+      p.style.visibility = 'hidden'
+    })
 
-  const obs = new IntersectionObserver((entries, observer) => {
-    if (entries[0]?.isIntersecting) {
-      videoLoaded.value = true
-      observer.disconnect()
-      ;(async () => {
-        for (let i = 0; i < paragraphs.length; i++) {
-          const p = paragraphs[i]
-          p?.style.removeProperty('visibility')
-          await typeNodes(p!, nodesList[i]!, 1)
-        }
-      })()
-    }
-  }, { threshold: 0.5 })
+    intersectionObserver = new IntersectionObserver((entries, observer) => {
+      const entry = entries[0]
+      if (entry?.isIntersecting) {
+        videoLoaded.value = true
+        observer.disconnect()
+        ;(async () => {
+          for (let i = 0; i < paragraphs.length; i++) {
+            const p = paragraphs[i]
+            p?.style.removeProperty('visibility')
+            await typeNodes(p!, nodesList[i]!, 1)
+          }
+        })()
+      }
+    }, { threshold: 0.3 })
 
-  obs.observe(container)
+    intersectionObserver.observe(section)
+    return true
+  }
+
+  if (!initialiseTyping()) {
+    nextTick(() => {
+      initialiseTyping()
+    })
+  }
 })
 
 onUnmounted(() => {
-  if (typingTimer) window.clearInterval(typingTimer)
+  if (typingTimer.value !== null) {
+    window.clearTimeout(typingTimer.value)
+    typingTimer.value = null
+  }
+  intersectionObserver?.disconnect()
+  intersectionObserver = null
 })
+
+function requestMobileFullscreen() {
+  const video = mobileVideoRef.value
+  if (!video) return
+
+  const vendorVideo = video as HTMLVideoElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void
+    webkitEnterFullscreen?: () => void
+    mozRequestFullScreen?: () => Promise<void>
+    msRequestFullscreen?: () => Promise<void>
+  }
+
+  try {
+    if (video.requestFullscreen) {
+      const result = video.requestFullscreen()
+      if (result instanceof Promise) {
+        result.catch(() => {
+        })
+      }
+      return
+    }
+
+    if (vendorVideo.webkitRequestFullscreen) {
+      const result = vendorVideo.webkitRequestFullscreen()
+      if (result instanceof Promise) {
+        result.catch(() => {
+        })
+      }
+      return
+    }
+
+    if (vendorVideo.webkitEnterFullscreen) {
+      vendorVideo.webkitEnterFullscreen()
+      return
+    }
+
+    if (vendorVideo.mozRequestFullScreen) {
+      const result = vendorVideo.mozRequestFullScreen()
+      if (result instanceof Promise) {
+        result.catch(() => {
+        })
+      }
+      return
+    }
+
+    if (vendorVideo.msRequestFullscreen) {
+      const result = vendorVideo.msRequestFullscreen()
+      if (result instanceof Promise) {
+        result.catch(() => {
+        })
+      }
+    }
+  } catch (err) {
+    console.warn('Unable to enter fullscreen mode', err)
+  }
+}
 </script>
 
 <template>
-  <div ref="sectionRef" class="device-section">
-    <div class="pin-wrapper">
-      <div class="split-container row items-center q-col-gutter-xl">
-        <div class="video-col col-12 col-md-6 col-lg-8">
-          <SteamDeckConsoleVideo
-            v-if="!$q.screen.lt.lg"
-            :imageUrl="previewImageUrl"
-            :videoUrl="videoUrl"
-          />
-          <div v-else class="video-wrapper">
-            <video
-              width="1200"
-              height="800"
-              autoplay
-              loop
-              muted
-              playsinline
-              preload="none"
-              class="video-content"
-            >
-              <source
-                v-if="videoLoaded"
-                :src="videoUrl"
-                type="video/mp4" />
-            </video>
-          </div>
-        </div>
-
-        <div class="text-col col-12 col-md-6 col-lg-4">
-          <div class="text-panel" ref="textContainerRef">
-            <h2 class="text-h2 q-mb-md q-mt-none" :class="{'text-h4': $q.screen.lt.md}">
-              Browse Game Reports Directly from Your Handheld
-            </h2>
-
-            <p>
-              Use the <strong><a href="https://github.com/DeckSettings/decky-game-settings"
-                                 target="_blank" rel="noopener">
-              Deck Settings </a></strong>
-              plugin for Decky Loader to explore game reports right from your handheld device—whether you’re on a
-              <strong>Steam Deck</strong>, <strong>ROG Ally</strong>, <strong>Lenovo Legion Go</strong>,
-              or any compatible PC running
-              <strong><a href="https://help.steampowered.com/en/faqs/view/65B4-2AA3-5F37-4227"
-                         target="_blank" rel="noopener">SteamOS</a></strong>,
-              <strong><a href="https://cachyos.org/" target="_blank" rel="noopener">CachyOS</a></strong>,
-              <strong><a href="https://nobaraproject.org/" target="_blank" rel="noopener">Nobara</a></strong>,
-              <strong><a href="https://bazzite.gg/" target="_blank" rel="noopener">Bazzite</a></strong>,
-              or similar Linux-based gaming distributions.
-              The plugin integrates seamlessly with Steam's Game Mode, giving you instant access to community provided
-              guides and notes right in your handheld UI.
-            </p>
-            <p>
-              Not only can you view detailed reports for your games, but the plugin also includes embedded
-              YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/"
-                                                        target="_blank" rel="noopener">SDHQ</a>
-              game settings reviews, and the ability to filter reports by specific devices or view them across all
-              supported platforms. Whether you're trying to optimise for battery life or unlock higher FPS, the Deck
-              Settings plugin puts this community's knowledge at your fingertips without even needing to exit your
-              game.
-            </p>
-          </div>
-        </div>
+  <div ref="containerRef" class="decky-plugin">
+    <div v-if="!$q.platform.is.mobile" class="decky-plugin__media" aria-hidden="true">
+      <SteamDeckConsoleVideo
+        v-if="$q.screen.gt.lg"
+        :imageUrl="previewImageUrl"
+        :videoUrl="videoUrl"
+      />
+      <div v-else class="decky-plugin__video-wrapper">
+        <video
+          width="1200"
+          height="800"
+          autoplay
+          loop
+          muted
+          playsinline
+          preload="none"
+          class="decky-plugin__video"
+        >
+          <source
+            v-if="videoLoaded"
+            :src="videoUrl"
+            type="video/mp4"
+          >
+        </video>
       </div>
     </div>
+    <q-card class="decky-plugin__card">
+      <q-card-section class="decky-plugin__card-section" :ref="setCardTextRef">
+        <h2 class="text-h3 q-ma-none text-center">
+          Browse Game Reports Directly from Your Handheld
+        </h2>
+        <p>
+          Use the <strong><a href="https://github.com/DeckSettings/decky-game-settings"
+                             target="_blank" rel="noopener">
+          Deck Settings </a></strong>
+          plugin for Decky Loader to explore game reports right from your handheld device—whether you’re on a
+          <strong>Steam Deck</strong>, <strong>ROG Ally</strong>, <strong>Lenovo Legion Go</strong>,
+          or any compatible PC running
+          <strong><a href="https://help.steampowered.com/en/faqs/view/65B4-2AA3-5F37-4227"
+                     target="_blank" rel="noopener">SteamOS</a></strong>,
+          <strong><a href="https://cachyos.org/" target="_blank" rel="noopener">CachyOS</a></strong>,
+          <strong><a href="https://nobaraproject.org/" target="_blank" rel="noopener">Nobara</a></strong>,
+          <strong><a href="https://bazzite.gg/" target="_blank" rel="noopener">Bazzite</a></strong>,
+          or similar Linux-based gaming distributions.
+          The plugin integrates seamlessly with Steam's Game Mode, giving you instant access to community provided
+          guides and notes right in your handheld UI.
+        </p>
+        <p>
+          Not only can you view detailed reports for your games, but the plugin also includes embedded
+          YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/"
+                                                    target="_blank" rel="noopener">SDHQ</a>
+          game settings reviews, and the ability to filter reports by specific devices or view them across all
+          supported platforms. Whether you're trying to optimise for battery life or unlock higher FPS, the Deck
+          Settings plugin puts this community's knowledge at your fingertips without even needing to exit your
+          game.
+        </p>
+      </q-card-section>
+      <q-card-section v-if="$q.platform.is.mobile">
+        <div class="decky-plugin__mobile-video">
+          <video
+            ref="mobileVideoRef"
+            width="1200"
+            height="800"
+            autoplay
+            loop
+            muted
+            playsinline
+            preload="none"
+            class="decky-plugin__video is-mobile"
+          >
+            <source
+              v-if="videoLoaded"
+              :src="videoUrl"
+              type="video/mp4"
+            >
+          </video>
+          <q-btn
+            class="decky-plugin__fullscreen-btn"
+            round
+            dense
+            size="sm"
+            icon="fullscreen"
+            color="primary"
+            @click="requestMobileFullscreen"
+          />
+        </div>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
 <style scoped>
-.device-section {
-  height: 100vh;
-  padding: 0 1.5rem;
-  box-sizing: border-box;
+.decky-plugin {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 640px;
+  align-items: center;
+  margin-top: 0;
+  margin-bottom: 50px;
+  gap: 1.25rem;
 }
 
-.pin-wrapper {
-  position: sticky;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 100%;
+.decky-plugin__media {
   display: flex;
   justify-content: center;
+  align-items: center;
+  order: 1;
+  min-width: 200px;
 }
 
-.split-container {
+.decky-plugin__video-wrapper {
   width: 100%;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  aspect-ratio: 3 / 2;
 }
 
-.text-col {
-  justify-content: center;
-}
-
-.video-wrapper {
+.decky-plugin__video {
+  display: block;
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.decky-plugin__mobile-video {
+  position: relative;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
-.video-content {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.decky-plugin__fullscreen-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
-.text-panel {
-  width: 100%;
-  text-align: left;
-  box-sizing: border-box;
-  padding: 20px 24px;
-  border-radius: 16px;
+.decky-plugin__card {
+  max-width: 900px;
+  z-index: 1000;
   background: color-mix(in srgb, var(--q-dark) 60%, transparent);
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
-.text-panel a {
+.decky-plugin__card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.decky-plugin__card a {
   color: var(--q-primary);
   text-decoration-color: color-mix(in srgb, var(--q-primary) 50%, transparent);
 }
 
-.text-panel a:hover {
+.decky-plugin__card a:hover {
   text-decoration: underline;
 }
 
-/* -sm- */
-@media (max-width: 600px) {
-  .device-section {
-    padding: 0 0.1rem;
+@media (min-width: 1024px) {
+  .decky-plugin {
+    flex-direction: row-reverse;
+    margin: 0 100px;
+  }
+}
+
+@media (min-width: 600px) {
+  .decky-plugin {
+    gap: 2rem;
   }
 
-  .text-panel {
-    padding: 16px 18px;
-    text-align: center;
+  .decky-plugin__card,
+  .decky-plugin__media {
+    width: 100%;
+  }
+
+  .decky-plugin__media {
+    max-width: 1300px;
   }
 }
 </style>

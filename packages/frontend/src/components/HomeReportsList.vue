@@ -51,7 +51,7 @@ onMounted(async () => {
 <template>
   <q-card class="home-reports-card text-white">
     <q-card-section class="home-reports-header">
-      <div class="text-h6">{{ listTitle }}</div>
+      <h4 class="text-h6 q-ma-none">{{ listTitle }}</h4>
     </q-card-section>
     <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
       <ReportList

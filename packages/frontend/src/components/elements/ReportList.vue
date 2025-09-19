@@ -126,11 +126,11 @@ const getReportUrl = (report: HomeReport) => {
           </div>
           <q-item-label v-if="$q.platform.is.mobile"
                         class="absolute-bottom-left q-ml-sm q-mb-lg">
-            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" />
+            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" width="80px" />
           </q-item-label>
           <q-item-label v-else
                         class="absolute-bottom-left device-image-wrapper">
-            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" />
+            <DeviceImage :device="report.data.device" :dropShadow="true" size="small" width="80px" />
           </q-item-label>
         </q-item-section>
 

@@ -567,7 +567,7 @@ useMeta(() => {
                               <DeviceImage
                                 :device="report.data.device ? report.data.device : ''"
                                 :dropShadow="false"
-                                size="small" />
+                                size="small" width="80px" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->
@@ -634,7 +634,7 @@ useMeta(() => {
                               <DeviceImage
                                 :device="report.data.device ? report.data.device : ''"
                                 :dropShadow="false"
-                                size="small" />
+                                size="small" width="80px" />
                             </q-avatar>
                           </div>
                           <!-- Report Summary Section -->
