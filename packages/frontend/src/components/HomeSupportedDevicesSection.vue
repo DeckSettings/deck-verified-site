@@ -255,45 +255,48 @@ function getDeviceStyle(item: DeviceItem) {
         />
       </div>
     </div>
-    <q-card ref="cardRef" class="supported-devices__card">
+    <q-card class="supported-devices__card">
       <q-card-section>
         <h2 class="text-h3 q-ma-none text-center">
           Devices Available for Community Reporting
         </h2>
       </q-card-section>
       <q-card-section>
-        <p>
-          This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
-          the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
-          Whether you’re hunting for settings that deliver smoother performance or longer battery life, or you want
-          to record and share your own optimised configurations, you’ve come to the right place.
-        </p>
-        <p>
-          Game reports for a device can include performance tweaks such as TDP limits, VRR and frame-rate caps,
-          manual GPU-clock adjustments, undervolting and more. They also provide guidance on in-game graphics and
-          display settings, including resolution choices, FSR or XeSS upscaling, frame generation and texture
-          quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
-          estimated battery life and total play time are calculated based on the report data.
-        </p>
-        <p class="q-mb-none">
-          Don’t see your device yet? Contributing support is quick and easy.
-          Just open a request on GitHub and we'll help you get it added.
-        </p>
-        <div class="q-px-xl">
-          <PrimaryButton
-            color="primary"
-            full-width
-            icon="fab fa-github"
-            label="Request a New Device"
-            href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-            target="_blank" rel="noopener">
-            <q-tooltip>View on ProtonDB</q-tooltip>
-          </PrimaryButton>
+        <div ref="cardRef">
+          <p>
+            This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
+            the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
+            Whether you’re hunting for settings that deliver smoother performance or longer battery life, or you want
+            to record and share your own optimised configurations, you’ve come to the right place.
+          </p>
+          <p>
+            Game reports for a device can include performance tweaks such as TDP limits, VRR and frame-rate caps,
+            manual GPU-clock adjustments, undervolting and more. They also provide guidance on in-game graphics and
+            display settings, including resolution choices, FSR or XeSS upscaling, frame generation and texture
+            quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
+            estimated battery life and total play time are calculated based on the report data.
+          </p>
+          <p class="q-mb-none">
+            Don’t see your device yet? Contributing support is quick and easy.
+            Just open a request on GitHub and we'll help you get it added.
+          </p>
+          <div class="q-px-xl">
+            <PrimaryButton
+              color="primary"
+              full-width
+              icon="fab fa-github"
+              label="Request a New Device"
+              href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+              target="_blank" rel="noopener">
+              <q-tooltip>View on ProtonDB</q-tooltip>
+            </PrimaryButton>
+          </div>
+          <p>
+            Once approved, your device will appear in the list—ready for game reports, performance data, and settings
+            shared by the community.
+          </p>
+
         </div>
-        <p>
-          Once approved, your device will appear in the list—ready for game reports, performance data, and settings
-          shared by the community.
-        </p>
       </q-card-section>
     </q-card>
   </div>
