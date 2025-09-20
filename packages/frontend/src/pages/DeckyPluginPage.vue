@@ -36,19 +36,12 @@ const deckyStoreSteps = [
   {
     title: 'Search for Deck Settings',
     description:
-      'Use the search bar to find “Deck Settings”. Highlight the plugin card to view its description and release notes.',
+      'Use the search bar to find “Deck Settings”. Select and click the button "Install" on the plugin card. Once complete, Deck Settings appears in your Installed tab.',
     images: [
       {
         src: deckyAsset('01-decky_store_2_search_for_deck-settings_plugin-9.jpg'),
         alt: 'Search for Deck Settings plugin inside Decky store',
       },
-    ],
-  },
-  {
-    title: 'Install from the Store',
-    description:
-      'Select Install to download and apply the plugin. Once complete, Deck Settings appears in your Installed tab.',
-    images: [
       {
         src: deckyAsset('01-decky_store_3_click_install_from_decky_store-9.jpg'),
         alt: 'Install Deck Settings plugin from Decky store',
@@ -61,7 +54,7 @@ const manualSteps = [
   {
     title: 'Download the latest release',
     description:
-      'Switch to Desktop Mode, open a browser, and download the newest `decky-game-settings.zip` from the GitHub releases page.',
+      'Switch to Desktop Mode, open a browser, and download the newest "decky-game-settings.zip" from the GitHub releases page.',
     images: [
       {
         src: deckyAsset('02-manual_download_1_download-latest-release-zip-file-from-github-in-desktop-mode-9.jpg'),
@@ -72,53 +65,35 @@ const manualSteps = [
   {
     title: 'Enable developer mode in Decky Loader',
     description:
-      'Return to Gaming Mode, open Decky Loader, and go to Settings → Developer Mode so you can sideload a plugin.',
+      'Return to Gaming Mode, open Decky Loader, and go to Settings > Developer Mode so you can sideload a plugin.',
     images: [
       {
         src: deckyAsset('03-gh_release_1_navigate_to_decky_loader_settings-9.jpg'),
         alt: 'Open Decky Loader settings',
       },
+      {
+        src: deckyAsset('03-gh_release_2_enable_developer_mode-9.jpg'),
+        alt: 'Enable developer mode in Decky Loader settings',
+      },
     ],
   },
   {
-    title: 'Open Install from Zip',
+    title: 'Select and install the downloaded archive',
     description:
-      'Still in Decky Loader settings, choose Install Plugin from Zip to launch the file picker.',
-    images: [{
-      src: deckyAsset('03-gh_release_2_enable_developer_mode-9.jpg'),
-      alt: 'Enable developer mode in Decky Loader settings',
-    }],
-  },
-  {
-    title: 'Select the downloaded archive',
-    description:
-      'Navigate to the folder you saved the release zip (usually `~/Downloads`). Highlight the Deck Settings zip file and confirm.',
+      'Still in Decky Loader settings, choose "Install Plugin from Zip" to launch the file picker. Navigate to the folder you saved the release zip (usually "~/Downloads"). Select the Deck Settings zip file and confirm. Click "install"',
     images: [
       {
         src: deckyAsset('03-gh_release_3_click_install_plugin_from_zip_file_button-9.jpg'),
         alt: 'Open Install Plugin from Zip option',
       },
-    ],
-  },
-  {
-    title: 'Install and refresh Decky Loader',
-    description:
-      'Decky Loader imports the plugin from the zip and adds it to your Installed list. Reload Decky Loader if prompted.',
-    images: [
       {
         src: deckyAsset('03-gh_release_4_navigate_to_location_of_downloaded_zip_file-9.jpg'),
         alt: 'Select downloaded Deck Settings zip file',
       },
-    ],
-  },
-  {
-    title: 'Launch the plugin',
-    description:
-      'Open the Deck Settings entry inside Decky Loader to browse verified reports. For updates, repeat the download and install steps.',
-    images: [{
-      src: deckyAsset('03-gh_release_5_install_plugin_zip_file-9.jpg'),
-      alt: 'Confirm plugin installation from zip',
-    },
+      {
+        src: deckyAsset('03-gh_release_5_install_plugin_zip_file-9.jpg'),
+        alt: 'Confirm plugin installation from zip',
+      },
     ],
   },
 ]
