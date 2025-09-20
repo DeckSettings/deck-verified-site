@@ -56,5 +56,13 @@ const btnStyle = computed(() => {
 <style scoped>
 .dv-primary-btn {
   border: 1px solid color-mix(in srgb, white 20%, transparent);
+  text-decoration: none !important;
+}
+
+.dv-primary-btn:visited,
+.dv-primary-btn:hover,
+.dv-primary-btn:focus,
+.dv-primary-btn:active {
+  text-decoration: none !important;
 }
 </style>

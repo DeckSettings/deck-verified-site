@@ -55,6 +55,7 @@ const computedClass = computed(() => {
   background-color: color-mix(in srgb, var(--btn-base) 22%, transparent);
   border: 1px solid color-mix(in srgb, var(--btn-base) 50%, transparent);
   transition: background-color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none !important;
 }
 
 .dv-secondary-btn:hover,
@@ -65,5 +66,12 @@ const computedClass = computed(() => {
 
 .dv-secondary-btn:active {
   background-color: color-mix(in srgb, var(--btn-base) 40%, transparent);
+}
+
+.dv-secondary-btn:visited,
+.dv-secondary-btn:hover,
+.dv-secondary-btn:focus,
+.dv-secondary-btn:active {
+  text-decoration: none !important;
 }
 </style>
