@@ -857,6 +857,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const staticPages = [
       { loc: `${baseUrl}/`, priority: '1.0' },
       { loc: `${baseUrl}/about`, priority: '0.9' },
+      { loc: `${baseUrl}/decky-plugin`, priority: '0.8' },
       { loc: `${baseUrl}/steam-deck-settings`, priority: '0.8' },
     ]
 
