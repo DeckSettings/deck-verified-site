@@ -276,26 +276,27 @@ function getDeviceStyle(item: DeviceItem) {
             quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
             estimated battery life and total play time are calculated based on the report data.
           </p>
-          <p class="q-mb-none">
+          <p>
             Don’t see your device yet? Contributing support is quick and easy.
             Just open a request on GitHub and we'll help you get it added.
           </p>
-          <div class="q-px-xl">
-            <PrimaryButton
-              color="primary"
-              full-width
-              icon="fab fa-github"
-              label="Request a New Device"
-              href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-              target="_blank" rel="noopener">
-              <q-tooltip>View on ProtonDB</q-tooltip>
-            </PrimaryButton>
+          <div class="full-width row justify-center q-mb-lg q-px-md">
+            <div>
+              <PrimaryButton
+                color="primary"
+                full-width
+                icon="fab fa-github"
+                label="Request a New Device"
+                href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+                target="_blank" rel="noopener">
+                <q-tooltip>View on ProtonDB</q-tooltip>
+              </PrimaryButton>
+            </div>
           </div>
-          <p>
+          <p class="q-mb-lg">
             Once approved, your device will appear in the list—ready for game reports, performance data, and settings
             shared by the community.
           </p>
-
         </div>
       </q-card-section>
     </q-card>

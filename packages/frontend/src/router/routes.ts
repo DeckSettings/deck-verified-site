@@ -37,6 +37,11 @@ const routes: RouteRecordRaw[] = [
     children: [{ path: '', name: 'terms-of-service', component: () => import('pages/TermsOfServicePage.vue') }],
   },
   {
+    path: '/decky-plugin',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'decky-plugin', component: () => import('pages/DeckyPluginPage.vue') }],
+  },
+  {
     path: '/app/:appId',
     component: () => import('layouts/MainLayout.vue'),
     children: [{ path: '', name: 'game-page-by-app-id', component: () => import('pages/GamePage.vue') }],

@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import SteamDeckConsoleVideo from 'components/elements/SteamDeckConsoleVideo.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 const videoUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.mp4', import.meta.url).href
 const previewImageUrl = new URL('../assets/using-deck-settings-decky-plugin.compressed.jpg', import.meta.url).href
@@ -206,7 +207,7 @@ function requestMobileFullscreen() {
           The plugin integrates seamlessly with Steam's Game Mode, giving you instant access to community provided
           guides and notes right in your handheld UI.
         </p>
-        <p>
+        <p class="q-mb-none">
           Not only can you view detailed reports for your games, but the plugin also includes embedded
           YouTube video reviews, direct links to <a href="https://steamdeckhq.com/game-settings/"
                                                     target="_blank" rel="noopener">SDHQ</a>
@@ -215,6 +216,16 @@ function requestMobileFullscreen() {
           Settings plugin puts this community's knowledge at your fingertips without even needing to exit your
           game.
         </p>
+        <div class="full-width row justify-center q-mb-lg q-px-md">
+          <div>
+            <PrimaryButton
+              color="primary"
+              full-width
+              icon="extension"
+              label="Install Deck Settings Plugin"
+              :to="{ name: 'decky-plugin' }" />
+          </div>
+        </div>
       </q-card-section>
       <q-card-section v-if="$q.platform.is.mobile">
         <div class="decky-plugin__mobile-video">
