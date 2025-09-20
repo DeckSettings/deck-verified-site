@@ -322,7 +322,7 @@ useMeta(() => ({
 
         <q-separator dark inset class="q-mx-lg" />
 
-        <q-card-section id="faq" class="section">
+        <q-card-section id="faq" class="section faq-section">
           <div class="section-header">
             <h3 class="text-h5 q-mb-xs">Frequently Asked Questions</h3>
             <p class="text-body2 q-mb-md">
@@ -334,29 +334,125 @@ useMeta(() => ({
             icon="verified"
             expand-icon="keyboard_arrow_down"
             header-class="faq-header"
+            class="faq-item"
           >
-            Deck Settings displays community-sourced guidance only. It does not alter files, tweak performance
-            settings, or run scripts on your system.
+            <p class="q-mx-sm q-my-md">
+              Deck Settings displays community-sourced guidance only. It does not alter files, tweak performance
+              settings, or run scripts on your system.
+            </p>
           </q-expansion-item>
           <q-expansion-item
             label="Do I need an internet connection?"
             icon="cloud"
-            class="q-mt-sm"
             expand-icon="keyboard_arrow_down"
             header-class="faq-header"
+            class="faq-item"
           >
-            Yes. Reports, screenshots, and embedded videos are pulled from Deck Verified and community-hosted
-            resources. Cached content may appear offline, but fresh data requires connectivity.
+            <p class="q-mx-sm q-my-md">
+              Yes. Reports, screenshots, and embedded videos are pulled from Deck Verified and community-hosted
+              resources. Cached content may appear offline, but fresh data requires connectivity.
+            </p>
           </q-expansion-item>
           <q-expansion-item
             label="Where can I report bugs or request features?"
             icon="bug_report"
-            class="q-mt-sm"
             expand-icon="keyboard_arrow_down"
             header-class="faq-header"
+            class="faq-item"
           >
-            Use the GitHub repository issues page to report bugs, request features, or contribute translations. Pull
-            requests are welcome.
+            <p class="q-mx-sm q-my-md">
+              Use the GitHub repository issues page to report bugs, request features, or contribute translations. Pull
+              requests are welcome.
+            </p>
+            <ul>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/decky-game-settings/issues/new?template=BUG-REPORT.yml"
+                    target="_blank" rel="noopener">
+                    Deck Settings Decky Plugin - Bug Report
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/decky-game-settings/issues/new?template=FEATURE-REQUEST.yml"
+                    target="_blank" rel="noopener">
+                    Deck Settings Decky Plugin - Feature Request
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/decky-game-settings/issues/new?template=DOCUMENTATION.yml"
+                    target="_blank" rel="noopener">
+                    Deck Settings Decky Plugin - Documentation Improvements
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=BUG-REPORT.yml"
+                    target="_blank" rel="noopener">
+                    Deck Verified Website - Bug Report
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=FEATURE-REQUEST.yml"
+                    target="_blank" rel="noopener">
+                    Deck Verified Website - Feature Request
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=DOCUMENTATION.yml"
+                    target="_blank" rel="noopener">
+                    Deck Verified Website - Documentation Improvements
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+                    target="_blank" rel="noopener">
+                    Request New Device
+                  </a>
+                </strong>
+              </li>
+              <li>
+                <strong>
+                  <a
+                    href="https://streamingtech.co.nz/discord"
+                    target="_blank" rel="noopener">
+                    Support on Discord
+                  </a>
+                </strong>
+              </li>
+            </ul>
+          </q-expansion-item>
+          <q-expansion-item
+            label="What access does the GitHub login receive?"
+            icon="verified_user"
+            expand-icon="keyboard_arrow_down"
+            header-class="faq-header"
+            class="faq-item"
+          >
+            <p class="q-mx-sm q-my-md">
+              Deck Settings uses GitHub's device authentication with a DeckSettings-owned GitHub App. The token is
+              scoped to read metadata and read/write issues, and it only applies to the
+              <strong><a href="https://github.com/DeckSettings/game-reports-steamos" target="_blank" rel="noopener">DeckSettings/game-reports-steamos</a></strong>
+              repository. The plugin cannot access your private repositories or make
+              changes elsewhere on your account.
+            </p>
           </q-expansion-item>
         </q-card-section>
 
@@ -474,6 +570,21 @@ useMeta(() => ({
 .faq-header {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
+}
+
+.faq-section a {
+  color: var(--q-primary);
+  text-decoration-color: color-mix(in srgb, var(--q-primary) 50%, transparent);
+}
+
+.faq-section a:hover {
+  text-decoration: underline;
+}
+
+.faq-item .q-expansion-item__content {
+  padding: 16px clamp(20px, 6vw, 72px) 20px;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 @media (min-width: 1024px) {
