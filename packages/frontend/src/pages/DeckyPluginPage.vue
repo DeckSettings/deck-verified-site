@@ -24,8 +24,12 @@ const deckyAsset = (file: string) =>
 const deckyStoreSteps = [
   {
     title: 'Open Decky Store',
-    description:
-      'Press the Quick Access button, switch to the Decky tab, and select the Decky Store tile to browse plugins.',
+    description: `
+      <p>
+        Press the Quick Access button, switch to the Decky tab, and select the <strong>Decky Store</strong> tile to
+        browse plugins.
+      </p>
+    `,
     images: [
       {
         src: deckyAsset('01-decky_store_1_open_decky_store-9.jpg'),
@@ -35,8 +39,12 @@ const deckyStoreSteps = [
   },
   {
     title: 'Search for Deck Settings',
-    description:
-      'Use the search bar to find “Deck Settings”. Select and click the button "Install" on the plugin card. Once complete, Deck Settings appears in your Installed tab.',
+    description: `
+      <p>
+        Use the search bar to find <strong>Deck Settings</strong>. Select the plugin card and click the
+        <strong>Install</strong> button. Once complete, Deck Settings appears in your Installed tab.
+      </p>
+    `,
     images: [
       {
         src: deckyAsset('01-decky_store_2_search_for_deck-settings_plugin-9.jpg'),
@@ -53,8 +61,17 @@ const deckyStoreSteps = [
 const manualSteps = [
   {
     title: 'Download the latest release',
-    description:
-      'Switch to Desktop Mode, open a browser, and download the newest "decky-game-settings.zip" from the GitHub releases page.',
+    description: `
+      <p>
+        Switch to Desktop Mode, open a browser, and download the newest
+        <a
+          href="https://github.com/DeckSettings/decky-game-settings/releases"
+          target="_blank"
+          rel="noopener"
+        >decky-game-settings.zip</a>
+        from the GitHub releases page.
+      </p>
+    `,
     images: [
       {
         src: deckyAsset('02-manual_download_1_download-latest-release-zip-file-from-github-in-desktop-mode-9.jpg'),
@@ -64,8 +81,12 @@ const manualSteps = [
   },
   {
     title: 'Enable developer mode in Decky Loader',
-    description:
-      'Return to Gaming Mode, open Decky Loader, and go to Settings > Developer Mode so you can sideload a plugin.',
+    description: `
+      <p>
+        Return to Gaming Mode, open Decky Loader, and go to <strong>Settings > Developer Mode</strong> so you can
+        sideload a plugin.
+      </p>
+    `,
     images: [
       {
         src: deckyAsset('03-gh_release_1_navigate_to_decky_loader_settings-9.jpg'),
@@ -79,8 +100,13 @@ const manualSteps = [
   },
   {
     title: 'Select and install the downloaded archive',
-    description:
-      'Still in Decky Loader settings, choose "Install Plugin from Zip" to launch the file picker. Navigate to the folder you saved the release zip (usually "~/Downloads"). Select the Deck Settings zip file and confirm. Click "install"',
+    description: `
+      <p>
+        Still in Decky Loader settings, choose <strong>Install Plugin from Zip</strong> to launch the file picker.
+        Navigate to the folder you saved the release zip (usually <code>~/Downloads</code>). Select the Deck Settings
+        zip file and confirm, then click <strong>Install</strong>.
+      </p>
+    `,
     images: [
       {
         src: deckyAsset('03-gh_release_3_click_install_plugin_from_zip_file_button-9.jpg'),
@@ -117,7 +143,7 @@ useMeta(() => ({
 
 <template>
   <q-page class="bg-dark text-white q-pb-xl" padding>
-    <div class="page-container q-pa-md">
+    <div class="page-container q-pa-md q-pa-sm-sm">
       <q-page-sticky
         v-if="showStickyToc"
         position="top-right"
@@ -187,7 +213,7 @@ useMeta(() => ({
           </div>
         </q-card-section>
 
-        <q-separator dark inset class="q-mx-lg" />
+        <q-separator dark inset class="q-mx-lg q-mx-sm-sm" />
 
         <q-card-section id="decky-loader" class="section">
           <div class="section-header">
@@ -215,7 +241,7 @@ useMeta(() => ({
           </div>
         </q-card-section>
 
-        <q-separator dark inset class="q-mx-lg" />
+        <q-separator dark inset class="q-mx-lg q-mx-sm-sm" />
 
         <q-card-section id="plugin-install" class="section">
           <div class="section-header">
@@ -235,26 +261,43 @@ useMeta(() => ({
             active-color="primary"
             indicator-color="primary"
           >
-            <q-tab name="store" label="Decky Store Installation" icon="store" />
-            <q-tab name="manual" label="Manual Installation" icon="build" />
+            <q-tab
+              name="store"
+              :label="$q.screen.gt.sm ? 'Decky Store Installation' : ''"
+              icon="store"
+              aria-label="Decky Store Installation"
+            />
+            <q-tab
+              name="manual"
+              :label="$q.screen.gt.sm ? 'Manual Installation' : ''"
+              icon="build"
+              aria-label="Manual Installation"
+            />
           </q-tabs>
 
           <q-tab-panels v-model="installTab" animated class="q-mt-lg">
-            <q-tab-panel name="store">
+            <q-tab-panel name="store" class="install-instruction-set">
+              <div class="lt-sm q-mb-md">
+                <q-icon name="store" size="sm" class="q-mr-sm" />
+                <span>Decky Store Installation</span>
+              </div>
               <q-list>
-                <q-item v-for="(step, index) in deckyStoreSteps" :key="step.title">
-                  <q-item-section>
-                    <q-item-label>
-                      <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
-                    </q-item-label>
-                    <q-item-label>
-                      <p>{{ step.description }}</p>
-                    </q-item-label>
-                    <q-img
-                      v-for="(stepImage, imageIndex) in step.images"
-                      :key="`${step.title}-${imageIndex}`"
-                      :src="stepImage.src"
-                      :alt="stepImage.alt"
+                <q-item
+                  v-for="(step, index) in deckyStoreSteps"
+                  :key="step.title"
+                  class="install-step">
+                <q-item-section>
+                  <q-item-label>
+                    <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
+                  </q-item-label>
+                  <q-item-label class="step-description">
+                    <div v-html="step.description" />
+                  </q-item-label>
+                  <q-img
+                    v-for="(stepImage, imageIndex) in step.images"
+                    :key="`${step.title}-${imageIndex}`"
+                    :src="stepImage.src"
+                    :alt="stepImage.alt"
                       class="q-mt-sm screenshot"
                     />
                   </q-item-section>
@@ -262,26 +305,33 @@ useMeta(() => ({
               </q-list>
               <div class="q-mt-lg info-callout">
                 <q-icon name="info" color="primary" size="sm" class="q-mr-sm" />
-                <span>Once installed, Deck Settings appears in Decky Loader → Installed. Launch it to browse reports.</span>
+                <span>Once installed, Deck Settings will appear in Decky Loader. Launch it to start browsing reports.</span>
               </div>
             </q-tab-panel>
 
             <q-tab-panel name="manual">
+              <div class="lt-sm q-mb-md">
+                <q-icon name="build" size="sm" class="q-mr-sm" />
+                <span>Manual Installation</span>
+              </div>
 
               <q-list>
-                <q-item v-for="(step, index) in manualSteps" :key="step.title">
-                  <q-item-section>
-                    <q-item-label>
-                      <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
-                    </q-item-label>
-                    <q-item-label>
-                      <p>{{ step.description }}</p>
-                    </q-item-label>
-                    <q-img
-                      v-for="(stepImage, imageIndex) in step.images"
-                      :key="`${step.title}-${imageIndex}`"
-                      :src="stepImage.src"
-                      :alt="stepImage.alt"
+                <q-item
+                  v-for="(step, index) in manualSteps"
+                  :key="step.title"
+                  class="install-step">
+                <q-item-section>
+                  <q-item-label>
+                    <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
+                  </q-item-label>
+                  <q-item-label class="step-description">
+                    <div v-html="step.description" />
+                  </q-item-label>
+                  <q-img
+                    v-for="(stepImage, imageIndex) in step.images"
+                    :key="`${step.title}-${imageIndex}`"
+                    :src="stepImage.src"
+                    :alt="stepImage.alt"
                       class="q-mt-sm screenshot"
                     />
                   </q-item-section>
@@ -295,7 +345,7 @@ useMeta(() => ({
           </q-tab-panels>
         </q-card-section>
 
-        <q-separator dark inset class="q-mx-lg" />
+        <q-separator dark inset class="q-mx-lg q-mx-sm-sm" />
 
         <q-card-section id="faq" class="section faq-section">
           <div class="section-header">
@@ -505,23 +555,37 @@ useMeta(() => ({
   padding: 4px 12px;
 }
 
-.toc-menu__header {
-  background: transparent;
-}
-
-.decky-instructions .q-card-actions {
-  padding: 12px clamp(20px, 6vw, 72px);
-}
-
-.step-list {
-  padding-left: 18px;
-}
-
 .screenshot {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   overflow: hidden;
+}
+
+.step-description {
+  color: inherit;
+}
+
+.step-description :deep(p) {
+  margin: 0 0 12px;
+  line-height: 1.55;
+}
+
+.step-description :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.step-description :deep(a) {
+  color: var(--q-primary);
+  text-decoration: underline;
+}
+
+.step-description :deep(code) {
+  font-family: 'Fira Code', 'JetBrains Mono', 'Roboto Mono', monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 
 .info-callout {
@@ -533,20 +597,6 @@ useMeta(() => ({
   border: 1px solid rgba(49, 130, 206, 0.32);
 }
 
-.link-list .q-item {
-  border-radius: 10px;
-  transition: background 0.2s ease;
-}
-
-.link-list .q-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.faq-header {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-}
-
 .faq-section a {
   color: var(--q-primary);
   text-decoration-color: color-mix(in srgb, var(--q-primary) 50%, transparent);
@@ -556,10 +606,47 @@ useMeta(() => ({
   text-decoration: underline;
 }
 
-.faq-item .q-expansion-item__content {
-  padding: 16px clamp(20px, 6vw, 72px) 20px;
-  font-size: 0.95rem;
-  line-height: 1.55;
+@media (max-width: 600px) {
+  .page-container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .install-instruction-set {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .install-step {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+  }
+
+  .decky-instructions {
+    max-width: none;
+    margin: 0;
+    border-radius: 10px;
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .section {
+    padding: 16px;
+  }
+
+  .section-intro {
+    padding: 18px 16px 24px;
+  }
+
+  .section-header p {
+    max-width: none;
+  }
+
+  .toc-menu {
+    margin: 0 0 12px;
+    padding: 4px 8px;
+  }
 }
 
 @media (min-width: 1024px) {
