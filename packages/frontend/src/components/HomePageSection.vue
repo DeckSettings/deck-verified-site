@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { gsap } from 'gsap'
 import { useScrollTrigger } from 'src/composables/useScrollTrigger'
 import type { ScrollTriggerInstance } from 'src/composables/useScrollTrigger'
+import { resolveCssColor } from 'src/utils'
 
 
 const props = defineProps({
@@ -25,7 +26,8 @@ let resizeObserver: ResizeObserver | null = null
 const baseBackgroundColour = computed(() => props.backgroundColour || 'transparent')
 
 const fadeGradient = computed(() => {
-  const colour = baseBackgroundColour.value
+  const baseColour = baseBackgroundColour.value
+  const colour = colourWithOpacity(baseColour, 1)
   const hasImage = Boolean(props.backgroundImage)
 
   if (!hasImage) {
@@ -45,14 +47,14 @@ const fadeGradient = computed(() => {
       `linear-gradient(
         to bottom,
         transparent 0%,
-        ${colour} 30%,
-        ${colour} 80%,
+        ${colourWithOpacity(baseColour, 0.3)} 30%,
+        ${colourWithOpacity(baseColour, 0.8)} 80%,
         transparent 100%
       )`,
     ]
   }
 
-  const overlayColour = colour === 'transparent' ? 'rgba(0, 0, 0, 0.45)' : colourWithOpacity(colour, 0.45)
+  const overlayColour = baseColour === 'transparent' ? 'rgba(0, 0, 0, 0.45)' : colourWithOpacity(baseColour, 0.45)
 
   return [
     `linear-gradient(
@@ -72,7 +74,8 @@ const tintedOverlay = computed(() => {
     return 'linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45))'
   }
 
-  return `linear-gradient(${colourWithOpacity(colour, 0.5)}, ${colourWithOpacity(colour, 0.5)})`
+  const overlay = colourWithOpacity(colour, 0.5)
+  return `linear-gradient(${overlay}, ${overlay})`
 })
 
 const backgroundStyle = computed(() => {
@@ -94,29 +97,7 @@ const backgroundStyle = computed(() => {
 })
 
 function colourWithOpacity(colour: string, opacity: number) {
-  const clampedOpacity = Math.min(Math.max(opacity, 0), 1)
-
-  if (/^#([0-9a-f]{3}){1,2}$/i.test(colour)) {
-    const hex = colour.replace('#', '')
-    const expanded = hex.length === 3 ? hex.split('').map(ch => ch + ch).join('') : hex
-    const r = parseInt(expanded.substring(0, 2), 16)
-    const g = parseInt(expanded.substring(2, 4), 16)
-    const b = parseInt(expanded.substring(4, 6), 16)
-    return `rgba(${r}, ${g}, ${b}, ${clampedOpacity})`
-  }
-
-  if (/^rgba?\(/i.test(colour)) {
-    const values = colour
-      .replace(/rgba?\(/i, '')
-      .replace(')', '')
-      .split(',')
-      .map(part => part.trim())
-
-    const [r = '0', g = '0', b = '0'] = values
-    return `rgba(${r}, ${g}, ${b}, ${clampedOpacity})`
-  }
-
-  return `color-mix(in srgb, ${colour} ${clampedOpacity * 100}%, transparent)`
+  return resolveCssColor(colour, opacity)
 }
 
 const sectionStyle = computed(() => {

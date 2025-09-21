@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { colors, useMeta, useQuasar } from 'quasar'
+import { useMeta, useQuasar } from 'quasar'
 import { useReportsStore } from 'stores/reports-store'
 import type { Pinia } from 'pinia'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
@@ -43,18 +43,6 @@ const sectionBackgrounds = computed<string[]>(() => {
     }
     return heroUrl || fallbackSectionBackground
   })
-})
-
-const primaryColor = computed(() => {
-  if (process.env.SERVER) {
-    return 'var(--q-primary)'
-  }
-  try {
-    return colors.getPaletteColor('primary')
-  } catch (error) {
-    console.error('Unable to resolve primary color from palette', error)
-    return 'var(--q-primary)'
-  }
 })
 
 function getSectionBackground(index: number): string {
@@ -159,9 +147,9 @@ useMeta(() => {
       <HomePageSection
         :add-debug-markers="false"
         section-title="devices"
-        :bg-show-start-pos="'top center'"
-        :bg-show-end-pos="'bottom center'"
-        :background-colour="primaryColor"
+        bg-show-start-pos="top center"
+        bg-show-end-pos="bottom center"
+        background-colour="var(--q-primary)"
         :background-image="getSectionBackground(2)">
         <HomeSupportedDevicesSection />
       </HomePageSection>
@@ -171,8 +159,8 @@ useMeta(() => {
       <HomePageSection
         :add-debug-markers="false"
         section-title="devices"
-        :bg-show-start-pos="'top bottom-=200px'"
-        :background-colour="primaryColor"
+        bg-show-start-pos="top bottom-=200px"
+        background-colour="var(--q-primary)"
         :background-image="getSectionBackground(3)">
         <HomeDeckyPlugin />
       </HomePageSection>
