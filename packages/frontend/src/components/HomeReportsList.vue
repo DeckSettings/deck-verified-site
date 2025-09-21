@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import ScrollTrigger from 'gsap/ScrollTrigger'
 import { useReportsStore } from 'stores/reports-store'
 import ReportList from 'components/elements/ReportList.vue'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
@@ -37,15 +38,47 @@ const listType = computed(() => {
   return 'ReportList'
 })
 
-onMounted(async () => {
-  if (props.reportSelection == 'popular') {
+function scheduleScrollTriggerRefresh() {
+  if (typeof window === 'undefined') return
+  if (typeof ScrollTrigger.refresh !== 'function') return
+
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      ScrollTrigger.refresh()
+    })
+  } else {
+    ScrollTrigger.refresh()
+  }
+}
+
+async function loadReports() {
+  if (props.reportSelection === 'popular') {
     await reportStore.loadPopular()
-  } else if (props.reportSelection == 'recentlyUpdated') {
+  } else if (props.reportSelection === 'recentlyUpdated') {
     await reportStore.loadRecent()
   } else if (props.reportSelection === 'views') {
     await reportStore.loadViews()
   }
+
+  await nextTick()
+  scheduleScrollTriggerRefresh()
+}
+
+onMounted(() => {
+  void loadReports()
 })
+
+watch(reportsList, async () => {
+  if (props.reportSelection === 'views') return
+  await nextTick()
+  scheduleScrollTriggerRefresh()
+}, { flush: 'post' })
+
+watch(reportsStatsList, async () => {
+  if (props.reportSelection !== 'views') return
+  await nextTick()
+  scheduleScrollTriggerRefresh()
+}, { flush: 'post' })
 </script>
 
 <template>
@@ -74,6 +107,7 @@ onMounted(async () => {
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  z-index: 1000;
 }
 
 .home-reports-header {
