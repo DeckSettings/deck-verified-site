@@ -44,7 +44,6 @@ const maxRequestCount = computed(() => {
 //}
 
 const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: string | null }) => {
-  if (!$q.platform.is.mobile) return ''
   if (metricResult.app_id) return `/app/${metricResult.app_id}`
   if (metricResult.game_name) return `/game/${encodeURIComponent(metricResult.game_name)}`
   return ''
@@ -61,7 +60,7 @@ const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: stri
         :class="{ 'q-pl-md': $q.platform.is.mobile }"
         v-ripple
         :clickable="$q.platform.is.mobile"
-        :to="getGameDataUrl(metricResult)"
+        :to="!$q.platform.is.mobile ? '' : getGameDataUrl(metricResult)"
       >
         <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
           <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
