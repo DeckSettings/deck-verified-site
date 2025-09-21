@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, watch } from 'vue'
-import ScrollTrigger from 'gsap/ScrollTrigger'
+import { refreshScrollTrigger, useScrollTrigger } from 'src/composables/useScrollTrigger'
 import { useReportsStore } from 'stores/reports-store'
 import ReportList from 'components/elements/ReportList.vue'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
@@ -38,20 +38,23 @@ const listType = computed(() => {
   return 'ReportList'
 })
 
-function scheduleScrollTriggerRefresh() {
+async function scheduleScrollTriggerRefresh() {
   if (typeof window === 'undefined') return
-  if (typeof ScrollTrigger.refresh !== 'function') return
 
   if (typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(() => {
-      ScrollTrigger.refresh()
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => {
+        void refreshScrollTrigger().finally(resolve)
+      })
     })
   } else {
-    ScrollTrigger.refresh()
+    await refreshScrollTrigger()
   }
 }
 
 async function loadReports() {
+  await useScrollTrigger()
+
   if (props.reportSelection === 'popular') {
     await reportStore.loadPopular()
   } else if (props.reportSelection === 'recentlyUpdated') {
@@ -61,7 +64,7 @@ async function loadReports() {
   }
 
   await nextTick()
-  scheduleScrollTriggerRefresh()
+  await scheduleScrollTriggerRefresh()
 }
 
 onMounted(() => {
@@ -71,13 +74,13 @@ onMounted(() => {
 watch(reportsList, async () => {
   if (props.reportSelection === 'views') return
   await nextTick()
-  scheduleScrollTriggerRefresh()
+  await scheduleScrollTriggerRefresh()
 }, { flush: 'post' })
 
 watch(reportsStatsList, async () => {
   if (props.reportSelection !== 'views') return
   await nextTick()
-  scheduleScrollTriggerRefresh()
+  await scheduleScrollTriggerRefresh()
 }, { flush: 'post' })
 </script>
 

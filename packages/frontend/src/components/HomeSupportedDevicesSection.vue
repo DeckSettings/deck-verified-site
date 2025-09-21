@@ -2,12 +2,9 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import { gsap } from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
-import { CSSPlugin } from 'gsap/CSSPlugin'
+import { getLoadedScrollTrigger, useScrollTrigger } from 'src/composables/useScrollTrigger'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
-
-gsap.registerPlugin(ScrollTrigger, CSSPlugin)
 
 type DeviceItem = {
   device: string
@@ -103,6 +100,7 @@ const scaleFactor = ref(1)
 
 type GSAPContext = ReturnType<typeof gsap.context>
 let ctx: GSAPContext | null = null
+let scrollTriggerPlugin = getLoadedScrollTrigger()
 
 function setDeviceRef(el: Element | ComponentPublicInstance | null, index: number) {
   deviceRefs.value[index] = el instanceof HTMLElement ? el : null
@@ -126,7 +124,7 @@ function updateScaleFactor() {
   if (typeof window === 'undefined') return
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth
   scaleFactor.value = calculateScaleFactor(viewportWidth)
-  ScrollTrigger.refresh()
+  scrollTriggerPlugin?.refresh()
 }
 
 function getDeviceWidth(item: DeviceItem) {
@@ -134,7 +132,10 @@ function getDeviceWidth(item: DeviceItem) {
   return `${computedWidth}px`
 }
 
-onMounted(() => {
+onMounted(async () => {
+  scrollTriggerPlugin = await useScrollTrigger({ withCSS: true })
+  if (!scrollTriggerPlugin) return
+
   const scope = containerRef.value
   if (!scope) return
 

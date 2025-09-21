@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { colors, useMeta, useQuasar } from 'quasar'
-import HomeHero from 'components/HomeHero.vue'
-import HomePageSection from 'components/HomePageSection.vue'
-import ScrollToTop from 'components/elements/ScrollToTop.vue'
-import HomeReportsList from 'components/HomeReportsList.vue'
 import { useReportsStore } from 'stores/reports-store'
 import type { Pinia } from 'pinia'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
+import ScrollToTop from 'components/elements/ScrollToTop.vue'
+import HomeHero from 'components/HomeHero.vue'
+import HomePageSection from 'components/HomePageSection.vue'
+import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 
@@ -45,7 +45,17 @@ const sectionBackgrounds = computed<string[]>(() => {
   })
 })
 
-const primaryColor = colors.getPaletteColor('primary')
+const primaryColor = computed(() => {
+  if (process.env.SERVER) {
+    return 'var(--q-primary)'
+  }
+  try {
+    return colors.getPaletteColor('primary')
+  } catch (error) {
+    console.error('Unable to resolve primary color from palette', error)
+    return 'var(--q-primary)'
+  }
+})
 
 function getSectionBackground(index: number): string {
   const backgrounds = sectionBackgrounds.value

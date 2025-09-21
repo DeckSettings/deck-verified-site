@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
-
-gsap.registerPlugin(ScrollTrigger)
+import { useScrollTrigger } from 'src/composables/useScrollTrigger'
+import type { ScrollTriggerInstance } from 'src/composables/useScrollTrigger'
 
 
 const props = defineProps({
@@ -20,7 +19,7 @@ const sectionEl = ref<HTMLElement | null>(null)
 const backgroundEl = ref<HTMLElement | null>(null)
 
 let gsapContext: gsap.Context | null = null
-let scrollTrigger: ScrollTrigger | null = null
+let scrollTrigger: ScrollTriggerInstance | null = null
 let resizeObserver: ResizeObserver | null = null
 
 const baseBackgroundColour = computed(() => props.backgroundColour || 'transparent')
@@ -127,15 +126,18 @@ const sectionStyle = computed(() => {
   return { minHeight: '100vh' }
 })
 
-onMounted(() => {
+onMounted(async () => {
   if (!sectionEl.value || !backgroundEl.value) {
     return
   }
 
-  gsapContext = gsap.context(() => {
+  const ScrollTrigger = await useScrollTrigger()
+  if (!ScrollTrigger) {
+    return
+  }
 
-    // console.log(`[${props.sectionTitle} (debug:${props.addDebugMarkers})] ${props.bgShowStartPos}`)
-    scrollTrigger = ScrollTrigger.create({
+  gsapContext = gsap.context(() => {
+    const instance = ScrollTrigger.create({
       trigger: sectionEl.value,
       start: () => props.bgShowStartPos,
       end: () => props.bgShowEndPos,
@@ -143,10 +145,11 @@ onMounted(() => {
       onEnterBack: () => toggleBackground(true),
       onLeave: () => toggleBackground(false),
       onLeaveBack: () => toggleBackground(false),
-      markers: props.addDebugMarkers, // <- shows markers on the screen for where the scroll trigger starts/stops
+      markers: props.addDebugMarkers,
     })
 
-    toggleBackground(scrollTrigger.isActive || scrollTrigger.progress > 0)
+    scrollTrigger = instance
+    toggleBackground(instance.isActive || instance.progress > 0)
   }, sectionEl.value)
 
   if (typeof ResizeObserver !== 'undefined' && sectionEl.value) {

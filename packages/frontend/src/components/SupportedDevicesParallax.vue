@@ -2,12 +2,10 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import { gsap } from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
+import { refreshScrollTrigger, useScrollTrigger } from 'src/composables/useScrollTrigger'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import { useQuasar } from 'quasar'
-
-gsap.registerPlugin(ScrollTrigger)
 
 const $q = useQuasar()
 
@@ -243,16 +241,21 @@ function applyParallaxAnimations(section: HTMLElement) {
 function scheduleScrollTriggerRefresh() {
   if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
     window.requestAnimationFrame(() => {
-      ScrollTrigger.refresh()
+      void refreshScrollTrigger()
     })
   } else {
-    ScrollTrigger.refresh()
+    void refreshScrollTrigger()
   }
 }
 
 async function initAnimations() {
   if (isInitializing) return
   isInitializing = true
+
+  if (!await useScrollTrigger()) {
+    isInitializing = false
+    return
+  }
 
   const section = sectionRef.value
   const grid = gridRef.value

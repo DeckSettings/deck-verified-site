@@ -82,7 +82,8 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
   } else if (gameName) {
     url += `?name=${encodeURIComponent(gameName)}`
   } else {
-    throw new Error('Either appId or gameName must be provided')
+    console.error('fetchGameData called without appId or gameName')
+    return null
   }
 
   try {
@@ -93,7 +94,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
     if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch project data: ${response.status} - ${errorBody}`)
-      throw new Error('Failed to fetch project data')
+      return null
     }
     const text = await response.text()
     if (!text) return null
@@ -107,7 +108,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
     }
   } catch (error) {
     console.error('Error fetching project data:', error)
-    throw error
+    return null
   }
 }
 
@@ -116,18 +117,20 @@ export const fetchGamesWithReports = async (from: number, limit: number): Promis
   try {
     const response = await fetch(url)
     if (response.status === 204) {
-      // 204 - No Content
       console.log('No results found')
       return []
-    } else if (!response.ok) {
+    }
+
+    if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
-      throw new Error('Failed to fetch project data')
+      return []
     }
+
     return await response.json() as GameSearchResult[]
   } catch (error) {
     console.error('Error fetching project data:', error)
-    throw error
+    return []
   }
 }
 
@@ -136,7 +139,8 @@ export const searchGames = async (searchString: string | null, includeExternal: 
   if (searchString) {
     url += `?term=${encodeURIComponent(searchString)}`
   } else {
-    throw new Error('No search string provided')
+    console.error('searchGames called without a search string')
+    return []
   }
   if (includeExternal) {
     url += '&include_external=true'
@@ -145,18 +149,20 @@ export const searchGames = async (searchString: string | null, includeExternal: 
   try {
     const response = await fetch(url)
     if (response.status === 204) {
-      // 204 - No Content
       console.log('No results found')
       return []
-    } else if (!response.ok) {
+    }
+
+    if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
-      throw new Error('Failed to fetch project data')
+      return []
     }
+
     return await response.json() as GameSearchResult[]
   } catch (error) {
     console.error('Error fetching project data:', error)
-    throw error
+    return []
   }
 }
 
@@ -164,20 +170,21 @@ export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
   try {
     const response = await fetch(apiUrl('/deck-verified/api/v1/report_form'))
     if (response.status === 204) {
-      // 204 - No Content
       console.log('No results found')
       return null
-    } else if (!response.ok) {
+    }
+
+    if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
-      throw new Error('Failed to fetch project data')
+      return null
     }
     const text = await response.text()
     if (!text) return null
     return JSON.parse(text) as GameReportForm
   } catch (error) {
     console.error('Error fetching project data:', error)
-    throw error
+    return null
   }
 }
 
@@ -216,10 +223,12 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
       // 204 - No Content
       console.log('No results found')
       return []
-    } else if (!response.ok) {
+    }
+
+    if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
-      throw new Error('Failed to fetch project data')
+      return []
     }
     const data = await response.json()
     if (!data.results) {
@@ -228,6 +237,6 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
     return data.results as GameDetailsRequestMetricResult[]
   } catch (error) {
     console.error('Error fetching project data:', error)
-    throw error
+    return []
   }
 }
