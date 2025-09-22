@@ -264,13 +264,12 @@ function requestMobileFullscreen() {
 <style scoped>
 .decky-plugin {
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
   justify-content: center;
   min-height: 640px;
   align-items: center;
-  margin-top: 0;
-  margin-bottom: 50px;
-  gap: 1.25rem;
+  margin: 0 100px;
+  gap: 2rem;
 }
 
 .decky-plugin__media {
@@ -279,6 +278,7 @@ function requestMobileFullscreen() {
   align-items: center;
   order: 1;
   min-width: 200px;
+  max-width: 1300px;
 }
 
 .decky-plugin__video-wrapper {
@@ -339,25 +339,21 @@ function requestMobileFullscreen() {
   text-decoration: underline;
 }
 
-@media (min-width: 1024px) {
+@media (max-width: 1024px) {
   .decky-plugin {
-    flex-direction: row-reverse;
-    margin: 0 100px;
-  }
-}
-
-@media (min-width: 600px) {
-  .decky-plugin {
-    gap: 2rem;
+    flex-direction: column;
+    margin: 0 0 50px 0;
   }
 
   .decky-plugin__card,
   .decky-plugin__media {
-    width: 100%;
+    max-width: 900px;
   }
+}
 
-  .decky-plugin__media {
-    max-width: 1300px;
+@media (max-width: 600px) {
+  .decky-plugin {
+    gap: 1.25rem;
   }
 }
 </style>

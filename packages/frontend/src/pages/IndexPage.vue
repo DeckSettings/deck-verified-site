@@ -143,7 +143,7 @@ useMeta(() => {
       </HomePageSection>
     </div>
 
-    <div style="margin-top:300px;">
+    <div class="supported-devices-section">
       <HomePageSection
         :add-debug-markers="false"
         section-title="devices"
@@ -155,7 +155,7 @@ useMeta(() => {
       </HomePageSection>
     </div>
 
-    <div>
+    <div class="decky-plugin-section">
       <HomePageSection
         :add-debug-markers="false"
         section-title="devices"
@@ -171,5 +171,17 @@ useMeta(() => {
 </template>
 
 <style scoped>
+.supported-devices-section {
+  margin-top: 300px;
+}
 
+.decky-plugin-section {
+  margin-top: 100px;
+}
+
+@media (max-width: 1024px) {
+  .supported-devices-section {
+    margin-top: 100px;
+  }
+}
 </style>
