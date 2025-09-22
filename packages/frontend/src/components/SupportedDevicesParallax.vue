@@ -429,7 +429,7 @@ watch(
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023.98px) {
   .supported-devices-parallax {
     padding-block: 8vh;
   }

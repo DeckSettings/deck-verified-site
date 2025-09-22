@@ -179,7 +179,7 @@ useMeta(() => {
   margin-top: 100px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023.98px) {
   .supported-devices-section {
     margin-top: 100px;
   }

@@ -5,6 +5,7 @@ import type { RouteLocationRaw } from 'vue-router'
 const props = withDefaults(defineProps<{
   label?: string
   icon?: string
+  iconRight?: string
   size?: string
   href?: string
   to?: RouteLocationRaw
@@ -44,6 +45,7 @@ const btnStyle = computed(() => {
     :disable="disable"
     :loading="loading"
     :color="color"
+    :icon-right="iconRight"
     :class="computedClass"
     :style="btnStyle"
     v-bind="$attrs"

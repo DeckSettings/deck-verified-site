@@ -339,7 +339,7 @@ function requestMobileFullscreen() {
   text-decoration: underline;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023.98px) {
   .decky-plugin {
     flex-direction: column;
     margin: 0 0 50px 0;
@@ -351,7 +351,7 @@ function requestMobileFullscreen() {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
   .decky-plugin {
     gap: 1.25rem;
   }

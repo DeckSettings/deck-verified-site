@@ -606,7 +606,7 @@ useMeta(() => ({
   text-decoration: underline;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
   .page-container {
     padding-left: 12px !important;
     padding-right: 12px !important;

@@ -213,7 +213,7 @@ onUnmounted(() => {
 }
 
 /* -sm- */
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
   .search-results {
     margin-top: 16px;
   }

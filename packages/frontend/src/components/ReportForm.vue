@@ -11,6 +11,7 @@ import type {
 import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
 import ZoomableImage from 'components/elements/ZoomableImage.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import LasOfUsGraphicSettingsImage from '../assets/Last-of-Us-Part-1-Graphics-Settings.jpg'
 
 const props = defineProps({
@@ -454,79 +455,66 @@ watch(formValues, () => {
 </script>
 
 <template>
-  <q-card style="width: 1200px; max-width: 90vw; display: flex; flex-direction: column; height: 90vh;">
-    <q-card-section :class="{'q-pa-xs' : $q.screen.lt.md }">
-      <div v-if="!$q.screen.lt.sm" class="row items-center no-wrap">
-        <div class="col">
+  <q-card bordered class="report-card">
+    <q-card-section class="report-header">
+      <div class="header-content">
+        <div class="header-info">
           <q-img
-            v-if="!$q.screen.lt.md && gameBanner"
-            class="form-header-game-image"
-            style="width: 100px"
+            v-if="gameBanner"
+            class="header-image"
             :src="gameBanner"
-            alt="Game Banner">
+            alt="Game Banner"
+            fit="contain"
+          >
             <template v-slot:error>
               <img
                 src="~/assets/banner-placeholder.png"
                 alt="Placeholder" />
             </template>
           </q-img>
-          <div class="text-h6">{{ gameName }}</div>
+          <div class="header-details">
+            <div class="header-title">{{ gameName }}</div>
+            <div v-if="appId" class="header-subtitle">App ID: {{ appId }}</div>
+          </div>
         </div>
-        <div class="col-auto self-baseline">
-          <q-btn
-            glossy
-            color="negative"
-            icon="close"
-            label="Cancel"
-            @click="clearFormState"
-            v-close-popup />
-          <q-btn
-            glossy
-            v-if="$q.screen.lt.md"
-            class="q-ml-md"
-            color="positive"
-            icon="fab fa-github"
-            icon-right="open_in_new"
-            label="Submit On GitHub"
-            @click="submitForm" />
-        </div>
-      </div>
-
-      <div v-else class="row items-center no-wrap">
-        <div class="col">
-          <q-btn
-            dense
-            glossy
-            class="q-pa-sm"
-            color="negative"
-            icon="close"
-            label="Cancel"
-            @click="clearFormState"
-            v-close-popup />
-        </div>
-        <div class="col-auto">
-          <q-btn
-            dense
-            glossy
-            class="q-ml-md q-pa-sm"
-            color="positive"
-            icon="fab fa-github"
-            icon-right="open_in_new"
-            label="Submit On GitHub"
-            @click="submitForm" />
+        <div class="header-actions">
+          <div class="header-action header-action--cancel">
+            <PrimaryButton
+              class="header-btn"
+              label="Cancel"
+              color="negative"
+              icon="close"
+              full-width
+              :dense="$q.screen.lt.sm"
+              @click="clearFormState"
+              v-close-popup
+            />
+          </div>
+          <div class="header-action header-action--submit lt-md">
+            <PrimaryButton
+              class="header-btn"
+              label="Submit On GitHub"
+              color="positive"
+              icon="fab fa-github"
+              icon-right="open_in_new"
+              full-width
+              :dense="$q.screen.lt.sm"
+              @click="submitForm"
+            />
+          </div>
         </div>
       </div>
     </q-card-section>
 
     <q-separator />
 
-    <q-card-section style="max-height: 90vh; overflow-y: auto;" class="scroll">
+    <q-card-section class="scroll form-body">
       <q-spinner v-if="!formData" />
       <div v-else>
         <q-form ref="reportForm" @submit.prevent="submitForm">
-          <div v-for="(section, sIndex) in getSections()" :key="sIndex">
-            <div class="row">
-              <div class="col-md-4">
+          <div v-for="(section, sIndex) in getSections()" :key="sIndex" class="form-section">
+            <div class="section-layout">
+              <aside class="section-aside">
                 <template v-if="section.markdown && section.markdown.includes('## In-Game Settings')">
                   <div class="in-game-settings-head">
                     <h2>In-Game Settings</h2>
@@ -593,20 +581,34 @@ watch(formValues, () => {
                 <template v-else>
                   <ReportFormMarkdown :markdown="section.markdown" />
                 </template>
-              </div>
-              <div class="col-12 col-md-8">
-                <div v-for="(field, fIndex) in section.fields" :key="fIndex" class="q-mb-md q-ml-lg">
-                  <div v-if="'id' in field && !gameSettingsFields.includes(field.id)">
+              </aside>
+              <div class="section-body">
+                <div
+                  v-for="(field, fIndex) in section.fields"
+                  :key="fIndex"
+                  class="field-card"
+                  :class="{
+                    'field-card--settings': 'id' in field && gameSettingsFields.includes(field.id),
+                    'field-card--invalid':
+                      'id' in field &&
+                      gameSettingsFields.includes(field.id) &&
+                      gameSettingsInvalid &&
+                      field.validations?.required,
+                  }"
+                >
+                  <template v-if="'id' in field && !gameSettingsFields.includes(field.id)">
                     <!-- Render input fields -->
                     <template v-if="field.type === 'input'">
-                      <div class="text-h6">
+                      <div class="field-title">
                         {{ field.attributes.label }}
                       </div>
-                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                      <div v-if="field.attributes.description" class="field-description">
                         {{ field.attributes.description || '' }}
                       </div>
                       <q-input
-                        outlined filled
+                        filled
+                        dense
+                        standout
                         v-model="formValues[field.id]"
                         :type="fieldInputTypes[field.attributes.label] == 'number' ? 'number' : 'text'"
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
@@ -615,14 +617,16 @@ watch(formValues, () => {
                     </template>
                     <!-- Render dropdown fields -->
                     <template v-else-if="field.type === 'dropdown'">
-                      <div class="text-h6">
+                      <div class="field-title">
                         {{ field.attributes.label }}
                       </div>
-                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                      <div v-if="field.attributes.description" class="field-description">
                         {{ field.attributes.description || '' }}
                       </div>
                       <q-select
-                        outlined filled
+                        filled
+                        dense
+                        standout
                         v-model="formValues[field.id]"
                         :options="field.attributes.options || []"
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
@@ -632,41 +636,38 @@ watch(formValues, () => {
                     </template>
                     <!-- Render textarea fields -->
                     <template v-else-if="field.type === 'textarea'">
-                      <div class="text-h6">
+                      <div class="field-title">
                         {{ field.attributes.label }}
                       </div>
-                      <div v-if="field.attributes.description" class="text-caption q-my-sm">
+                      <div v-if="field.attributes.description" class="field-description">
                         {{ field.attributes.description || '' }}
                       </div>
                       <q-input
-                        outlined filled
+                        filled
+                        dense
+                        standout
                         type="textarea"
                         autogrow
-                        class="full-width"
-                        input-class="full-width"
-                        style="width: 100%"
                         v-model="formValues[field.id]"
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
                         :rules="runFieldRules(field)"
                       />
                     </template>
-                  </div>
-                  <div v-else-if="'id' in field && gameSettingsFields.includes(field.id)">
-                    <div :style="gameSettingsInvalid && field.validations?.required ? 'border: thin solid red;' : '' ">
-                      <GameSettingsFields
-                        :fieldData="field"
-                        :previousData="previousFormValues?.[field.id] ? String(previousFormValues?.[field.id]) : ''"
-                        :invalidData="gameSettingsInvalid"
-                        @update="handleGameSettingsUpdate(field.id, $event)"
-                      />
-                    </div>
-                  </div>
-                  <div v-else>
+                  </template>
+                  <template v-else-if="'id' in field && gameSettingsFields.includes(field.id)">
+                    <GameSettingsFields
+                      :fieldData="field"
+                      :previousData="previousFormValues?.[field.id] ? String(previousFormValues?.[field.id]) : ''"
+                      :invalidData="gameSettingsInvalid"
+                      @update="handleGameSettingsUpdate(field.id, $event)"
+                    />
+                  </template>
+                  <template v-else>
                     <!-- Render unsupported fields warning -->
                     <q-banner type="warning">
                       Unsupported field type: {{ field.type }}
                     </q-banner>
-                  </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -679,20 +680,21 @@ watch(formValues, () => {
 
     <q-separator />
 
-    <q-card-actions v-if="!$q.screen.lt.md" align="right" class="q-pa-md-md">
-      <!--      <q-btn
-              color="negative"
-              icon="close"
-              label="Cancel"
-              @click="clearFormState"
-              v-close-popup />-->
-      <q-btn
-        glossy
-        color="positive"
-        icon="fab fa-github"
-        icon-right="open_in_new"
-        label="Submit On GitHub"
-        @click="submitForm" />
+    <q-card-actions
+      align="right"
+      class="q-pa-md-md gt-sm"
+    >
+      <div class="header-action header-action--submit">
+        <PrimaryButton
+          class="header-btn"
+          color="positive"
+          icon="fab fa-github"
+          icon-right="open_in_new"
+          label="Submit On GitHub"
+          full-width
+          @click="submitForm"
+        />
+      </div>
     </q-card-actions>
   </q-card>
 
@@ -763,20 +765,291 @@ watch(formValues, () => {
 </template>
 
 <style scoped>
+.report-card {
+  width: 100%;
+  max-width: 1180px;
+  height: 92vh;
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 16, 24, 0.98);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.report-header {
+  padding: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.header-image {
+  height: 60px;
+  width: auto;
+  max-width: 320px;
+  aspect-ratio: 16 / 7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.header-image :deep(img) {
+  object-fit: contain;
+  height: 100%;
+  width: auto;
+}
+
+.header-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.header-subtitle {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.header-action {
+  flex: 0 1 260px;
+  min-width: 160px;
+  max-width: 280px;
+  display: flex;
+}
+
+.header-action--cancel {
+  flex: 1 1 220px;
+  min-width: 140px;
+}
+
+.header-action--submit {
+  flex: 1 1 260px;
+}
+
+.header-action > * {
+  flex: 1 1 auto;
+}
+
+.header-btn {
+  width: 100%;
+  margin: 0 !important;
+}
+
+.header-btn .q-btn__content {
+  gap: 8px;
+}
+
+.form-body {
+  flex: 1;
+  padding: 24px;
+}
+
 .scroll {
   overflow-y: auto;
+}
+
+.form-section {
+  margin-bottom: 48px;
+}
+
+.section-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.section-aside {
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+}
+
+.field-card :deep(.q-field) {
+  width: 100%;
+}
+
+.field-card :deep(.q-field__native),
+.field-card :deep(textarea) {
+  font-size: 0.95rem;
+}
+
+.field-card--settings {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.field-card--settings:hover {
+  border: none;
+  box-shadow: none;
+}
+
+.field-card--invalid {
+  border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+.field-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.field-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin-bottom: 12px;
 }
 
 .in-game-settings-head h2 {
   font-size: 1.75rem;
   font-weight: bold;
-  line-height: inherit;
+  line-height: 1.2;
 }
 
 .in-game-settings-head p {
   font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 1023.98px) {
+  .report-header {
+    padding: 16px;
+  }
+
+  .report-card {
+    height: auto;
+    max-height: none;
+  }
+
+  .form-body {
+    padding: 16px;
+  }
+
+  .form-section {
+    margin-bottom: 32px;
+  }
+
+  .section-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .section-aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .report-card {
+    border-radius: 12px;
+  }
+
+  .header-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .header-action {
+    flex: 1 1 150px;
+    min-width: 120px;
+    max-width: none;
+  }
+
+  .header-action--cancel {
+    flex: 1 1 120px;
+    min-width: 100px;
+  }
+
+  .header-action--submit {
+    flex: 1 1 180px;
+  }
+
+  .header-title {
+    font-size: 1.2rem;
+  }
+
+  .header-image {
+    display: none;
+  }
+
+  .header-details {
+    width: 100%;
+  }
+
+  .field-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
 }
 
 </style>
