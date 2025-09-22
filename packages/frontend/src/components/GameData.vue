@@ -891,6 +891,26 @@ useMeta(() => {
                                 </div>-->
               </div>
             </div>
+
+            <!-- START MOBILE-ONLY PAGE TEXT -->
+            <div class="mobile-reports-insight lt-sm q-mt-xl">
+              <div class="mobile-reports-insight__badge">Insights</div>
+              <div class="mobile-reports-insight__content q-mt-md">
+                <h3 class="mobile-reports-insight__title">Help out</h3>
+                <p>
+                  Dialed in a great setup? Tap the <em>Submit Report</em> button above to share
+                  your configuration and help fellow players discover the best way to enjoy
+                  {{ gameName || 'this game' }} on Steam Deck.
+                </p>
+              </div>
+              <div v-if="gameReportsSummary" class="mobile-reports-insight__summary q-mt-lg">
+                <h3 class="mobile-reports-insight__title">Reports Summary</h3>
+                <p>
+                  {{ gameReportsSummary }}
+                </p>
+              </div>
+            </div>
+            <!-- END MOBILE-ONLY PAGE TEXT -->
           </div>
         </div>
       </div>
@@ -981,6 +1001,51 @@ useMeta(() => {
   border-radius: 3px;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
   padding: 10px
+}
+
+.mobile-reports-insight {
+  background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 10px 10px 10px 18px;
+  backdrop-filter: blur(6px);
+  position: relative;
+}
+
+.mobile-reports-insight__badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--q-primary) 20%, transparent);
+  color: color-mix(in srgb, white 90%, transparent);
+}
+
+.mobile-reports-insight__summary {
+  border-top: 1px solid color-mix(in srgb, white 12%, transparent);
+  padding-top: 14px;
+}
+
+.mobile-reports-insight__title {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.mobile-reports-insight strong {
+  color: color-mix(in srgb, white 97%, transparent);
+}
+
+.mobile-reports-insight em {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--q-secondary);
 }
 
 .config-card {
