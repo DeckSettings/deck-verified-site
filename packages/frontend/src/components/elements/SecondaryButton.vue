@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useQuasar } from 'quasar'
 import type { RouteLocationRaw } from 'vue-router'
-
-const $q = useQuasar()
 
 const props = withDefaults(defineProps<{
   label?: string
@@ -26,7 +23,7 @@ const btnStyle = computed(() => {
 })
 const computedClass = computed(() => {
   const classes = ['dv-secondary-btn', 'q-my-sm', 'q-mx-xs', 'q-pa-sm', 'q-mx-xs'] as string[]
-  if (props.fullWidth && !$q.screen.lt.md) classes.push('full-width')
+  if (props.fullWidth) classes.push('full-width')
   return classes
 })
 </script>

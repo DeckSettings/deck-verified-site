@@ -1144,7 +1144,7 @@ useMeta(() => {
   }
 }
 
-/* -lg- */
+/* -xl- */
 @media (min-width: 1920px) {
   .game-image-container {
     max-width: 600px;

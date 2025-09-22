@@ -47,39 +47,42 @@ onUnmounted(() => {
 
   <!-- The content that scrolls. -->
   <div ref="contentContainer" class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
-    <div class="col-xs-12 col-md-6 text-left q-pt-md q-px-md q-pb-none">
-      <h1 class="text-h3 q-mb-lg q-mt-none" :class="{'text-center': $q.screen.lt.sm}">
+    <div class="hero-text-wrapper col-xs-12 col-md-6 q-pt-md q-px-md q-pb-none">
+      <h1 class="hero-title text-h3 q-mb-lg q-mt-none">
         Steam Deck Game Settings & Performance Reports
       </h1>
-      <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
+      <p class="hero-description text-body1">
         <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimise performance on
         handheld
         gaming PCs such as the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong>, <strong>Lenovo Legion
         Go</strong>, and dozens of other handheld gaming PCs — with new device support added via community request.
       </p>
-      <p class="text-body1" :class="{'text-center': $q.screen.lt.sm}">
+      <p class="hero-description text-body1">
         Whether you're aiming for smooth 60 FPS gameplay or battery-efficient settings, this community-driven resource
         delivers real-world performance reports, graphics settings, controller mappings, and compatibility notes.
       </p>
-      <div class="q-pb-md" :class="{'text-center': $q.screen.lt.sm}">
-        <SecondaryButton
-          :full-width="$q.screen.lt.sm"
-          icon="fab fa-github"
-          href="https://github.com/DeckSettings/game-reports-steamos/issues"
-          target="_blank" rel="noopener"
-          label="View Reports Source"
-        />
-        <SecondaryButton
-          :full-width="$q.screen.lt.sm"
-          :class="{'q-mt-sm' : $q.screen.lt.sm}"
-          icon="fab fa-github"
-          href="https://github.com/DeckSettings/deck-verified-site"
-          target="_blank" rel="noopener"
-          label="View Website Source"
-        />
-        <p
-          class="text-caption q-mt-none text-italic"
-          :class="$q.screen.lt.sm ? 'text-center q-mt-sm': 'q-ml-sm'">
+      <div class="hero-text-actions">
+        <div class="hero-text-action">
+          <SecondaryButton
+            full-width
+            icon="fab fa-github"
+            href="https://github.com/DeckSettings/game-reports-steamos/issues"
+            target="_blank" rel="noopener"
+            label="View Reports Source"
+          />
+        </div>
+        <div class="hero-text-action">
+          <SecondaryButton
+            full-width
+            icon="fab fa-github"
+            href="https://github.com/DeckSettings/deck-verified-site"
+            target="_blank" rel="noopener"
+            label="View Website Source"
+          />
+        </div>
+      </div>
+      <div class="hero-text-actions q-pb-md">
+        <p class="hero-text-footnote text-caption q-mt-none text-italic">
           All game report data and website source code are available on GitHub. Feel free to contribute!
         </p>
       </div>
@@ -87,12 +90,10 @@ onUnmounted(() => {
     <div class="col-xs-12 col-md-6 q-pa-md q-pb-none flex flex-center gt-sm">
       <img :src="`${baseUrl}/hero-image.png`" alt="Hero Image" class="hero-image">
     </div>
-    <div class="full-width row justify-center q-mb-lg q-px-md">
-      <div class="q-ml-md q-mt-sm q-mt-none-md">
+    <div class="hero-primary-actions full-width justify-center">
+      <div class="hero-primary-action">
         <PrimaryButton
           color="secondary"
-          :full-width="$q.screen.lt.sm"
-          :class="{'q-mt-sm' : $q.screen.lt.sm}"
           :size="$q.screen.lt.sm ? 'md': 'lg'"
           icon="tune"
           label="Browse Steam Deck Settings"
@@ -145,12 +146,15 @@ onUnmounted(() => {
   visibility: hidden;
 }
 
-/* sm width */
 .page-content-container {
   position: relative;
   z-index: 2;
   background-color: transparent;
   overflow: hidden;
+}
+
+.page-content-container > div {
+  margin: 0 auto;
 }
 
 .hero-image {
@@ -159,10 +163,74 @@ onUnmounted(() => {
   height: auto;
 }
 
-/* sm width */
-@media (min-width: 600px) {
-  .page-content-container > div {
+.hero-text-wrapper {
+  max-width: 620px;
+  text-align: left;
+}
+
+.hero-title {
+  line-height: 1.15;
+}
+
+.hero-description {
+  max-width: 56ch;
+}
+
+.hero-text-actions,
+.hero-primary-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.hero-text-action,
+.hero-primary-action {
+  align-self: flex-start;
+  min-with: 195px;
+}
+
+.hero-text-footnote {
+  max-width: 48ch;
+  margin-left: 0;
+}
+
+
+@media (max-width: 1223.98px) {
+  .hero-text-wrapper {
+    max-width: 720px;
+    text-align: left;
+  }
+
+  .hero-description {
+    max-width: none;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .hero-text-wrapper {
     margin: 0 auto;
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .hero-text-actions {
+    align-items: stretch;
+  }
+
+  .hero-text-action {
+    width: 100%;
+  }
+
+  .hero-primary-action {
+    width: 100%;
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .hero-text-footnote {
+    text-align: left;
+    margin-top: 0.5rem;
   }
 }
 </style>
