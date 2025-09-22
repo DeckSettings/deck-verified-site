@@ -30,8 +30,7 @@ export function resolveCssColor(colour: string, opacity: number): string {
   }
 
   if (/^var\(/i.test(colour)) {
-    const expression = colour.includes(',') ? colour : `${colour}, transparent`
-    return `color-mix(in srgb, ${expression} ${clampedOpacity * 100}%, transparent)`
+    return `color-mix(in srgb, ${colour} ${clampedOpacity * 100}%, transparent)`
   }
 
   return `color-mix(in srgb, ${colour} ${clampedOpacity * 100}%, transparent)`
