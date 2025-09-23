@@ -183,6 +183,18 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
       updated_at: issue.updated_at,
     })
   }
+  projectDetails.reports.sort((a, b) => {
+    const thumbsDiff = (b.reactions?.reactions_thumbs_up ?? 0) - (a.reactions?.reactions_thumbs_up ?? 0)
+    if (thumbsDiff !== 0) {
+      return thumbsDiff
+    }
+    const getDate = (report: typeof a): number => {
+      const updated = report.updated_at ? new Date(report.updated_at).getTime() : null
+      const created = report.created_at ? new Date(report.created_at).getTime() : null
+      return updated ?? created ?? 0
+    }
+    return getDate(b) - getDate(a)
+  })
   return projectDetails
 }
 
