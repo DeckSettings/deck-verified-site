@@ -3,6 +3,9 @@ import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
 import type { GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
 
+let ensureLoadedPromise: Promise<void> | null = null
+let ensureLoadedKey: string | null = null
+
 export const useGameStore = defineStore('game', {
   state: () => ({
     isLoaded: false as boolean,
@@ -109,6 +112,16 @@ export const useGameStore = defineStore('game', {
         parsedGameName = decodeURIComponent(String(currentRoute.params.gameName || ''))
       }
 
+      const targetKey = parsedAppId
+        ? `app:${parsedAppId}`
+        : parsedGameName
+          ? `game:${parsedGameName}`
+          : ''
+
+      if (!targetKey) {
+        return
+      }
+
       // If we already have data for this exact target, skip re-fetch
       if (
         this.gameData && (
@@ -119,6 +132,11 @@ export const useGameStore = defineStore('game', {
         return
       }
 
+      if (ensureLoadedPromise && ensureLoadedKey === targetKey) {
+        await ensureLoadedPromise
+        return
+      }
+
       // RESET state for new target BEFORE fetching
       this.resetGameState()
 
@@ -126,69 +144,83 @@ export const useGameStore = defineStore('game', {
       this.appId = parsedAppId
       this.gameName = parsedGameName || ''
 
-      // Fetch labels without blocking the reset (only if needed)
-      const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)
-        ? fetchLabels().then((labels) => {
-          this.deviceLabels = labels.filter((l) => l.name.startsWith('DEVICE:'))
-          this.launcherLabels = labels.filter((l) => l.name.startsWith('LAUNCHER:'))
-        }).catch(() => {
-          /* ignore errors */
-        })
-        : Promise.resolve()
+      const loadTask = async () => {
+        const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)
+          ? fetchLabels().then((labels) => {
+            this.deviceLabels = labels.filter((l) => l.name.startsWith('DEVICE:'))
+            this.launcherLabels = labels.filter((l) => l.name.startsWith('LAUNCHER:'))
+          }).catch(() => {
+            /* ignore errors */
+          })
+          : Promise.resolve()
 
-      // Fetch game data (this one you await in SSR; on client it's fire-and-forget)
-      const fetched = (parsedAppId || parsedGameName)
-        ? await fetchGameData(parsedGameName, parsedAppId)
-        : null
+        // Fetch game data (this one you await in SSR; on client it's fire-and-forget)
+        const fetched = (parsedAppId || parsedGameName)
+          ? await fetchGameData(parsedGameName, parsedAppId)
+          : null
 
-      await labelsPromise
+        await labelsPromise
 
-      if (fetched) {
-        this.gameData = fetched
+        if (fetched) {
+          this.gameData = fetched
 
-        if (fetched.gameName) {
-          this.gameName = fetched.gameName
-        }
-
-        if (fetched.projectNumber) {
-          this.githubProjectSearchLink = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${fetched.projectNumber}`
-        }
-
-        if (fetched.metadata) {
-          this.gameBackground = fetched.metadata.hero || null
-          this.gamePoster = fetched.metadata.poster || null
-          this.gameBanner = fetched.metadata.banner || null
-
-          // Seed metadata image fields so components have initial values (SSR-safe)
-          const imgUrl = this.gameBanner || this.gameBackground || this.gamePoster || ''
-          if (imgUrl) {
-            let imageType = ''
-            if (/\.(jpe?g)$/i.test(imgUrl)) imageType = 'image/jpeg'
-            else if (/\.png$/i.test(imgUrl)) imageType = 'image/png'
-            else if (/\.webp$/i.test(imgUrl)) imageType = 'image/webp'
-            else if (/\.gif$/i.test(imgUrl)) imageType = 'image/gif'
-            this.setMetadata({
-              image: imgUrl,
-              imageAlt: `${this.gameName || (this.appId ? `App ${this.appId}` : 'Game')} - Game Banner`,
-              imageType,
-            })
+          if (fetched.gameName) {
+            this.gameName = fetched.gameName
           }
+
+          if (fetched.projectNumber) {
+            this.githubProjectSearchLink = `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+project%3Adecksettings%2F${fetched.projectNumber}`
+          }
+
+          if (fetched.metadata) {
+            this.gameBackground = fetched.metadata.hero || null
+            this.gamePoster = fetched.metadata.poster || null
+            this.gameBanner = fetched.metadata.banner || null
+
+            // Seed metadata image fields so components have initial values (SSR-safe)
+            const imgUrl = this.gameBanner || this.gameBackground || this.gamePoster || ''
+            if (imgUrl) {
+              let imageType = ''
+              if (/\.(jpe?g)$/i.test(imgUrl)) imageType = 'image/jpeg'
+              else if (/\.png$/i.test(imgUrl)) imageType = 'image/png'
+              else if (/\.webp$/i.test(imgUrl)) imageType = 'image/webp'
+              else if (/\.gif$/i.test(imgUrl)) imageType = 'image/gif'
+              this.setMetadata({
+                image: imgUrl,
+                imageAlt: `${this.gameName || (this.appId ? `App ${this.appId}` : 'Game')} - Game Banner`,
+                imageType,
+              })
+            }
+          }
+
+          this.reportsSummary = fetched.reports_summary ?? null
+
+          // Initialise default page metadata now that core fields are known
+          this.setDefaultGameMetadata()
+
+          // Update submit link
+          const baseSubmit = 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800'
+          const params: string[] = []
+          if (this.gameName) params.push(`game_name=${encodeURIComponent(this.gameName)}`)
+          if (this.appId) params.push(`app_id=${encodeURIComponent(this.appId)}`)
+          this.githubSubmitReportLink = params.length ? `${baseSubmit}&${params.join('&')}` : baseSubmit
         }
 
-        this.reportsSummary = fetched.reports_summary ?? null
-
-        // Initialise default page metadata now that core fields are known
-        this.setDefaultGameMetadata()
-
-        // Update submit link
-        const baseSubmit = 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800'
-        const params: string[] = []
-        if (this.gameName) params.push(`game_name=${encodeURIComponent(this.gameName)}`)
-        if (this.appId) params.push(`app_id=${encodeURIComponent(this.appId)}`)
-        this.githubSubmitReportLink = params.length ? `${baseSubmit}&${params.join('&')}` : baseSubmit
+        this.isLoaded = true
       }
 
-      this.isLoaded = true
+      ensureLoadedKey = targetKey
+      const currentPromise = loadTask()
+      ensureLoadedPromise = currentPromise
+
+      try {
+        await currentPromise
+      } finally {
+        if (ensureLoadedPromise === currentPromise) {
+          ensureLoadedPromise = null
+          ensureLoadedKey = null
+        }
+      }
     },
   },
 })
