@@ -63,7 +63,7 @@ const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const dialogAutoOpened = ref(false)
 
-const includeExternalReports = ref(route.query.includeExternalReports === 'true')
+const includeExternalReports = ref(route.query.include_external === 'true')
 const sdhqLink = ref('')
 
 const selectedDevice = ref('all')
@@ -144,17 +144,6 @@ const hasPerformanceSettings = (report: ExtendedGameReport) => {
   )
 }
 
-const hasReports = computed(() => {
-  if (!gameData.value) return false
-  const internal = gameData.value.reports
-  const hasInternal = internal === null || (Array.isArray(internal) && internal.length > 0)
-  const hasExternal =
-    includeExternalReports.value &&
-    Array.isArray(gameData.value.external_reviews) &&
-    gameData.value.external_reviews.length > 0
-  return hasInternal || hasExternal
-})
-
 // Expanded state per-report id
 const expanded = ref<Record<number, boolean>>({})
 
@@ -190,36 +179,38 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
   }
 
   // Append any external reports
-  if (Array.isArray(gd.external_reviews) && includeExternalReports.value) {
+  if (Array.isArray(gd.external_reviews)) {
     gd.external_reviews.forEach((review: ExternalGameReview) => {
       if (review.source.name === 'SDHQ') {
         // This only sets a ref; safe for SSR
         sdhqLink.value = review.html_url
       }
-      reports.push({
-        id: review.id,
-        number: 0,
-        title: review.title,
-        html_url: review.html_url,
-        data: review.data as Partial<GameReportData>,
-        user: {
-          login: review.source.name,
-          avatar_url: review.source.avatar_url,
-          report_count: review.source.report_count || 0,
-        },
-        created_at: review.created_at,
-        updated_at: review.updated_at,
-        // Use metadata from parent game data
-        metadata: {
-          poster: gd.metadata.poster,
-          hero: gd.metadata.hero,
-          banner: gd.metadata.banner,
-          background: gd.metadata.background,
-        },
-        reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
-        labels: [],
-        external: true,
-      })
+      if (includeExternalReports.value) {
+        reports.push({
+          id: review.id,
+          number: 0,
+          title: review.title,
+          html_url: review.html_url,
+          data: review.data as Partial<GameReportData>,
+          user: {
+            login: review.source.name,
+            avatar_url: review.source.avatar_url,
+            report_count: review.source.report_count || 0,
+          },
+          created_at: review.created_at,
+          updated_at: review.updated_at,
+          // Use metadata from parent game data
+          metadata: {
+            poster: gd.metadata.poster,
+            hero: gd.metadata.hero,
+            banner: gd.metadata.banner,
+            background: gd.metadata.background,
+          },
+          reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+          labels: [],
+          external: true,
+        })
+      }
     })
   }
 
@@ -515,7 +506,7 @@ useMeta(() => {
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="gameData">
-            <div v-if="hasReports">
+            <div v-if="filteredReports.length > 0">
               <div class="game-data-filters row q-mb-md justify-between items-center">
                 <!-- Filters (Top Left) -->
                 <div class="filters col-xs-12 col-md-8">
