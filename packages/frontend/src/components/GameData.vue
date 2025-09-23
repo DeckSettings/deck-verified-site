@@ -561,6 +561,11 @@ useMeta(() => {
                                     expand-icon-class="self-end"
                                     header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs">
                     <template v-slot:header>
+                      <q-tooltip
+                        transition-show="scale" transition-hide="scale"
+                        anchor="bottom end" self="bottom right" :offset="[-30, -10]">
+                        Click to Show/Hide Report
+                      </q-tooltip>
                       <q-item-section class="gt-xs">
                         <!-- Wrapper for the layout -->
                         <div class="row items-center q-gutter-sm">
