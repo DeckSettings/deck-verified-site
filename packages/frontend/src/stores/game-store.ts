@@ -129,8 +129,8 @@ export const useGameStore = defineStore('game', {
       // Fetch labels without blocking the reset (only if needed)
       const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)
         ? fetchLabels().then((labels) => {
-          this.deviceLabels = labels.filter((l) => l.name.startsWith('device:'))
-          this.launcherLabels = labels.filter((l) => l.name.startsWith('launcher:'))
+          this.deviceLabels = labels.filter((l) => l.name.startsWith('DEVICE:'))
+          this.launcherLabels = labels.filter((l) => l.name.startsWith('LAUNCHER:'))
         }).catch(() => {
           /* ignore errors */
         })

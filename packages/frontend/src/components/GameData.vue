@@ -54,7 +54,6 @@ const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
   return internalOnly[0]?.data ?? null
 })
 const gameBackground = computed<string | null>(() => gameStore.gameBackground)
-//const gamePoster = computed<string | null>(() => gameStore.gamePoster)
 const gameBanner = computed<string | null>(() => gameStore.gameBanner)
 const githubProjectSearchLink = computed<string | null>(() => gameStore.githubProjectSearchLink)
 const githubSubmitReportLink = computed<string>(() => gameStore.githubSubmitReportLink)
@@ -72,10 +71,13 @@ const deviceLabels = computed<GitHubIssueLabel[]>(() => gameStore.deviceLabels)
 const deviceOptions = computed(() => {
   if (deviceLabels.value) {
     const options = deviceLabels.value
-      .map(label => ({
-        label: label.description || label.name || 'Unknown',
-        value: label.name,
-      }))
+      .map(label => {
+        const parsedLabel = label.name.split(':')[1]?.trim() || label.name
+        return {
+          label: parsedLabel,
+          value: label.name,
+        }
+      })
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
     return [{ label: 'All', value: 'all' }, ...options]
   }
@@ -86,14 +88,24 @@ const selectedLauncher = ref('all')
 const launcherLabels = computed<GitHubIssueLabel[]>(() => gameStore.launcherLabels)
 const launcherOptions = computed(() => {
   if (launcherLabels.value) {
-    let options = launcherLabels.value.map(label => ({
-      label: label.description || label.name || 'Unknown',
-      value: label.name,
-    }))
-    const otherOption = options.find(option => option.value === 'launcher:other')
-    if (otherOption) options = options.filter(option => option.value !== 'launcher:other')
+    let options = launcherLabels.value
+      .map(label => {
+        const parsedLabel = label.name.split(':')[1]?.trim() || label.name
+        return {
+          label: parsedLabel,
+          value: label.name,
+        }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+
+    // Keep "Other" at the bottom
+    const otherOption = options.find(opt => opt.label === 'Other')
+    if (otherOption) options = options.filter(opt => opt !== otherOption)
+
+    // Sort everything else and then re-add Other option
     options = options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
     if (otherOption) options.push(otherOption)
+
     return [{ label: 'All', value: 'all' }, ...options]
   }
   return [{ label: 'All', value: 'all' }]
