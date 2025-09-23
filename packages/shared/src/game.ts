@@ -346,6 +346,9 @@ export interface SDHQReview {
   title: {
     rendered: string;
   };
+  content: {
+    rendered: string;
+  };
   excerpt: {
     rendered: string;
   };

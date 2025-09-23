@@ -202,6 +202,49 @@ const convertRatingToStars = (rating: number): string => {
 }
 
 /**
+ * Extract unique YouTube video IDs from HTML content.
+ */
+const extractYouTubeVideoIds = (html?: string | null): string[] => {
+  if (!html) {
+    return []
+  }
+
+  const cleanedHtml = html.replace(/&amp;/gi, '&')
+  const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^"'\s<>]+)/gi
+  const ids = new Set<string>()
+
+  let match: RegExpExecArray | null
+  while ((match = youtubeUrlRegex.exec(cleanedHtml)) !== null) {
+    const urlCandidate = match[0]
+
+    try {
+      const parsedUrl = new URL(urlCandidate)
+      const host = parsedUrl.hostname.toLowerCase()
+      let videoId = ''
+
+      if (host.endsWith('youtu.be')) {
+        videoId = parsedUrl.pathname.split('/').filter(Boolean)[0] || ''
+      } else if (parsedUrl.searchParams.has('v')) {
+        videoId = parsedUrl.searchParams.get('v') ?? ''
+      } else {
+        const segments = parsedUrl.pathname.split('/').filter(Boolean)
+        videoId = segments.pop() ?? ''
+      }
+
+      if (videoId) {
+        const sanitizedId = videoId.replace(/[^a-zA-Z0-9_-]/g, '')
+        if (sanitizedId) {
+          ids.add(sanitizedId)
+        }
+      }
+    } catch (error) {
+    }
+  }
+
+  return Array.from(ids)
+}
+
+/**
  * Extracts the first numeric value found in a string.
  */
 const extractNumbersFromString = (numberString: string | undefined): number | null => {
@@ -590,6 +633,16 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
         if (notes.length > 0) {
           additionalNotes += notes.join('\n')
         }
+      }
+
+      const youtubeVideoIds = extractYouTubeVideoIds(review.content?.rendered)
+      if (youtubeVideoIds.length > 0) {
+        const youtubeSection = `\n${youtubeVideoIds
+          .map(id => `https://youtu.be/${id}`)
+          .join('\n')}`
+        additionalNotes = additionalNotes
+          ? `${additionalNotes}\n\n${youtubeSection}`
+          : youtubeSection
       }
 
       const summary = limitStringTo100Characters(
