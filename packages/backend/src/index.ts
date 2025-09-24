@@ -540,6 +540,20 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
       }
     }
 
+    // Add a blog summary of report data
+    returnData.reports_summary = null
+    if (includeExternal || appId == null) {
+      if ((returnData.reports?.length ?? 0) > 0 || (returnData.external_reviews?.length ?? 0) > 0) {
+        const reportsSummary = await fetchBlogReviewSummary(returnData)
+        if (reportsSummary && reportsSummary.length > 0) {
+          returnData.reports_summary = reportsSummary
+        }
+      } else {
+        logger.info(returnData)
+        logger.info('Skipping blog summary for game details result as we have no reports or external reviews')
+      }
+    }
+
     // Add additional external source data based on appId
     if (includeExternal && discoveredAppId !== null) {
       const sdhqReviews = await generateSDHQReviewData(discoveredAppId.toString())
@@ -557,21 +571,6 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
         ]
       }
     }
-
-    // Add blog summary of report data
-    returnData.reports_summary = null
-    if (includeExternal || appId == null) {
-      if ((returnData.reports?.length ?? 0) > 0 || (returnData.external_reviews?.length ?? 0) > 0) {
-        const reportsSummary = await fetchBlogReviewSummary(returnData)
-        if (reportsSummary && reportsSummary.length > 0) {
-          returnData.reports_summary = reportsSummary
-        }
-      } else {
-        logger.info(returnData)
-        logger.info('Skipping blog summary for game details result as we have no reports or external reviews')
-      }
-    }
-
 
     // Log the metric for the game details lookup
     const metricName = 'game_details'

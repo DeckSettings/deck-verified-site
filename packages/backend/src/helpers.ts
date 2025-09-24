@@ -793,7 +793,7 @@ export const generateSDGReviewData = async (appId: string): Promise<ExternalGame
  * - On cache miss: returns null immediately, then warms cache in background (deduped by a short Redis lock).
  */
 export const fetchBlogReviewSummary = async (gameDetails: Partial<GameDetails>): Promise<string | null> => {
-  // Generate cache key. Prefer App ID if available.
+  // Generate a cache key. Prefer App ID if available.
   const baseKey = gameDetails.appId
     ? String(gameDetails.appId)
     : String(gameDetails.gameName || '')
