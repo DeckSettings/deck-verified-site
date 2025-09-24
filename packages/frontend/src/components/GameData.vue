@@ -807,7 +807,8 @@ useMeta(() => {
                             </q-card-section>
                             <q-separator />
                             <q-card-section class="q-pa-sm q-pa-sm-md">
-                              <GameReportMarkdown :markdown="report.data.additional_notes" />
+                              <GameReportMarkdown :markdown="report.data.additional_notes"
+                                                  keep-standard-list-format />
                             </q-card-section>
                           </q-card>
                         </div>

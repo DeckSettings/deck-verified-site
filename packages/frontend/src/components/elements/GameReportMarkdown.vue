@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import { marked } from 'marked'
 import type { Token, Tokens } from 'marked'
 import createDOMPurify from 'dompurify'
@@ -10,6 +10,10 @@ export default defineComponent({
     markdown: {
       type: String,
       required: true,
+    },
+    keepStandardListFormat: {
+      type: Boolean,
+      default: false,
     },
   },
   setup(props) {
@@ -147,11 +151,18 @@ export default defineComponent({
       })
     }
 
+    const contentClasses = computed(() => ({
+      'report-markdown': true,
+      'report-markdown-lists': !props.keepStandardListFormat,
+      'q-ml-md-sm': true,
+    }))
+
     return {
       parsedMarkdown,
       sanitisedParsedMarkdown,
       youTubeVideoId,
       additionalImages,
+      contentClasses,
     }
   },
 })
@@ -160,7 +171,7 @@ export default defineComponent({
 
 <template>
   <div>
-    <div v-html="sanitisedParsedMarkdown" class="report-markdown q-ml-md-sm"></div>
+    <div v-html="sanitisedParsedMarkdown" :class="contentClasses"></div>
     <iframe v-if="youTubeVideoId"
             style="width: 100%; max-width: 800px; aspect-ratio: 16 / 9;"
             :src="`https://www.youtube.com/embed/${youTubeVideoId}`" frameborder="0"
@@ -264,32 +275,32 @@ export default defineComponent({
 }
 
 /* Custom formatting for markdown lists */
-::v-deep(.report-markdown ul) {
+::v-deep(.report-markdown-lists ul) {
   list-style: none;
   padding: 0;
 }
 
-::v-deep(.report-markdown ul li) {
+::v-deep(.report-markdown-lists ul li) {
   padding: 12px 5px;
   display: flex;
   justify-content: space-between;
   text-align: right;
 }
 
-::v-deep(.report-markdown ul li strong) {
+::v-deep(.report-markdown-lists ul li strong) {
   display: block;
   text-align: left;
   margin-right: 5px;
   min-width: 60px;
 }
 
-::v-deep(.report-markdown ul li:not(:last-child)) {
+::v-deep(.report-markdown-lists ul li:not(:last-child)) {
   border-bottom: 1px solid #ddd;
 }
 
 /* -sm- */
 @media (min-width: 600px) {
-  ::v-deep(.report-markdown ul li) {
+  ::v-deep(.report-markdown-lists ul li) {
     padding: 12px 16px;
   }
 }
