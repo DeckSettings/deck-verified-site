@@ -97,7 +97,24 @@ export default defineComponent({
       return ''
     }
 
-    const parsedMarkdown = marked(props.markdown, { renderer, breaks: true })
+    const rawMarkdown = marked(props.markdown, {
+      renderer,
+      breaks: true,
+      walkTokens(token: Token) {
+        if (
+          token.type === 'image' &&
+          typeof token.href === 'string' &&
+          isWhitelistedAttachment(token.href)
+        ) {
+          token.text = ''
+          token.raw = ''
+        }
+      },
+    })
+    let parsedMarkdown = typeof rawMarkdown === 'string' ? rawMarkdown : ''
+
+    // Strip paragraphs that only contain <br> tags to avoid visual gaps after image extraction
+    parsedMarkdown = parsedMarkdown.replace(/<p>(?:\s*<br\s*\/?>\s*)+<\/p>/gi, '')
 
     // SSR-safe sanitize: only use DOMPurify in the browser
     let sanitisedParsedMarkdown = String(parsedMarkdown)
