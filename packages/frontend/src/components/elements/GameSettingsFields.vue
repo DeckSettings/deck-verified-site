@@ -298,7 +298,7 @@ export default defineComponent({
 
     // Section management.
     const addSection = () => {
-      sections.value.push({ title: 'New Section', items: [] })
+      sections.value.push({ title: '', items: [] })
     }
 
     const deleteSection = (sectionIndex: number) => {
