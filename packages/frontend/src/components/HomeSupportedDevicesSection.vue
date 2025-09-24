@@ -26,7 +26,7 @@ type DeviceItem = {
 
 const DEVICE_ITEMS: DeviceItem[] = [
   {
-    device: 'Steam Deck LCD (256GB/512GB)',
+    device: 'Valve Steam Deck LCD (256GB/512GB)',
     width: 100,
     top: 20,
     left: '30%',
@@ -37,7 +37,7 @@ const DEVICE_ITEMS: DeviceItem[] = [
     rotate: 0,
   },
   {
-    device: 'ROG Ally Z1 Extreme',
+    device: 'ASUS ROG Ally Z1 Extreme',
     width: 400,
     top: 280,
     right: '20%',
@@ -48,7 +48,7 @@ const DEVICE_ITEMS: DeviceItem[] = [
     rotate: 0,
   },
   {
-    device: 'Legion Go',
+    device: 'Lenovo Legion Go',
     width: 140,
     top: 300,
     left: '12%',
@@ -59,7 +59,7 @@ const DEVICE_ITEMS: DeviceItem[] = [
     rotate: 0,
   },
   {
-    device: 'ROG Ally X',
+    device: 'ASUS ROG Ally X',
     width: 150,
     top: 520,
     right: '10%',
@@ -70,7 +70,18 @@ const DEVICE_ITEMS: DeviceItem[] = [
     rotate: 0,
   },
   {
-    device: 'Zone',
+    device: 'MSI Claw',
+    width: 250,
+    top: 520,
+    left: '5%',
+    scrollSpeed: 25,
+    enter: { side: 'left', offset: 120, ease: 'power3.out' },
+    appearOffset: 670,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'Zotac Zone',
     width: 150,
     top: 720,
     right: '28%',
@@ -81,12 +92,23 @@ const DEVICE_ITEMS: DeviceItem[] = [
     rotate: 0,
   },
   {
-    device: 'Steam Deck OLED',
+    device: 'Valve Steam Deck OLED',
     width: 300,
     top: 820,
     left: '-8%',
     scrollSpeed: 30,
     enter: { side: 'left', offset: 140, ease: 'power3.out' },
+    appearOffset: 840,
+    opacity: 1,
+    rotate: 0,
+  },
+  {
+    device: 'MSI Claw A8 Plus',
+    width: 190,
+    top: 820,
+    right: '38%',
+    scrollSpeed: 19,
+    enter: { side: 'right', offset: 540, ease: 'power3.out' },
     appearOffset: 840,
     opacity: 1,
     rotate: 0,
