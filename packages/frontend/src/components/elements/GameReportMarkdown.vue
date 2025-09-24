@@ -53,12 +53,27 @@ export default defineComponent({
       return `<a href="${href}"${titleAttr}>${text}</a>`
     }
 
+    const defaultImageRenderer = renderer.image
+
+    const isWhitelistedAttachment = (src: string) => {
+      return (
+        src.startsWith('https://github.com/user-attachments/') ||
+        src.startsWith('https://assets.deckverified.games/')
+      )
+    }
+
     // Override if we are provided with an image
     renderer.image = function(image: Tokens.Image): string {
       const { href: src, text: alt = '' } = image
-      // Only care about user-attachments URLs (safer not to display things not hosted on GitHub)
-      if (typeof src === 'string' && src.startsWith('https://github.com/user-attachments/')) {
-        additionalImages.value.push({ src, alt })
+      if (typeof src === 'string') {
+        if (isWhitelistedAttachment(src)) {
+          // Capture approved attachments to render below the markdown block
+          additionalImages.value.push({ src, alt })
+          return ''
+        }
+        if (src.startsWith('https://img.shields.io/')) {
+          return defaultImageRenderer.call(this, image)
+        }
       }
       // Empty/Drop the string
       return ''
@@ -73,8 +88,8 @@ export default defineComponent({
       )
       if (imgMatch) {
         const [, src = '', alt = ''] = imgMatch
-        // Only care about user-attachments URLs (safer not to display things not hosted on GitHub)
-        if (src.startsWith('https://github.com/user-attachments/')) {
+        // Collect whitelisted attachment domains for out-of-band rendering
+        if (isWhitelistedAttachment(src)) {
           additionalImages.value.push({ src, alt })
         }
       }
@@ -109,6 +124,7 @@ export default defineComponent({
           'h4',
           'h5',
           'h6',
+          'img',
         ],
         ALLOWED_ATTR: ['class', 'src', 'href', 'alt'],
       })
@@ -188,6 +204,15 @@ export default defineComponent({
   font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 1rem;
+}
+
+::v-deep(.report-markdown a) {
+  color: var(--q-secondary);
+  text-decoration-color: color-mix(in srgb, var(--q-secondary) 20%, transparent);
+}
+
+::v-deep(.report-markdown a:hover) {
+  text-decoration: underline;
 }
 
 /* Highlighting for code blocks */
