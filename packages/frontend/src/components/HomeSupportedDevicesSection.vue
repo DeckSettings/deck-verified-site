@@ -265,21 +265,21 @@ function getDeviceStyle(item: DeviceItem) {
       <q-card-section>
         <div ref="cardRef">
           <p>
-            This open-source GitHub reporting project powers a PC handheld game reports database for devices such as
-            the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
-            Whether you’re hunting for settings that deliver smoother performance or longer battery life, or you want
-            to record and share your own optimised configurations, you’ve come to the right place.
+            This open-source GitHub project hosts a database of community-submitted handheld PC game reports for devices
+            like the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong> and <strong>Lenovo Legion Go</strong>.
+            Whether you’re looking for settings that improve performance and battery life, or you want to share your own
+            optimized configurations, you’re in the right place.
           </p>
           <p>
-            Game reports for a device can include performance tweaks such as TDP limits, VRR and frame-rate caps,
-            manual GPU-clock adjustments, undervolting and more. They also provide guidance on in-game graphics and
+            Each game report can include performance tweaks such as TDP limits, VRR and frame-rate caps, GPU clock
+            adjustments, undervolting, and more. They also provide guidance on in-game graphics and
             display settings, including resolution choices, FSR or XeSS upscaling, frame generation and texture
             quality. Detailed compatibility notes can include links to YouTube video guides if you wish. Finally,
             estimated battery life and total play time are calculated based on the report data.
           </p>
           <p>
-            Don’t see your device yet? Contributing support is quick and easy.
-            Just open a request on GitHub and we'll help you get it added.
+            If your device isn’t listed yet, adding support is simple. Just open a request on GitHub and we’ll help you
+            get it included.
           </p>
           <div class="full-width row justify-center q-mb-lg q-px-md">
             <div>
