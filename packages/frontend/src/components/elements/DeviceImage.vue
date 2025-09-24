@@ -25,29 +25,28 @@ const props = defineProps({
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const placeholderImage = `${baseUrl.value}/devices/device-placeholder.png`
+
+const deviceImagePatterns: Record<string, RegExp> = {
+  'asus-rog-ally': /^(ASUS )?ROG Ally( Z1( Extreme)?)?$/i,
+  'asus-rog-ally-x': /^(ASUS )?ROG Ally X$/i,
+  'gpd-win-4': /^(GPD Win 4)$/i,
+  'lenovo-legion-go': /^(Lenovo )?Legion Go$/i,
+  'lenovo-legion-go-2': /^(Lenovo Legion Go 2)$/i,
+  'lenovo-legion-go-s': /^(Lenovo Legion Go S)$/i,
+  'msi-claw': /^(MSI Claw)$/i,
+  'msi-claw-a8-plus': /^(MSI Claw A8 Plus)$/i,
+  'valve-steam-deck': /^(Valve )?Steam Deck( OLED| LCD.*)?$/i,
+  'zotac-zone': /^(Zotac Zone)$/i,
+}
+
 const imageSource = computed(() => {
-  switch (props.device) {
-    case 'Steam Deck LCD (64GB)':
-      return `${baseUrl.value}/devices/valve-steam-deck-${props.size}.png`
-    case 'Steam Deck LCD (256GB/512GB)':
-      return `${baseUrl.value}/devices/valve-steam-deck-${props.size}.png`
-    case 'Steam Deck OLED':
-      return `${baseUrl.value}/devices/valve-steam-deck-${props.size}.png`
-    case 'ROG Ally Z1':
-      return `${baseUrl.value}/devices/asus-rog-ally-${props.size}.png`
-    case 'ROG Ally Z1 Extreme':
-      return `${baseUrl.value}/devices/asus-rog-ally-${props.size}.png`
-    case 'ROG Ally X':
-      return `${baseUrl.value}/devices/asus-rog-ally-x-${props.size}.png`
-    case 'Legion Go':
-      return `${baseUrl.value}/devices/lenovo-legion-go-${props.size}.png`
-    case 'Legion Go S':
-      return `${baseUrl.value}/devices/lenovo-legion-go-s-${props.size}.png`
-    case 'Zone':
-      return `${baseUrl.value}/devices/zotac-zone-${props.size}.png`
-    default:
-      return placeholderImage
+  const device = props.device ?? ''
+  for (const [prefix, regex] of Object.entries(deviceImagePatterns)) {
+    if (regex.test(device)) {
+      return `${baseUrl.value}/devices/${prefix}-${props.size}.png`
+    }
   }
+  return placeholderImage
 })
 const altText = computed(() => {
   return `${props.device} Image`
