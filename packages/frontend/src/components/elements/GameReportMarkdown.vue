@@ -82,7 +82,7 @@ export default defineComponent({
       return ''
     }
 
-    const parsedMarkdown = marked(props.markdown, { renderer })
+    const parsedMarkdown = marked(props.markdown, { renderer, breaks: true })
 
     // SSR-safe sanitize: only use DOMPurify in the browser
     let sanitisedParsedMarkdown = String(parsedMarkdown)
