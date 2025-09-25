@@ -51,6 +51,15 @@ export const connectToRedis = async (): Promise<void> => {
 }
 
 /**
+ * Ensure Redis is connected before performing any Redis operations.
+ */
+export const ensureRedisConnection = async (): Promise<void> => {
+  if (!redisClient.isOpen) {
+    await connectToRedis()
+  }
+}
+
+/**
  * Creates a RedisSearch index for games if it doesn't already exist.
  * This index allows efficient searching of game data stored in Redis.
  * Logs success or failure during index creation.

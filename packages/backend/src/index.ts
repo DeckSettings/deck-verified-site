@@ -8,6 +8,13 @@ import config from './config'
 import { generalLimiter } from './rateLimiter'
 import logger, { logMetric } from './logger'
 import {
+  buildAuthResultCors,
+  githubAuthStartHandler,
+  githubAuthCallbackHandler,
+  githubAuthResultHandler,
+  githubAuthRefreshHandler,
+} from './auth'
+import {
   connectToRedis,
   storeGameInRedis,
   searchGamesInRedis, getGamesWithReports,
@@ -115,6 +122,128 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     })
   }
   next()
+})
+
+/**
+ * Start GitHub PKCE OAuth flow.
+ *
+ * @queryParam mode {string} - Optional login mode to adjust behaviour (e.g., different redirect target).
+ *
+ * @returns {object} 302 - Redirects to GitHub authorize URL on success.
+ * @returns {object} 404 - Auth disabled.
+ * @returns {object} 500 - Failed to initiate GitHub auth flow.
+ */
+app.get('/deck-verified/api/auth/start', async (req: Request, res: Response) => {
+  if (!config.githubAppConfigured) {
+    res.status(404).send('Auth disabled')
+    return
+  }
+  try {
+    const authorizeUrl = await githubAuthStartHandler(typeof req.query.mode === 'string' ? req.query.mode : undefined)
+    if (authorizeUrl) {
+      res.redirect(authorizeUrl)
+      return
+    }
+    logger.error('Failed to initiate GitHub auth flow: empty authorizeUrl')
+    res.status(500).send('Auth start error')
+  } catch (error) {
+    logger.error('Failed to initiate GitHub auth flow:', error)
+    res.status(500).send('Auth start error')
+  }
+})
+
+/**
+ * OAuth callback: exchanges code for tokens and redirects to the completion page.
+ *
+ * @queryParam code {string} - Authorization code from GitHub.
+ * @queryParam state {string} - PKCE state value used to validate the request.
+ *
+ * @returns {object} 302 - Redirects to /auth/complete on success.
+ * @returns {object} 400 - Missing or invalid `code` or `state`.
+ * @returns {object} 404 - Auth disabled.
+ * @returns {object} 500 - Internal server error during token exchange.
+ */
+app.get('/deck-verified/api/auth/callback', async (req: Request, res: Response) => {
+  if (!config.githubAppConfigured) {
+    res.status(404).send('Auth disabled')
+    return
+  }
+  const { code, state } = req.query as { code?: string; state?: string }
+  if (!code || !state) {
+    res.status(400).send('Missing code or state')
+    return
+  }
+  try {
+    const { redirectUrl } = await githubAuthCallbackHandler(code, state)
+    res.redirect(302, redirectUrl)
+  } catch (error) {
+    logger.error('OAuth callback error:', error)
+    res.status(500).send('OAuth callback error')
+  }
+})
+
+/**
+ * Auth result: returns tokens for a given state exactly once.
+ *
+ * @queryParam state {string} - PKCE state value for retrieving the auth result.
+ *
+ * @returns {object} 200 - Auth result payload containing tokens.
+ * @returns {object} 400 - Missing or invalid `state`.
+ * @returns {object} 404 - Auth disabled, or state not found / already claimed.
+ * @returns {object} 500 - Internal server error.
+ */
+app.use('/deck-verified/api/auth/result', buildAuthResultCors())
+app.get('/deck-verified/api/auth/result', async (req: Request, res: Response) => {
+  if (!config.githubAppConfigured) {
+    res.status(404).json({ error: 'Auth disabled' })
+    return
+  }
+  const state = typeof req.query.state === 'string' ? req.query.state : ''
+  if (!state) {
+    res.status(400).json({ error: 'Missing state' })
+    return
+  }
+  try {
+    const payload = await githubAuthResultHandler(state)
+    res.json(payload)
+  } catch (error: any) {
+    const msg = String(error?.message || '')
+    if (msg.includes('not_found_or_already_claimed')) {
+      res.status(404).json({ error: 'Not found or already claimed' })
+    } else {
+      logger.error('Auth result error:', error)
+      res.status(500).json({ error: 'Auth result error' })
+    }
+  }
+})
+
+/**
+ * Refresh access token using refresh_token.
+ *
+ * @bodyParam refresh_token {string} - The refresh token to exchange for a new access token.
+ *
+ * @returns {object} 200 - New access token (and refresh token, if applicable).
+ * @returns {object} 400 - Missing or invalid `refresh_token`.
+ * @returns {object} 404 - Auth disabled.
+ * @returns {object} 500 - Internal server error during refresh.
+ */
+app.post('/deck-verified/api/auth/refresh', express.json(), async (req: Request, res: Response) => {
+  if (!config.githubAppConfigured) {
+    res.status(404).json({ error: 'Auth disabled' })
+    return
+  }
+  const refreshToken = req.body?.refresh_token as string | undefined
+  if (!refreshToken) {
+    res.status(400).json({ error: 'Missing refresh token' })
+    return
+  }
+  try {
+    const resp = await githubAuthRefreshHandler(refreshToken)
+    res.status((resp as any)?.error ? 400 : 200).json(resp)
+  } catch (error) {
+    logger.error('Error refreshing token:', error)
+    res.status(500).json({ error: 'Refresh error' })
+  }
 })
 
 /**

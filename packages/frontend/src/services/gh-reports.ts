@@ -13,10 +13,8 @@ import type {
 
 // Build absolute API URLs during SSR to avoid hitting the SSR server itself
 const SSR = typeof window === 'undefined'
-// Prefer configurable origin, fall back to production domain
-const SSR_API_ORIGIN = SSR
-  ? (process.env.PUBLIC_BASE_URL || (process.env.SSR_API_ORIGIN) || 'https://deckverified.games')
-  : ''
+// Prefer SSR_API_ORIGIN; default to production domain
+const SSR_API_ORIGIN = SSR ? (process.env.SSR_API_ORIGIN || 'https://deckverified.games') : ''
 // Build API URL depending on if we are running as SSR or SPA
 const apiUrl = (path: string) => SSR ? `${SSR_API_ORIGIN}${path}` : path
 

@@ -16,6 +16,7 @@ export default defineConfig((ctx) => {
       { path: 'handheld-device-check', server: false },
       'i18n',
       'axios',
+      'auth',
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -60,7 +61,7 @@ export default defineConfig((ctx) => {
       // Serve app at domain root
       publicPath: '/',
       // analyze: true,
-      // env: {},
+      envFolder: '../../',
       // rawDefine: {}
       // ignorePublicFolder: true,
       // minify: false,

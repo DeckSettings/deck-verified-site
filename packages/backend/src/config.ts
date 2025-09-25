@@ -20,7 +20,6 @@ if (missingVars.length > 0) {
   process.exit(1)
 }
 
-// Centralized configuration object
 const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   defaultGithubAuthToken: process.env.GH_TOKEN || null,
@@ -32,6 +31,14 @@ const config = {
   enableRateLimiter: (process.env.DISABLE_RATE_LIMITER !== 'true'),
   runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true'),
   bloggerApiKey: process.env.BLOGGER_API_KEY || null,
+  // GitHub App PKCE flow
+  githubAppClientId: process.env.GITHUB_APP_CLIENT_ID || null,
+  githubAppClientSecret: process.env.GITHUB_APP_CLIENT_SECRET || null,
+  githubAppConfigured: Boolean(process.env.GITHUB_APP_CLIENT_ID && process.env.GITHUB_APP_CLIENT_SECRET),
+  githubPublicWebOrigins: (process.env.PUBLIC_WEB_ORIGINS || '').split(',')
+    .map(s => s.trim())
+    .filter(Boolean),
+  githubBaseUrl: process.env.BASE_URL || 'http://deckverified.localhost',
 }
 
 export default config

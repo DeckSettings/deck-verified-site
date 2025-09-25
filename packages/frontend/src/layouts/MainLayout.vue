@@ -3,6 +3,10 @@
 
     <q-header class="app-header text-white">
       <q-toolbar class="header-toolbar q-px-sm q-py-md q-px-sm-lg q-py-sm-lg">
+        <div v-if="enableLogin" class="header-hamburger lt-md">
+          <HeaderUserMenu display-mode="hamburger" />
+        </div>
+
         <div class="logo-container">
           <router-link to="/">
             <img src="~/assets/logo-dark.png" alt="Logo">
@@ -11,8 +15,9 @@
 
         <q-space />
 
-        <div class="flex justify-center" :class="{'full-width': $q.screen.lt.sm}">
-          <HeaderSearch />
+        <div class="header-actions" :class="{'full-width': $q.screen.lt.sm}">
+          <HeaderSearch class="header-actions__search" />
+          <HeaderUserMenu v-if="enableLogin" class="header-actions__user gt-sm" />
         </div>
       </q-toolbar>
     </q-header>
@@ -86,6 +91,10 @@
 
 <script setup lang="ts">
 import HeaderSearch from 'components/HeaderSearch.vue'
+import HeaderUserMenu from 'components/HeaderUserMenu.vue'
+import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+
+const { enableLogin } = useFeatureFlags()
 </script>
 
 <style scoped>
@@ -105,6 +114,55 @@ import HeaderSearch from 'components/HeaderSearch.vue'
   margin: 0 auto;
   width: 100%;
   gap: 8px;
+}
+
+.header-hamburger {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.header-actions__search {
+  flex: 1 1 320px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.header-actions__user {
+  flex-shrink: 0;
+}
+
+.header-actions.full-width {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.header-actions.full-width .header-actions__search {
+  flex: 1 1 100%;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.header-actions.full-width .header-actions__user {
+  align-self: flex-end;
+}
+
+@media (max-width: 599.98px) {
+  .header-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .logo-container {
+    width: auto;
+    margin-bottom: 0;
+  }
 }
 
 .app-footer {

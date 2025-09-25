@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import logger from './logger'
 import {
   HardwareInfo,
@@ -27,6 +28,28 @@ import {
 import { fetchHardwareInfo } from './github'
 import NodeCache from 'node-cache'
 import config from './config'
+
+/**
+ * Generates a cryptographically secure random state parameter for OAuth flows.
+ */
+export const generatePkceState = (): string => {
+  return crypto.randomBytes(16).toString('hex')
+}
+
+/**
+ * Generates a cryptographically secure PKCE code verifier using URL-safe base64 encoding.
+ */
+export const generatePkceCodeVerifier = (): string => {
+  return crypto.randomBytes(32).toString('base64url')
+}
+
+/**
+ * Derives a PKCE code challenge from a provided code verifier using SHA-256 hashing.
+ */
+export const generatePkceCodeChallenge = (verifier: string): string => {
+  const hash = crypto.createHash('sha256').update(verifier).digest()
+  return Buffer.from(hash).toString('base64url')
+}
 
 /**
  * Fetches and caches the Josh5 avatar image from GitHub.

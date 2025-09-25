@@ -51,6 +51,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/MainLayout.vue'),
     children: [{ path: '', name: 'game-page-by-game-name', component: () => import('pages/GamePage.vue') }],
   },
+  {
+    path: '/auth/complete',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'auth-complete', component: () => import('pages/AuthCompletePage.vue') }],
+  },
 
   // Always leave this as last one,
   // but you can also remove it

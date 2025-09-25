@@ -18,6 +18,10 @@ import {
   defineSsrServeStaticContent,
   defineSsrRenderPreloadTag
 } from '#q-app/wrappers';
+import path from 'node:path';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 
 /**
  * Create your webserver and return its instance.
