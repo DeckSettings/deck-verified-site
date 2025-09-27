@@ -23,7 +23,7 @@ const performSearch = async () => {
   try {
     const initialResults = await searchGames(searchQuery.value, false)
     searchResults.value = (initialResults || []).sort((a, b) =>
-      a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' })
+      a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' }),
     )
     searchTimeout = setTimeout(async () => {
       isSearching.value = true
@@ -37,9 +37,9 @@ const performSearch = async () => {
           const newResults = additionalResults.filter(result => !existingAppIds.has(result.appId))
           searchResults.value = [
             ...searchResults.value,
-            ...newResults
+            ...newResults,
           ].sort((a, b) =>
-            a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' })
+            a.gameName.localeCompare(b.gameName, undefined, { sensitivity: 'base' }),
           )
         }
       } catch (error) {
@@ -64,7 +64,7 @@ const scrollAreaStyle = computed(() => {
   if (!isSearching.value && searchResults.value.length > 0) {
     const totalHeight = (searchResults.value.length * itemHeight) + 5
     return {
-      height: `${Math.min(totalHeight, maxHeight)}px`
+      height: `${Math.min(totalHeight, maxHeight)}px`,
     }
   }
   return {}

@@ -3,14 +3,18 @@
 
     <q-header class="app-header text-white">
       <q-toolbar class="header-toolbar q-px-sm q-py-md q-px-sm-lg q-py-sm-lg">
-        <div v-if="enableLogin" class="header-hamburger lt-md">
-          <HeaderUserMenu display-mode="hamburger" />
-        </div>
+        <div class="header-leading row items-center no-wrap q-gutter-sm">
+          <HeaderUserMenu
+            v-if="enableLogin"
+            display-mode="hamburger"
+            class="header-hamburger lt-md"
+          />
 
-        <div class="logo-container">
-          <router-link to="/">
-            <img src="~/assets/logo-dark.png" alt="Logo">
-          </router-link>
+          <div class="logo-container">
+            <router-link to="/">
+              <img src="~/assets/logo-dark.png" alt="Logo">
+            </router-link>
+          </div>
         </div>
 
         <q-space />
@@ -154,15 +158,10 @@ const { enableLogin } = useFeatureFlags()
   align-self: flex-end;
 }
 
-@media (max-width: 599.98px) {
-  .header-toolbar {
-    flex-wrap: wrap;
-  }
-
-  .logo-container {
-    width: auto;
-    margin-bottom: 0;
-  }
+.header-leading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .app-footer {
@@ -204,7 +203,8 @@ const { enableLogin } = useFeatureFlags()
 }
 
 .logo-container {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  flex-grow: 1;
   width: 100%;
   text-align: center;
   margin-bottom: 10px;
@@ -215,6 +215,30 @@ const { enableLogin } = useFeatureFlags()
 .logo-container img {
   width: 183px;
   height: 20px;
+}
+
+@media (max-width: 599.98px) {
+  .header-toolbar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .header-leading {
+    order: 0;
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 8px;
+  }
+
+  .logo-container {
+    width: auto;
+    margin-bottom: 0;
+  }
+
+  .header-actions {
+    order: 2;
+    width: 100%;
+  }
 }
 
 @media (min-width: 600px) {
