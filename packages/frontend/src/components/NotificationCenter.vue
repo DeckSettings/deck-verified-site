@@ -1,5 +1,5 @@
 <template>
-  <section v-if="isActive" class="notification-menu column q-gutter-sm">
+  <section v-if="isActive" class="notification-menu column q-gutter-sm q-mt-none">
     <div class="row items-center justify-between no-wrap">
       <div class="row items-center no-wrap text-subtitle2">
         <span>Notifications</span>

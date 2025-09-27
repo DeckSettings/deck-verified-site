@@ -37,6 +37,7 @@
             self="top right"
             :offset="[0, 28]"
             :style="{
+              width: '420px',
               backgroundColor: 'color-mix(in srgb, var(--q-dark) 95%, transparent)',
               border: '1px solid rgba(255, 255, 255, 0.5)',
               borderRadius: '0px 0px 3px 3px',
@@ -45,8 +46,8 @@
             }"
             separate-close-popup
           >
-            <div class="header-user-menu-content column q-pa-md q-gutter-md">
-              <div class="row items-center no-wrap q-gutter-sm">
+            <div class="column q-pa-md q-gutter-md">
+              <div class="row items-center no-wrap q-gutter-sm q-mb-md">
                 <q-avatar size="44px">
                   <img v-if="avatarUrl" :src="avatarUrl" alt="GitHub avatar">
                   <span v-else>{{ userInitials }}</span>
@@ -55,22 +56,27 @@
                   <span class="text-subtitle2">{{ userDisplayName }}</span>
                   <span class="text-caption text-grey-5">{{ userHandle }}</span>
                 </div>
-              </div>
 
-              <NotificationCenter />
+                <q-space />
 
-              <q-separator dark spaced />
+                <q-separator vertical inset class="q-mr-sm" />
 
-              <div class="row items-center no-wrap q-gutter-sm">
                 <q-btn
                   outline
                   color="primary"
                   icon="logout"
                   label="Logout"
-                  class="full-width"
+                  size="sm"
+                  class="q-mt-none"
                   @click="handleLogout"
                 />
               </div>
+
+              <q-separator dark spaced />
+
+              <NotificationCenter />
+
+              <q-separator dark spaced />
             </div>
           </q-menu>
         </q-btn>
@@ -180,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, type PropType } from 'vue'
+import { computed, ref, type PropType } from 'vue'
 import NotificationCenter from 'components/NotificationCenter.vue'
 import { useAuthStore } from 'stores/auth-store'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
@@ -234,28 +240,12 @@ const handleLogout = () => {
 }
 
 const hasNotificationBadge = computed(() => isLoggedIn.value && hasNotifications.value)
-
-watch(displayMode, (mode) => {
-  if (mode !== 'default') {
-    // menu closes automatically when trigger unmounts in non-default mode
-  }
-})
-
-watch(isLoggedIn, (loggedIn) => {
-  if (!loggedIn) {
-    // menu closes automatically when avatar disappears
-  }
-})
 </script>
 
 <style scoped>
 .header-user-menu {
   display: flex;
   align-items: center;
-}
-
-.header-user-menu--hamburger {
-  min-width: 0;
 }
 
 .header-user-menu-wrapper {
@@ -267,22 +257,6 @@ watch(isLoggedIn, (loggedIn) => {
 .header-user-menu-trigger {
   min-width: 0;
   padding: 0;
-}
-
-.header-user-menu-dropdown {
-  padding: 0;
-  margin-top: 24px;
-  z-index: 10;
-  width: 100%;
-  background-color: color-mix(in srgb, purple 95%, transparent);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 0px 0px 3px 3px;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.9);
-  box-sizing: border-box;
-}
-
-.header-user-menu-content {
-  width: 320px;
 }
 
 .header-user-menu__mobile-trigger {
@@ -306,10 +280,6 @@ watch(isLoggedIn, (loggedIn) => {
 
 .header-user-menu__mobile-card {
   min-width: 599px;
-}
-
-.header-user-menu__mobile-dialog :deep(.q-dialog__backdrop) {
-  background: rgba(0, 0, 0, 0.65);
 }
 
 @media (max-width: 599.98px) {
