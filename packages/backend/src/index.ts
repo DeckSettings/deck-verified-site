@@ -580,6 +580,8 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   let discoveredAppId: number | null = appId ? Number(appId) : null
   let discoveredGameName: string | null = gameName
 
+  // TODO: Create a list here of AppIDs that we do not return anything for. Things like Proton, Steam Linux Runtime, etc.
+
   try {
     // First try GitHub project data.
     const project = await fetchProjectsByAppIdOrGameName(discoveredAppId !== null ? discoveredAppId.toString() : null, discoveredGameName, null)

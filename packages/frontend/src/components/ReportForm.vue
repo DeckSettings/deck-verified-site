@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { defineProps, onMounted, onUnmounted, ref, watch } from 'vue'
+import { defineProps, onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
+import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+import { useAuthStore } from 'src/stores/auth-store'
 import { gameReportTemplate } from 'src/services/gh-reports'
 import type {
   GameReportForm,
@@ -47,6 +49,25 @@ const fieldInputTypes = ref<Record<string, string>>({})
 //const gameDisplaySettings = ref<string | null>(null)
 const gameSettingsUpdates = ref<Record<string, string>>({})
 const gameSettingsInvalid = ref<boolean>(false)
+
+const { enableLogin } = useFeatureFlags()
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const accessToken = computed(() => authStore.accessToken)
+
+// Screenshot/asset upload state
+const manualInputMode = ref(!(enableLogin && isLoggedIn.value))
+const generateFromScreenshots = ref(enableLogin && isLoggedIn.value && !manualInputMode.value)
+const inGameImages = ref<File[]>([])
+const inGameImageUrls = ref<string[]>([])
+const additionalNoteImages = ref<File[]>([])
+const additionalNoteImageUrls = ref<string[]>([])
+const isUploadingInGame = ref(false)
+const isUploadingNotes = ref(false)
+const manualToggleRef = ref<HTMLElement | null>(null)
+
+const inGameFileInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+const notesFileInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
 
 // List of field ids whose values should be overwritten from previousSubmission
 const initOverwriteFields = ['app_id', 'game_name', 'launcher', 'average_battery_power_draw']
@@ -317,10 +338,16 @@ const validateForm = (): boolean => {
     return true
   }
   const errors: Record<string, string>[] = []
+  const isInGameImageMode = enableLogin && isLoggedIn.value && !manualInputMode.value
 
   if (formData.value && formData.value.template && formData.value.template.body) {
     formData.value.template.body.forEach(field => {
       if (field.type !== 'markdown' && field.id) {
+        // Skip validation for the in-game settings fields if we are in image mode
+        if (isInGameImageMode && gameSettingsFields.includes(field.id)) {
+          return
+        }
+
         // Retrieve the field's value.
         const fieldId = field.id
         let value = formValues.value[fieldId]
@@ -344,7 +371,6 @@ const validateForm = (): boolean => {
 
   gameSettingsInvalid.value = false
   if (errors.length > 0) {
-    // You might use $q.notify for a nicer UX; here we just use alert.
     errors.forEach(error => {
       if (error.isGameSettings === 'true') {
         gameSettingsInvalid.value = true
@@ -360,43 +386,277 @@ const validateForm = (): boolean => {
   return true
 }
 
-// Custom dialog related:
+// Custom dialog related (for non-authenticated submission):
 const confirmDialog = ref(false)
 const pendingBaseUrl = ref('')
-const submitForm = () => {
+
+// Image uploading helpers and state management
+const SINGLE_IMAGE_MAX_BYTES = 1 * 1024 * 1024
+const MAX_IN_GAME_IMAGES = 7
+const MAX_IMAGES_PER_REQUEST = 7
+
+function validateImageList(files: File[], opts: { max?: number } = {}): string | null {
+  const { max } = opts
+  if (max && files.length > max) {
+    return `Too many images selected (${files.length}). Maximum allowed is ${max}.`
+  }
+  for (const f of files) {
+    if (f.size > SINGLE_IMAGE_MAX_BYTES) {
+      return `Image too large: ${f.name} is ${f.size} bytes (max ${SINGLE_IMAGE_MAX_BYTES}). Images cannot be more than 1MB each.`
+    }
+  }
+  return null
+}
+
+function chunkFiles<T>(arr: T[], n: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
+  return out
+}
+
+async function uploadImages(files: File[], token: string): Promise<string[]> {
+  if (!files || files.length === 0) return []
+  const urls: string[] = []
+  for (const batch of chunkFiles(files, MAX_IMAGES_PER_REQUEST)) {
+    const fd = new FormData()
+    for (const f of batch) {
+      fd.append('images', f, f.name || `image-${Date.now()}`)
+    }
+    const r = await fetch('https://asset-upload.deckverified.games/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      body: fd,
+    })
+    const text = await r.text()
+    if (!r.ok) {
+      throw new Error(`Asset upload failed (${r.status}): ${text}`)
+    }
+    let js: { results?: Array<{ url?: string }> }
+    try {
+      js = JSON.parse(text || '{}')
+    } catch (e) {
+      throw new Error(`Invalid JSON from server: ${String(e)}`)
+    }
+    const results = Array.isArray(js?.results) ? js.results : []
+    for (const it of results) {
+      if (it && typeof it.url === 'string' && it.url) {
+        urls.push(it.url)
+      }
+    }
+  }
+  return urls
+}
+
+function handleInGameFilesAdded(files: readonly File[]) {
+  const list = Array.from(files || [])
+  const combined = [...inGameImages.value, ...list]
+  const err = validateImageList(combined, { max: MAX_IN_GAME_IMAGES })
+  if (err) {
+    $q.notify({ type: 'warning', message: err })
+    return
+  }
+  const tooBig = list.find(f => f.size > SINGLE_IMAGE_MAX_BYTES)
+  if (tooBig) {
+    $q.notify({ type: 'warning', message: `Image too large: ${tooBig.name}. Max size is 1MB.` })
+    return
+  }
+  inGameImages.value = combined
+}
+
+function handleNotesFilesAdded(files: readonly File[]) {
+  const list = Array.from(files || [])
+  const tooBig = list.find(f => f.size > SINGLE_IMAGE_MAX_BYTES)
+  if (tooBig) {
+    $q.notify({ type: 'warning', message: `Image too large: ${tooBig.name}. Max size is 1MB.` })
+    return
+  }
+  additionalNoteImages.value = [...additionalNoteImages.value, ...list]
+}
+
+function removeInGameImage(idx: number) {
+  inGameImages.value = inGameImages.value.filter((_, i) => i !== idx)
+}
+
+function removeNotesImage(idx: number) {
+  additionalNoteImages.value = additionalNoteImages.value.filter((_, i) => i !== idx)
+}
+
+function openInGamePicker() {
+  const v = inGameFileInput.value
+  const el: HTMLInputElement | null = Array.isArray(v) ? (v[0] ?? null) : v
+  if (el) {
+    el.click()
+  }
+}
+
+function openNotesPicker() {
+  const v = notesFileInput.value
+  const el: HTMLInputElement | null = Array.isArray(v) ? (v[0] ?? null) : v
+  if (el) {
+    el.click()
+  }
+}
+
+function onInGameFileInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input?.files ? Array.from(input.files) : []
+  if (files.length) handleInGameFilesAdded(files)
+  if (input) input.value = ''
+}
+
+function onNotesFileInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input?.files ? Array.from(input.files) : []
+  if (files.length) handleNotesFilesAdded(files)
+  if (input) input.value = ''
+}
+
+function onDropInGame(e: DragEvent) {
+  const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'))
+  if (files.length) handleInGameFilesAdded(files)
+}
+
+function onDropNotes(e: DragEvent) {
+  const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'))
+  if (files.length) handleNotesFilesAdded(files)
+}
+
+watch(manualInputMode, (v) => {
+  // Keep generateFromScreenshots in sync with manualInputMode and login state
+  generateFromScreenshots.value = enableLogin && isLoggedIn.value && !v
+  // When switching to manual input, clear screenshots
+  if (v) {
+    inGameImages.value = []
+    inGameImageUrls.value = []
+  }
+  // Persist preference
+  try {
+    localStorage.setItem(`gameReportForm-${props.gameName}-manualInputMode`, JSON.stringify(!!v))
+  } catch {
+    // ignore
+  }
+  // After mode change, scroll the toggle into view on small screens to reduce perceived jump
+  nextTick(() => {
+    try {
+      if ($q.screen.lt.sm && manualToggleRef.value) {
+        manualToggleRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    } catch {
+      // ignore
+    }
+  })
+})
+
+// Keep generateFromScreenshots in sync with login state changes (without overriding manualInputMode)
+watch(isLoggedIn, (logged) => {
+  if (!logged) {
+    manualInputMode.value = true
+  }
+  generateFromScreenshots.value = enableLogin && logged && !manualInputMode.value
+})
+
+const submitForm = async () => {
   // First trigger QForm validation styling:
   if (!reportForm.value.validate() || !validateForm()) {
     // QForm.validate() will mark invalid fields with error styling.
     return
   }
 
-  // Validate the form values against the schema.
-  if (!validateForm()) {
-    return
+  // If using screenshot mode, ensure images are valid
+  if (enableLogin && isLoggedIn.value && !manualInputMode.value) {
+    const err = validateImageList(inGameImages.value, { max: MAX_IN_GAME_IMAGES })
+    if (err) {
+      $q.notify({ type: 'negative', message: err })
+      return
+    }
+    if (inGameImages.value.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'Please add screenshots for In-Game Settings or turn off "Generate in-game settings from screenshots".',
+      })
+      return
+    }
+  }
+
+  // Upload images (when logged in)
+  inGameImageUrls.value = []
+  additionalNoteImageUrls.value = []
+
+  if (enableLogin && isLoggedIn.value && accessToken.value) {
+    try {
+      if (!manualInputMode.value && inGameImages.value.length > 0) {
+        isUploadingInGame.value = true
+        inGameImageUrls.value = await uploadImages(inGameImages.value, accessToken.value as string)
+      }
+    } catch (e: unknown) {
+      isUploadingInGame.value = false
+      const msg = e instanceof Error ? e.message : String(e)
+      $q.notify({ type: 'negative', message: `In-Game screenshots upload failed: ${msg}` })
+      return
+    } finally {
+      isUploadingInGame.value = false
+    }
+
+    try {
+      if (additionalNoteImages.value.length > 0) {
+        isUploadingNotes.value = true
+        additionalNoteImageUrls.value = await uploadImages(additionalNoteImages.value, accessToken.value as string)
+      }
+    } catch (e: unknown) {
+      isUploadingNotes.value = false
+      const msg = e instanceof Error ? e.message : String(e)
+      $q.notify({ type: 'negative', message: `Additional Notes image upload failed: ${msg}` })
+      return
+    } finally {
+      isUploadingNotes.value = false
+    }
   }
 
   // Build an array to accumulate markdown sections.
   const sections: string[] = []
+  const isInGameImageMode =
+    enableLogin && isLoggedIn.value && !manualInputMode.value && inGameImageUrls.value.length > 0
 
   // Loop over each form field (excluding game settings fields)
-  // Assuming that props.fieldData.template.body contains the form fields with an "id" and "attributes.label".
   if (formData.value && formData.value.template && formData.value.template.body) {
     formData.value.template.body.forEach(field => {
       // Only handle non-markdown fields that have an id.
       if (field.type !== 'markdown' && field.id) {
         // Use the field label if available, otherwise default to the id.
         const label = field.attributes && field.attributes.label ? field.attributes.label : field.id
+
         // Get the corresponding value from formValues.
-        let value = formValues.value[field.id]
+        let value: string | number | null | undefined = formValues.value[field.id]
         // Check if this was for game settings. If it is, update value from that
         if (gameSettingsFields.includes(field.id) && field.id in gameSettingsUpdates.value) {
           value = gameSettingsUpdates.value[field.id]
         }
-        // If the value is empty, default to "_No response_"
-        const valString =
+
+        // Default string
+        let valString =
           value !== null && value !== undefined && String(value).trim() !== ''
             ? String(value)
             : '_No response_'
+
+        // In screenshot mode, force Game Graphics Settings to "_No response_"
+        if (isInGameImageMode && label === 'Game Graphics Settings') {
+          valString = '_No response_'
+        }
+
+        // Replace Game Display Settings with image URLs when using screenshot mode
+        if (isInGameImageMode && label === 'Game Display Settings') {
+          valString = inGameImageUrls.value.join('\n')
+        }
+
+        // Append Additional Notes images (not OCR'd)
+        if (enableLogin && isLoggedIn.value && label === 'Additional Notes' && additionalNoteImageUrls.value.length > 0) {
+          const urlsMd = additionalNoteImageUrls.value.join('\n')
+          valString = (valString === '_No response_' ? '' : valString + '\n\n') + urlsMd
+        }
+
         sections.push(`### ${label}\n\n${valString}`)
       }
     })
@@ -405,8 +665,43 @@ const submitForm = () => {
   // Combine all sections into a final markdown report.
   const reportMarkdown = sections.join('\n\n')
 
-  // Build the GitHub URL without the template parameter.
+  // If logged in and feature flag enabled, create issue via GitHub API
+  if (enableLogin && isLoggedIn.value && accessToken.value) {
+    try {
+      const apiWritetitle = `(Report submitted from Deck Verified Website)`
+
+      const r = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/issues', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken.value}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiWritetitle,
+          body: reportMarkdown,
+        }),
+      })
+      const text = await r.text()
+      if (!r.ok) {
+        throw new Error(`GitHub issue creation failed (${r.status}): ${text}`)
+      }
+      const js = JSON.parse(text)
+      const url: string | undefined = js?.html_url
+      $q.notify({ type: 'positive', message: 'Issue created successfully on GitHub.' })
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      return
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      $q.notify({ type: 'negative', message: `Failed to create GitHub issue: ${msg}` })
+      return
+    }
+  }
+
+  // Title placholder
   const title = `(DON'T EDIT THIS TITLE) - Review the generated form below. When you are happy, click "Create".`
+
+  // Fallback: open a confirm dialog that redirects to GitHub with pre-filled body
   let baseUrl =
     'https://github.com/DeckSettings/game-reports-steamos/issues/new?template=none&assignees=&labels=&projects=&title=' +
     encodeURIComponent(title)
@@ -439,6 +734,22 @@ const onConfirmDialogCancel = () => {
 
 onMounted(async () => {
   await initFormData()
+  // Initialize modes (restore manualInputMode from storage if available)
+  try {
+    const raw = localStorage.getItem(`gameReportForm-${props.gameName}-manualInputMode`)
+    if (raw !== null) {
+      manualInputMode.value = !!JSON.parse(raw)
+    } else {
+      manualInputMode.value = !(enableLogin && isLoggedIn.value)
+    }
+  } catch {
+    manualInputMode.value = !(enableLogin && isLoggedIn.value)
+  }
+  // Ensure manual input when logged out on mount
+  if (!isLoggedIn.value) {
+    manualInputMode.value = true
+  }
+  generateFromScreenshots.value = enableLogin && isLoggedIn.value && !manualInputMode.value
 })
 
 onUnmounted(() => {
@@ -450,7 +761,6 @@ watch(formValues, () => {
   // NOTE: This is also executed from handleGameSettingsUpdate() above
   saveFormValuesState()
 }, { deep: true })
-
 
 </script>
 
@@ -511,71 +821,110 @@ watch(formValues, () => {
     <q-card-section class="scroll form-body">
       <q-spinner v-if="!formData" />
       <div v-else>
+        <q-banner
+          v-if="enableLogin && !isLoggedIn"
+          dense
+          class="q-mb-md"
+          inline-actions
+        >
+          Tip: Sign in with GitHub for a better experience. You’ll be able to upload screenshots and submit directly.
+          <template #action>
+            <q-btn color="primary" label="Sign in" @click="authStore.startLogin" />
+          </template>
+        </q-banner>
+
         <q-form ref="reportForm" @submit.prevent="submitForm">
           <div v-for="(section, sIndex) in getSections()" :key="sIndex" class="form-section">
             <div class="section-layout">
-              <aside class="section-aside">
+              <aside class="section-aside"
+                     :class="{'section-aside--sticky': section.markdown && section.markdown.includes('## In-Game Settings')}">
                 <template v-if="section.markdown && section.markdown.includes('## In-Game Settings')">
                   <div class="in-game-settings-head">
                     <h2>In-Game Settings</h2>
-                    <p>
-                      Enter your game’s settings here—try to mirror the in-game layout and values as closely as
-                      possible.
-                      <br /><br />
-                      Many games group settings into categories.
-                      <q-img
-                        v-if="$q.screen.lt.sm"
-                        lazy
-                        :src="LasOfUsGraphicSettingsImage"
-                        class="q-my-lg q-mx-none"
-                        style="max-width:95vw;display:block;float:right;" />
-                      <q-img
-                        v-else-if="$q.screen.lt.md"
-                        lazy
-                        :src="LasOfUsGraphicSettingsImage"
-                        class="q-ml-lg q-my-sm"
-                        style="max-width:400px;display:block;float:right;" />
-                      <span v-else>
-                        When they do it might look like this:
+                    <template v-if="$q.screen.gt.sm && enableLogin && isLoggedIn && !manualInputMode">
+                      <p>
+                        Upload up to <strong>{{ MAX_IN_GAME_IMAGES }}</strong> screenshots (<strong>max 1MB
+                        each</strong>).
+                        <br />
+                        They must clearly show your in-game settings; unclear images can prevent OCR from producing
+                        useful results.
+                        <br />
+                        After submission, carefully review the generated settings and fix anything that looks incorrect.
+                      </p>
+                    </template>
+                    <template v-else>
+                      <p v-if="$q.screen.lt.md && enableLogin && isLoggedIn">
+                        Ensure the selected images clearly show your in-game settings; unclear images can prevent OCR
+                        from producing useful results.
+                        <br />
+                        You can upload up to <strong>{{ MAX_IN_GAME_IMAGES }}</strong> screenshots (<strong>max 1MB
+                        each</strong>).
+                        <br />
+                        After submission, carefully review the generated settings and fix anything that looks incorrect.
+                      </p>
+                      <p v-if="$q.screen.lt.md && enableLogin && isLoggedIn">
+                        If you choose to toggle ON <strong>Manually input in-game settings</strong>, try to mirror the
+                        in-game layout and values as closely as possible.
+                      </p>
+                      <p v-else>
+                        Enter your game’s display and graphics settings. Try to mirror the in-game layout and values as
+                        closely as possible.
+                      </p>
+                      <p>
+                        Many games group settings into categories.
+                        <q-img
+                          lazy
+                          :src="LasOfUsGraphicSettingsImage"
+                          class="lt-sm q-my-lg"
+                          fit="contain"
+                          style="width:85vw; max-width:85vw; display:block; margin:0;" />
+                        <q-img
+                          lazy
+                          :src="LasOfUsGraphicSettingsImage"
+                          class="lt-md gt-xs q-ml-lg q-my-sm"
+                          style="max-width:400px;display:block;float:right;" />
+                        <span class="sm-hide xs-hide">
+                          When they do it might look like this:
+                          <br /><br />
+                          <ZoomableImage
+                            :src="LasOfUsGraphicSettingsImage" />
+                        </span>
+                        <br />
+                        To create a new category, click the
+                        <q-btn
+                          dense
+                          glossy
+                          size="xs"
+                          :ripple="false"
+                          color="primary"
+                          class="q-ma-none cursor-inherit"
+                        >
+                          <q-icon left size="3em" name="add_circle" />
+                          <div>ADD SECTION</div>
+                        </q-btn>
+                        button.
+                        <br />
+                        To add a new setting within a category, click the
+                        <q-btn
+                          dense
+                          glossy
+                          size="xs"
+                          :ripple="false"
+                          color="primary"
+                          class="q-ma-none cursor-inherit"
+                        >
+                          <q-icon left size="3em" name="add_circle" />
+                          <div>ADD OPTION</div>
+                        </q-btn>
+                        button.
+                        You can rearrange or move any setting by dragging the
+                        <q-icon name="drag_handle" color="secondary" size="16px" inline />
+                        icon.
                         <br /><br />
-                        <ZoomableImage
-                          :src="LasOfUsGraphicSettingsImage" />
-                      </span>
-                      <br />
-                      To create a new category, click the
-                      <q-btn
-                        dense
-                        glossy
-                        size="xs"
-                        :ripple="false"
-                        color="primary"
-                        class="q-ma-none cursor-inherit"
-                      >
-                        <q-icon left size="3em" name="add_circle" />
-                        <div>ADD SECTION</div>
-                      </q-btn>
-                      button.
-                      <br />
-                      To add a new setting within a category, click the
-                      <q-btn
-                        dense
-                        glossy
-                        size="xs"
-                        :ripple="false"
-                        color="primary"
-                        class="q-ma-none cursor-inherit"
-                      >
-                        <q-icon left size="3em" name="add_circle" />
-                        <div>ADD OPTION</div>
-                      </q-btn>
-                      button.
-                      You can rearrange or move any setting by dragging the
-                      <q-icon name="drag_handle" color="secondary" size="16px" inline />
-                      icon.
-                      <br /><br />
-                      If a game doesn’t split its settings into sections or has no “Display”/“Graphics” category, just
-                      list resolution and related details under the <strong>Game Display Settings</strong> section.
-                    </p>
+                        If a game doesn’t split its settings into sections or has no “Display”/“Graphics” category, just
+                        list resolution and related details under the <strong>Game Display Settings</strong> section.
+                      </p>
+                    </template>
                   </div>
                 </template>
                 <template v-else>
@@ -588,12 +937,15 @@ watch(formValues, () => {
                   :key="fIndex"
                   class="field-card"
                   :class="{
-                    'field-card--settings': 'id' in field && gameSettingsFields.includes(field.id),
                     'field-card--invalid':
                       'id' in field &&
                       gameSettingsFields.includes(field.id) &&
                       gameSettingsInvalid &&
                       field.validations?.required,
+                    'field-card--hidden':
+                      'id' in field &&
+                      field.id === 'game_graphics_settings' &&
+                      !manualInputMode
                   }"
                 >
                   <template v-if="'id' in field && !gameSettingsFields.includes(field.id)">
@@ -652,16 +1004,117 @@ watch(formValues, () => {
                         :hint="field.validations?.required ? '(THIS FIELD IS REQUIRED)' : ''"
                         :rules="runFieldRules(field)"
                       />
+                      <div
+                        v-if="enableLogin && isLoggedIn && field.attributes?.label === 'Additional Notes'"
+                        class="q-mt-md"
+                      >
+                        <div class="uploader">
+                          <div
+                            class="uploader-drop"
+                            @dragover.prevent
+                            @drop.prevent="onDropNotes"
+                          >
+                            <div>Drag images here or</div>
+                            <q-btn color="primary" dense label="Choose images" @click="openNotesPicker" />
+                            <input
+                              ref="notesFileInput"
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              style="display:none"
+                              @change="onNotesFileInputChange"
+                            />
+                          </div>
+                          <div v-if="additionalNoteImages.length" class="uploader-list q-mt-sm">
+                            <div
+                              v-for="(img, idx) in additionalNoteImages"
+                              :key="img.name + idx"
+                              class="uploader-list__item"
+                            >
+                              <q-icon name="image" size="16px" class="q-mr-xs" />
+                              <span class="ellipsis">{{ img.name }}</span>
+                              <q-btn flat dense size="sm" icon="close" @click="removeNotesImage(idx)" />
+                            </div>
+                          </div>
+                        </div>
+                        <div v-if="isUploadingNotes" class="q-mt-sm">
+                          <q-spinner size="sm" />
+                          <span class="q-ml-sm">Uploading Additional Notes images…</span>
+                        </div>
+                      </div>
                     </template>
                   </template>
+
+                  <!-- In-game settings fields (Display/Graphics) -->
                   <template v-else-if="'id' in field && gameSettingsFields.includes(field.id)">
-                    <GameSettingsFields
-                      :fieldData="field"
-                      :previousData="previousFormValues?.[field.id] ? String(previousFormValues?.[field.id]) : ''"
-                      :invalidData="gameSettingsInvalid"
-                      @update="handleGameSettingsUpdate(field.id, $event)"
-                    />
+                    <div>
+                      <!-- Toggle Button row. Shown above Game Display Settings only when logged in -->
+                      <template v-if="field.id === 'game_display_settings' && enableLogin && isLoggedIn">
+                        <div class="in-game-toggle-row" ref="manualToggleRef">
+                          <div class="in-game-toggle-row__label">Manually input in-game settings</div>
+                          <q-toggle v-model="manualInputMode" color="primary" />
+                        </div>
+                      </template>
+
+                      <!-- When logged in and using screenshots mode, replace inputs with a single uploader under Display -->
+                      <template v-if="enableLogin && isLoggedIn && !manualInputMode">
+                        <template v-if="field.id === 'game_display_settings'">
+                          <div class="field-title">In-Game Settings Screenshots</div>
+                          <div class="field-description">
+                            Upload screenshots that show your in-game settings (Display/Graphics). We’ll attach them
+                            and run OCR to generate settings in the report.
+                            Limit: up to <span class="text-secondary"><strong>{{ MAX_IN_GAME_IMAGES
+                            }}</strong> images, <strong>1MB</strong> each</span>.
+                          </div>
+                          <div class="uploader q-mt-sm">
+                            <div
+                              class="uploader-drop"
+                              @dragover.prevent
+                              @drop.prevent="onDropInGame"
+                            >
+                              <div>Drag images here or</div>
+                              <q-btn color="primary" dense label="Choose images" @click="openInGamePicker" />
+                              <input
+                                ref="inGameFileInput"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                style="display:none"
+                                @change="onInGameFileInputChange"
+                              />
+                            </div>
+                            <div v-if="inGameImages.length" class="uploader-list q-mt-sm">
+                              <div
+                                v-for="(img, idx) in inGameImages"
+                                :key="img.name + idx"
+                                class="uploader-list__item"
+                              >
+                                <q-icon name="image" size="16px" class="q-mr-xs" />
+                                <span class="ellipsis">{{ img.name }}</span>
+                                <q-btn flat dense size="sm" icon="close" @click="removeInGameImage(idx)" />
+                              </div>
+                            </div>
+                          </div>
+                          <div v-if="isUploadingInGame" class="q-mt-sm">
+                            <q-spinner size="sm" />
+                            <span class="q-ml-sm">Uploading screenshots…</span>
+                          </div>
+                        </template>
+                        <!-- Hide the other in-game field (Graphics) entirely during screenshot mode -->
+                      </template>
+
+                      <!-- Otherwise, show input fields -->
+                      <template v-else>
+                        <GameSettingsFields
+                          :fieldData="field"
+                          :previousData="previousFormValues?.[field.id] ? String(previousFormValues?.[field.id]) : ''"
+                          :invalidData="gameSettingsInvalid"
+                          @update="handleGameSettingsUpdate(field.id, $event)"
+                        />
+                      </template>
+                    </div>
                   </template>
+
                   <template v-else>
                     <!-- Render unsupported fields warning -->
                     <q-banner type="warning">
@@ -883,17 +1336,31 @@ watch(formValues, () => {
 
 .section-layout {
   display: grid;
-  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 350px) minmax(0, 1fr);
   gap: 32px;
   align-items: start;
 }
 
 .section-aside {
+  position: static;
+  padding-right: 6px;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+.section-aside--sticky {
   position: sticky;
   top: 24px;
   max-height: calc(100vh - 220px);
   overflow-y: auto;
-  padding-right: 6px;
+}
+
+@media (max-width: 599.98px) {
+  .section-aside--sticky {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 .section-body {
@@ -925,20 +1392,12 @@ watch(formValues, () => {
   font-size: 0.95rem;
 }
 
-.field-card--settings {
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.field-card--settings:hover {
-  border: none;
-  box-shadow: none;
-}
-
 .field-card--invalid {
   border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+.field-card--hidden {
+  display: none;
 }
 
 .field-title {
@@ -963,6 +1422,59 @@ watch(formValues, () => {
   font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 1rem;
+}
+
+/* Simple uploader styles */
+.uploader {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.uploader-drop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.uploader-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uploader-list__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.uploader-list__item .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+/* Toggle row aligned to the right with label on the left */
+.in-game-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.in-game-toggle-row__label {
+  font-size: 0.95rem;
+  opacity: 0.85;
 }
 
 @media (max-width: 1023.98px) {
@@ -1046,10 +1558,18 @@ watch(formValues, () => {
     width: 100%;
   }
 
+  .form-body {
+    padding: 6px;
+  }
+
   .field-card {
-    padding: 16px;
+    padding: 12px;
     border-radius: 12px;
   }
-}
 
+  .section-aside {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
 </style>

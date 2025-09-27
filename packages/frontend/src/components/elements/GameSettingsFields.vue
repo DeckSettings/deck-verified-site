@@ -414,7 +414,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="q-mb-xl">
+  <div class="q-mb-xs">
     <div class="text-h6 q-my-sm">
       {{ fieldData.attributes.label }}
     </div>
@@ -582,7 +582,8 @@ export default defineComponent({
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 3px;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-  padding: 10px
+  padding: 10px;
+  overflow-x: hidden;
 }
 
 .game-settings-section .game-settings-item {
@@ -591,6 +592,57 @@ export default defineComponent({
 
 .game-settings-section .game-settings-item:first-child {
   border-top: 1px solid #ddd;
+}
+
+/* Small-screen optimizations */
+@media (max-width: 599.98px) {
+  .game-settings-section {
+    padding: 4px;
+  }
+
+  /* Prevent horizontal overflow of Quasar item layout */
+  .game-settings-section :deep(.q-item) {
+    overflow: hidden;
+  }
+  .game-settings-section :deep(.q-item__section) {
+    min-width: 0;
+  }
+  .game-settings-section :deep(.q-item__section--avatar) {
+    flex: 0 0 28px;
+  }
+  .game-settings-section :deep(.q-avatar) {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Smaller drag handle icon on tiny screens */
+  .game-settings-section .handle {
+    max-width: 18px !important;
+  }
+
+  /* Keep the side action area compact */
+  .game-settings-section :deep(.q-item__section--side) {
+    flex: 0 0 auto;
+  }
+
+  /* Ensure selects/fields take full width and wrap properly */
+  .game-settings-section :deep(.q-field),
+  .game-settings-section :deep(.q-select) {
+    width: 100%;
+  }
+
+  /* Reduce internal horizontal paddings */
+  .game-settings-section .game-settings-item {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Remove large left margins on buttons and make them full width */
+  .q-btn.q-ml-lg {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 </style>
