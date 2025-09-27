@@ -2,6 +2,7 @@
 import { defineProps, onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+import { useProgressNotify } from 'src/composables/useProgressNotify'
 import { useAuthStore } from 'src/stores/auth-store'
 import { gameReportTemplate } from 'src/services/gh-reports'
 import type {
@@ -54,6 +55,68 @@ const { enableLogin } = useFeatureFlags()
 const authStore = useAuthStore()
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const accessToken = computed(() => authStore.accessToken)
+const { createProgressNotification } = useProgressNotify()
+const PROGRESS_STAGE_CONFIG = {
+  uploadingImages: {
+    title: 'Uploading images',
+    description: 'Sending screenshots to the server…',
+    icon: 'cloud_upload',
+    progress: 'indeterminate' as const,
+  },
+  gettingUrls: {
+    title: 'Getting image links',
+    description: 'Finalising secure URLs for your screenshots…',
+    icon: 'link',
+    progress: 'indeterminate' as const,
+  },
+  generatingMarkdown: {
+    title: 'Generating report',
+    description: 'Compiling your answers into GitHub-ready markdown…',
+    icon: 'description',
+    progress: 'indeterminate' as const,
+  },
+  submittingGithub: {
+    title: 'Submitting to GitHub',
+    description: 'Creating your report issue…',
+    icon: 'fab fa-github',
+    progress: 'indeterminate' as const,
+  },
+  awaitingResponse: {
+    title: 'Awaiting confirmation',
+    description: 'Waiting for GitHub to respond…',
+    icon: 'mark_email_read',
+    progress: 'indeterminate' as const,
+  },
+}
+
+type ProgressStageKey = keyof typeof PROGRESS_STAGE_CONFIG
+
+type ProgressHandle = ReturnType<typeof createProgressNotification> | null
+let progressHandle: ProgressHandle = null
+
+const updateProgressStage = (stage: ProgressStageKey) => {
+  const config = PROGRESS_STAGE_CONFIG[stage]
+  if (!config) return
+  if (!progressHandle) {
+    progressHandle = createProgressNotification(config)
+  } else {
+    progressHandle.update(config)
+  }
+}
+
+const finishProgress = (delayMs = 2500) => {
+  if (progressHandle) {
+    progressHandle.finish(delayMs)
+    progressHandle = null
+  }
+}
+
+const dismissProgress = () => {
+  if (progressHandle) {
+    progressHandle.dismiss()
+    progressHandle = null
+  }
+}
 
 // Screenshot/asset upload state
 const manualInputMode = ref(!(enableLogin && isLoggedIn.value))
@@ -559,6 +622,8 @@ watch(isLoggedIn, (logged) => {
 })
 
 const submitForm = async () => {
+  dismissProgress()
+
   // First trigger QForm validation styling:
   if (!reportForm.value.validate() || !validateForm()) {
     // QForm.validate() will mark invalid fields with error styling.
@@ -585,9 +650,17 @@ const submitForm = async () => {
   inGameImageUrls.value = []
   additionalNoteImageUrls.value = []
 
-  if (enableLogin && isLoggedIn.value && accessToken.value) {
+  const shouldUploadAssets = enableLogin && isLoggedIn.value && accessToken.value
+  const hasInGameUploads = shouldUploadAssets && !manualInputMode.value && inGameImages.value.length > 0
+  const hasAdditionalUploads = shouldUploadAssets && additionalNoteImages.value.length > 0
+
+  if (shouldUploadAssets && (hasInGameUploads || hasAdditionalUploads)) {
+    updateProgressStage('uploadingImages')
+  }
+
+  if (shouldUploadAssets) {
     try {
-      if (!manualInputMode.value && inGameImages.value.length > 0) {
+      if (hasInGameUploads) {
         isUploadingInGame.value = true
         inGameImageUrls.value = await uploadImages(inGameImages.value, accessToken.value as string)
       }
@@ -595,13 +668,14 @@ const submitForm = async () => {
       isUploadingInGame.value = false
       const msg = e instanceof Error ? e.message : String(e)
       $q.notify({ type: 'negative', message: `In-Game screenshots upload failed: ${msg}` })
+      dismissProgress()
       return
     } finally {
       isUploadingInGame.value = false
     }
 
     try {
-      if (additionalNoteImages.value.length > 0) {
+      if (hasAdditionalUploads) {
         isUploadingNotes.value = true
         additionalNoteImageUrls.value = await uploadImages(additionalNoteImages.value, accessToken.value as string)
       }
@@ -609,13 +683,19 @@ const submitForm = async () => {
       isUploadingNotes.value = false
       const msg = e instanceof Error ? e.message : String(e)
       $q.notify({ type: 'negative', message: `Additional Notes image upload failed: ${msg}` })
+      dismissProgress()
       return
     } finally {
       isUploadingNotes.value = false
     }
+
+    if (hasInGameUploads || hasAdditionalUploads) {
+      updateProgressStage('gettingUrls')
+    }
   }
 
   // Build an array to accumulate markdown sections.
+  updateProgressStage('generatingMarkdown')
   const sections: string[] = []
   const isInGameImageMode =
     enableLogin && isLoggedIn.value && !manualInputMode.value && inGameImageUrls.value.length > 0
@@ -666,8 +746,9 @@ const submitForm = async () => {
   const reportMarkdown = sections.join('\n\n')
 
   // If logged in and feature flag enabled, create issue via GitHub API
-  if (enableLogin && isLoggedIn.value && accessToken.value) {
+  if (shouldUploadAssets) {
     try {
+      updateProgressStage('submittingGithub')
       const apiWritetitle = `(Report submitted from Deck Verified Website)`
 
       const r = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/issues', {
@@ -682,6 +763,7 @@ const submitForm = async () => {
           body: reportMarkdown,
         }),
       })
+      updateProgressStage('awaitingResponse')
       const text = await r.text()
       if (!r.ok) {
         throw new Error(`GitHub issue creation failed (${r.status}): ${text}`)
@@ -690,10 +772,12 @@ const submitForm = async () => {
       const url: string | undefined = js?.html_url
       $q.notify({ type: 'positive', message: 'Issue created successfully on GitHub.' })
       if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      finishProgress()
       return
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       $q.notify({ type: 'negative', message: `Failed to create GitHub issue: ${msg}` })
+      dismissProgress()
       return
     }
   }
@@ -714,6 +798,7 @@ const submitForm = async () => {
   // Instead of immediately opening GitHub, store the URL and open our custom dialog.
   pendingBaseUrl.value = baseUrl
   confirmDialog.value = true
+  finishProgress(1500)
 }
 
 // Called when the user clicks "Login to GitHub" in the dialog.
@@ -753,6 +838,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  dismissProgress()
   console.log('Report form dialog closed')
 })
 
