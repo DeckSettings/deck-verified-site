@@ -43,6 +43,14 @@ import type {
   GameSearchResult,
   GameSearchCache,
 } from '../../shared/src/game'
+import dvAuth from './middleware/dvAuth'
+import {
+  appendNotification,
+  clearNotifications,
+  loadNotifications,
+  removeNotification,
+  sanitizeNotificationInput,
+} from './notifications'
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -243,6 +251,94 @@ app.post('/deck-verified/api/auth/refresh', express.json(), async (req: Request,
   } catch (error) {
     logger.error('Error refreshing token:', error)
     res.status(500).json({ error: 'Refresh error' })
+  }
+})
+
+/**
+ * Long poll for notifications belonging to the authenticated DV user.
+ *
+ * @queryParam since {number} - Optional timestamp; if provided, notifications updated after this timestamp are returned.
+ *
+ * @returns {object} 200 - Envelope of notifications for the user.
+ * @returns {object} 401 - DV token missing or invalid.
+ */
+app.get('/deck-verified/api/dv/notifications', dvAuth, async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+
+  const sinceParam = typeof req.query.since === 'string' ? Number(req.query.since) : null
+  const since = typeof sinceParam === 'number' && Number.isFinite(sinceParam) && sinceParam >= 0 ? sinceParam : null
+
+  const envelope = await loadNotifications(identity.id)
+  res.json(envelope)
+})
+
+/**
+ * Append a notification for the authenticated user.
+ */
+app.put('/deck-verified/api/dv/notifications', dvAuth, express.json(), async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+
+  const payload = sanitizeNotificationInput((req.body && ('notification' in req.body)) ? req.body.notification : req.body)
+  if (!payload) {
+    res.status(400).json({ error: 'invalid_notification_payload' } as any)
+    return
+  }
+
+  try {
+    const envelope = await appendNotification(identity.id, payload)
+    res.json(envelope)
+  } catch (error) {
+    logger.error('Failed to append notification', error)
+    res.status(500).json({ error: 'notification_append_failed' } as any)
+  }
+})
+
+/**
+ * Remove all notifications for the authenticated user.
+ */
+app.delete('/deck-verified/api/dv/notifications', dvAuth, async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+  try {
+    const envelope = await clearNotifications(identity.id)
+    res.json(envelope)
+  } catch (error) {
+    logger.error('Failed to clear notifications', error)
+    res.status(500).json({ error: 'notification_clear_failed' } as any)
+  }
+})
+
+/**
+ * Remove a single notification by identifier.
+ */
+app.delete('/deck-verified/api/dv/notifications/:id', dvAuth, async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+  const { id } = req.params
+  if (!id) {
+    res.status(400).json({ error: 'missing_notification_id' } as any)
+    return
+  }
+  try {
+    const envelope = await removeNotification(identity.id, id)
+    res.json(envelope)
+  } catch (error) {
+    logger.error('Failed to remove notification', error)
+    res.status(500).json({ error: 'notification_remove_failed' } as any)
   }
 })
 

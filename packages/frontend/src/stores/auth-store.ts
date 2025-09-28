@@ -213,18 +213,18 @@ export const useAuthStore = defineStore('auth', {
       }, delay)
     },
 
-    async refreshAccessToken() {
+    async refreshAccessToken(opts: { force?: boolean } = {}): Promise<boolean> {
       if (!this.refreshToken) {
         this.logout()
-        return
+        return false
       }
 
       return this.withRefreshLock(async () => {
         // Re-check once we hold the lock: maybe someone just refreshed
         this.loadFromStorage()
-        if (this.expiresAt && this.expiresAt > Date.now() + 60_000) {
+        if (!opts.force && this.expiresAt && this.expiresAt > Date.now() + 60_000) {
           // Valid for > 60s; skip refresh to avoid needless rotation
-          return
+          return true
         }
 
         try {
@@ -243,20 +243,34 @@ export const useAuthStore = defineStore('auth', {
             // One more chance: another tab might have rotated tokens milliseconds ago.
             this.loadFromStorage()
             if (!this.accessToken) this.logout()
-            return
+            return false
           }
 
           this.setTokens(data)
           // Refresh profile data
           void this.fetchUserProfile()
-          return
+          return true
         } catch (e) {
           console.error('[useAuthStore] Token refresh error', e)
           this.loadFromStorage()
           if (!this.accessToken) this.logout()
-          return
+          return false
         }
       })
+    },
+
+    /**
+     * Ensures a DV token is available for backend API calls, forcing a refresh if missing.
+     */
+    async ensureInternalToken(): Promise<string | null> {
+      this.loadFromStorage()
+      if (!featureFlags.enableLogin) return null
+      if (this.dvToken) return this.dvToken
+      if (!this.refreshToken) return null
+
+      await this.refreshAccessToken({ force: true })
+      this.loadFromStorage()
+      return this.dvToken
     },
 
     async fetchAuthResult(state: string): Promise<DeckVerifiedAuthTokens> {
