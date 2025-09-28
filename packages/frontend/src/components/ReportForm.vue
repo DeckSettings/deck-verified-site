@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useProgressNotifications } from 'src/composables/useProgressNotifications'
@@ -66,25 +66,25 @@ const emit = defineEmits<{
 const PROGRESS_STAGE_CONFIG = {
   uploadingImages: {
     title: 'Uploading images',
-    description: 'Sending screenshots to the server…',
+    message: 'Sending screenshots to the server…',
     icon: 'cloud_upload',
     progress: 'indeterminate' as const,
   },
   gettingUrls: {
     title: 'Getting image links',
-    description: 'Finalising secure URLs for your screenshots…',
+    message: 'Finalising secure URLs for your screenshots…',
     icon: 'link',
     progress: 'indeterminate' as const,
   },
   generatingMarkdown: {
     title: 'Generating report',
-    description: 'Compiling your answers into GitHub-ready markdown…',
+    message: 'Compiling your answers into GitHub-ready markdown…',
     icon: 'description',
     progress: 'indeterminate' as const,
   },
   submittingGithub: {
     title: 'Submitting to GitHub',
-    description: 'Creating your report issue…',
+    message: 'Creating your report issue…',
     icon: 'fab fa-github',
     progress: 'indeterminate' as const,
   },

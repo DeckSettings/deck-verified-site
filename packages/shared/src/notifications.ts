@@ -25,4 +25,3 @@ export interface NotificationEnvelope {
   notifications: PersistedNotification[]
   updatedAt: number
 }
-

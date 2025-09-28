@@ -19,6 +19,7 @@ import {
   storeGameInRedis,
   searchGamesInRedis, getGamesWithReports,
   logAggregatedMetric, getAggregatedMetrics,
+  getEventProgress,
 } from './redis'
 import {
   fetchIssueLabels, fetchPopularReports,
@@ -51,6 +52,11 @@ import {
   removeNotification,
   sanitizeNotificationInput,
 } from './notifications'
+import { startGithubActionsMonitor } from './actionsMonitor'
+
+const delay = (ms: number) => new Promise((resolve) => {
+  setTimeout(resolve, ms)
+})
 
 // Log shutdown requests
 process.on('SIGINT', () => {
@@ -275,6 +281,113 @@ app.get('/deck-verified/api/dv/notifications', dvAuth, async (req: Request, res:
   const envelope = await loadNotifications(identity.id)
   res.json(envelope)
 })
+
+const EVENT_LONG_POLL_TIMEOUT_MS = 25_000
+const EVENT_LONG_POLL_INTERVAL_MS = 1_000
+
+app.post('/deck-verified/api/events', dvAuth, express.json(), async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+
+  const { eventId, taskType, payload } = req.body ?? {}
+  if (typeof eventId !== 'string' || !eventId) {
+    res.status(400).json({ error: 'invalid_event_id' })
+    return
+  }
+  if (typeof taskType !== 'string' || !taskType) {
+    res.status(400).json({ error: 'invalid_task_type' })
+    return
+  }
+
+  if (taskType === 'github:actions:monitor') {
+    const githubToken = typeof req.headers['x-github-token'] === 'string' ? req.headers['x-github-token'] : null
+    if (!githubToken) {
+      res.status(400).json({ error: 'missing_github_token' })
+      return
+    }
+
+    const issueNumber = Number(payload?.issueNumber)
+    const issueUrl = typeof payload?.issueUrl === 'string' ? payload.issueUrl : null
+    const createdAt = typeof payload?.createdAt === 'string' ? payload.createdAt : null
+    const repositoryInput = payload?.repository
+
+    if (!Number.isFinite(issueNumber) || !issueUrl || !createdAt) {
+      res.status(400).json({ error: 'invalid_monitor_payload' })
+      return
+    }
+
+    let repositoryPayload: { owner: string; name: string } | undefined
+    if (repositoryInput && typeof repositoryInput === 'object') {
+      const owner = typeof repositoryInput.owner === 'string' ? repositoryInput.owner : null
+      const name = typeof repositoryInput.name === 'string' ? repositoryInput.name : null
+      if (owner && name) {
+        repositoryPayload = { owner, name }
+      }
+    }
+
+    startGithubActionsMonitor({
+      eventId,
+      userId: identity.id,
+      login: identity.login,
+      issueNumber,
+      issueUrl,
+      createdAt,
+      repository: repositoryPayload,
+      githubToken,
+    })
+
+    res.status(202).json({ eventId, status: 'accepted' })
+    return
+  }
+
+  res.status(400).json({ error: 'unsupported_task_type' })
+})
+
+app.get('/deck-verified/api/events/:eventId/progress', dvAuth, async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' } as any)
+    return
+  }
+
+  const { eventId } = req.params
+  if (!eventId) {
+    res.status(400).json({ error: 'invalid_event_id' })
+    return
+  }
+
+  const lastToken = typeof req.query.last === 'string' ? req.query.last : null
+  const timeoutAt = Date.now() + EVENT_LONG_POLL_TIMEOUT_MS
+  let aborted = false
+
+  req.on('close', () => {
+    aborted = true
+  })
+
+  while (!aborted) {
+    const progress = await getEventProgress(identity.id, eventId)
+    if (!progress) {
+      res.status(404).json({ error: 'event_not_found' })
+      return
+    }
+
+    if (!lastToken || progress.revision !== lastToken) {
+      res.json(progress)
+      return
+    }
+
+    if (Date.now() >= timeoutAt) {
+      res.status(204).end()
+      return
+    }
+
+    await delay(EVENT_LONG_POLL_INTERVAL_MS)
+  }
+})
+
 
 /**
  * Append a notification for the authenticated user.

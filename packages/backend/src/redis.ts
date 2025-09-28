@@ -17,6 +17,21 @@ import {
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
+export interface EventProgressState {
+  eventId: string
+  status: string
+  icon: string | null
+  title: string
+  message: string
+  progress: number | 'indeterminate' | null
+  done: boolean
+  variant?: string
+  updatedAt: number
+  revision: string
+}
+
+const EVENT_PROGRESS_TTL_SECONDS = 30 * 60
+
 // Redis client
 export const redisClient: RedisClientType = createClient({
   socket: {
@@ -126,6 +141,46 @@ export const acquireRedisLock = async (
   } catch (e) {
     logger.warn(`Failed to acquire lock for ${key}:`, e)
     return false
+  }
+}
+
+export const setEventProgress = async (
+  userId: string,
+  eventId: string,
+  data: Omit<EventProgressState, 'eventId' | 'updatedAt' | 'revision'>,
+): Promise<EventProgressState> => {
+  await ensureRedisConnection()
+  const updatedAt = Date.now()
+  const revision = updatedAt.toString()
+  const payload: EventProgressState = {
+    eventId,
+    updatedAt,
+    revision,
+    ...data,
+  }
+  const key = `dv:${userId}:eventprogress:${eventId}`
+  try {
+    await redisClient.set(key, JSON.stringify(payload), { EX: EVENT_PROGRESS_TTL_SECONDS })
+  } catch (error) {
+    logger.error('Failed to set event progress', error)
+  }
+  return payload
+}
+
+export const getEventProgress = async (
+  userId: string,
+  eventId: string,
+): Promise<EventProgressState | null> => {
+  await ensureRedisConnection()
+  const key = `dv:${userId}:eventprogress:${eventId}`
+  try {
+    const raw = await redisClient.get(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as EventProgressState
+    return parsed
+  } catch (error) {
+    logger.error('Failed to get event progress', error)
+    return null
   }
 }
 

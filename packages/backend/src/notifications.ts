@@ -60,10 +60,10 @@ export const appendNotification = async (userId: string, notification: UserNotif
     icon: notification.icon,
     title: notification.title,
     body: notification.body,
+    variant: notification.variant ?? 'white',
   }
 
   if (typeof notification.link === 'string' && notification.link) entry.link = notification.link
-  if (typeof notification.variant === 'string' && notification.variant) entry.variant = notification.variant
   if (typeof notification.linkTooltip === 'string' && notification.linkTooltip) entry.linkTooltip = notification.linkTooltip
 
   const notifications = [entry, ...envelope.notifications]

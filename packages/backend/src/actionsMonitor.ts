@@ -1,0 +1,459 @@
+import logger from './logger'
+import { appendNotification } from './notifications'
+import { fetchIssueLabels } from './github'
+import { setEventProgress } from './redis'
+
+const DEFAULT_REPO = {
+  owner: 'DeckSettings',
+  name: 'game-reports-steamos',
+}
+
+const INITIAL_DELAY_MS = 10_000
+const POLL_INTERVAL_MS = 5_000
+const MAX_RUN_SEARCH_ATTEMPTS = 6
+const MAX_RUN_STATUS_ATTEMPTS = 24
+
+const delay = (ms: number) => new Promise((resolve) => {
+  setTimeout(resolve, ms)
+})
+
+interface MonitorJobPayload {
+  eventId: string
+  userId: string
+  login: string
+  issueNumber: number
+  issueUrl: string
+  createdAt: string
+  repository?: {
+    owner: string
+    name: string
+  }
+  githubToken: string
+}
+
+interface GithubWorkflowRun {
+  id: number
+  status: string
+  conclusion: string | null
+  event: string
+  name?: string
+  created_at: string
+}
+
+interface GithubWorkflowRunsResponse {
+  workflow_runs: GithubWorkflowRun[]
+}
+
+interface GithubIssueLabel {
+  name?: string
+}
+
+interface GithubIssueResponse {
+  labels?: GithubIssueLabel[]
+}
+
+const activeMonitors = new Map<string, Promise<void>>()
+
+const buildHeaders = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  Accept: 'application/vnd.github+json',
+})
+
+const buildApiUrl = (owner: string, repo: string, path: string) => `https://api.github.com/repos/${owner}/${repo}${path}`
+
+const sendNotification = async (userId: string, notification: {
+  icon: string;
+  title: string;
+  body: string;
+  variant?: string;
+  link?: string;
+  linkTooltip?: string
+}) => {
+  try {
+    await appendNotification(userId, notification)
+  } catch (error) {
+    logger.error('Failed to append monitor notification', error)
+  }
+}
+
+type ProgressParams = {
+  status: string
+  icon: string | null
+  title: string
+  message: string
+  progress: number | 'indeterminate' | null
+  done: boolean
+  variant?: string
+}
+
+const updateProgress = async (payload: MonitorJobPayload, params: ProgressParams) => {
+  await setEventProgress(payload.userId, payload.eventId, {
+    status: params.status,
+    icon: params.icon,
+    title: params.title,
+    message: params.message,
+    progress: params.progress,
+    done: params.done,
+    variant: params.variant,
+  })
+}
+
+export const startGithubActionsMonitor = (payload: MonitorJobPayload): void => {
+  if (activeMonitors.has(payload.eventId)) {
+    return
+  }
+
+  const job = runMonitor(payload).finally(() => {
+    activeMonitors.delete(payload.eventId)
+  })
+
+  activeMonitors.set(payload.eventId, job)
+}
+
+const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
+  const repo = payload.repository ?? DEFAULT_REPO
+
+  await updateProgress(payload, {
+    status: 'queued',
+    icon: 'hourglass_top',
+    title: 'Waiting for GitHub Actions…',
+    message: 'Monitoring GitHub validation for your report.',
+    progress: 'indeterminate',
+    done: false,
+    variant: 'info',
+  })
+
+  try {
+    await delay(INITIAL_DELAY_MS)
+
+    const run = await waitForWorkflowRun({
+      githubToken: payload.githubToken,
+      repo,
+      issueCreatedAt: payload.createdAt,
+      issueNumber: payload.issueNumber,
+    })
+
+    if (!run) {
+      await updateProgress(payload, {
+        status: 'warning',
+        icon: 'schedule',
+        title: 'Validation pending',
+        message: 'Unable to locate the validation workflow run. Please check GitHub shortly.',
+        progress: 100,
+        done: true,
+        variant: 'warning',
+      })
+      await sendNotification(payload.userId, {
+        icon: 'warning',
+        title: 'Validation Pending',
+        body: 'Unable to locate the validation workflow run. Please check back on GitHub shortly.',
+        variant: 'warning',
+        link: payload.issueUrl,
+        linkTooltip: 'Open report on GitHub',
+      })
+      return
+    }
+
+    await updateProgress(payload, {
+      status: 'running',
+      icon: 'play_arrow',
+      title: 'GitHub Actions running…',
+      message: run.name || 'GitHub workflow is in progress…',
+      progress: 'indeterminate',
+      done: false,
+      variant: 'info',
+    })
+
+    await waitForRunCompletion({ githubToken: payload.githubToken, repo, runId: run.id })
+
+    await updateProgress(payload, {
+      status: 'running',
+      icon: 'download',
+      title: 'Fetching validation results…',
+      message: 'Checking issue labels for validation feedback.',
+      progress: 'indeterminate',
+      done: false,
+      variant: 'info',
+    })
+
+    const issue = await fetchIssue({
+      githubToken: payload.githubToken,
+      repo,
+      issueNumber: payload.issueNumber,
+    })
+
+    if (!issue) {
+      await updateProgress(payload, {
+        status: 'warning',
+        icon: 'help_outline',
+        title: 'Validation status unknown',
+        message: 'Could not fetch issue details. Please review the report on GitHub.',
+        progress: 100,
+        done: true,
+        variant: 'warning',
+      })
+      await sendNotification(payload.userId, {
+        icon: 'warning',
+        title: 'Validation Status Unknown',
+        body: 'Could not fetch issue details. Please review the report on GitHub.',
+        variant: 'warning',
+        link: payload.issueUrl,
+        linkTooltip: 'Open report on GitHub',
+      })
+      return
+    }
+
+    const invalidFound = await processInvalidLabels({
+      userId: payload.userId,
+      issue,
+      issueUrl: payload.issueUrl,
+      githubToken: payload.githubToken,
+      onProgress: async (message, variant, done) => {
+        await updateProgress(payload, {
+          status: done ? 'warning' : 'running',
+          icon: 'warning',
+          title: done ? 'Validation issues detected' : 'Validation issue spotted',
+          message,
+          progress: done ? 100 : 'indeterminate',
+          done: Boolean(done),
+          variant: variant ?? 'warning',
+        })
+      },
+    })
+
+    await processNoteLabels({
+      userId: payload.userId,
+      issue,
+      issueUrl: payload.issueUrl,
+      githubToken: payload.githubToken,
+      onProgress: async (message) => {
+        await updateProgress(payload, {
+          status: 'running',
+          icon: 'info',
+          title: 'Validation notes added',
+          message,
+          progress: 'indeterminate',
+          done: false,
+          variant: 'info',
+        })
+      },
+    })
+
+    if (!invalidFound) {
+      await updateProgress(payload, {
+        status: 'completed',
+        icon: 'check_circle',
+        title: 'Validation complete',
+        message: 'Your report passed validation and should appear soon.',
+        progress: 100,
+        done: true,
+        variant: 'positive',
+      })
+      await sendNotification(payload.userId, {
+        icon: 'check_circle',
+        title: 'Report Submitted',
+        body: 'Your report passed validation and should appear soon.',
+        variant: 'positive',
+        link: payload.issueUrl,
+        linkTooltip: 'Open report on GitHub',
+      })
+    }
+  } catch (error) {
+    logger.error('GitHub actions monitor failed', error)
+    await updateProgress(payload, {
+      status: 'failed',
+      icon: 'error',
+      title: 'Validation monitor failed',
+      message: 'We were unable to monitor your report validation. Please check GitHub directly.',
+      progress: 100,
+      done: true,
+      variant: 'negative',
+    })
+    await sendNotification(payload.userId, {
+      icon: 'error',
+      title: 'Validation Monitor Failed',
+      body: 'We were unable to monitor your report validation. Please check GitHub directly.',
+      variant: 'negative',
+      link: payload.issueUrl,
+      linkTooltip: 'Open report on GitHub',
+    })
+  }
+}
+
+const waitForWorkflowRun = async ({ githubToken, repo, issueCreatedAt, issueNumber }: {
+  githubToken: string
+  repo: { owner: string; name: string }
+  issueCreatedAt: string
+  issueNumber: number
+}): Promise<GithubWorkflowRun | null> => {
+  const issueCreatedMs = Date.parse(issueCreatedAt)
+  for (let attempt = 0; attempt < MAX_RUN_SEARCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(
+        `${buildApiUrl(repo.owner, repo.name, '/actions/runs')}?event=issues&per_page=20`,
+        { headers: buildHeaders(githubToken) },
+      )
+      if (!response.ok) throw new Error(`Failed to fetch workflow runs (${response.status})`)
+      const payload = await response.json() as GithubWorkflowRunsResponse
+      const run = payload.workflow_runs.find((candidate) => {
+        if (!candidate || candidate.event !== 'issues' || Date.parse(candidate.created_at) < issueCreatedMs - 2000) {
+          return false
+        }
+        if (typeof candidate.name !== 'string') return false
+        const parsed = parseLogfmt(candidate.name)
+        return Number(parsed.trigger_issue_number) === issueNumber
+      })
+      if (run) return run
+    } catch (error) {
+      logger.warn('Unable to locate workflow run yet', error)
+    }
+    await delay(POLL_INTERVAL_MS)
+  }
+  return null
+}
+
+const waitForRunCompletion = async ({ githubToken, repo, runId }: {
+  githubToken: string
+  repo: { owner: string; name: string }
+  runId: number
+}): Promise<void> => {
+  for (let attempt = 0; attempt < MAX_RUN_STATUS_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(
+        buildApiUrl(repo.owner, repo.name, `/actions/runs/${runId}`),
+        { headers: buildHeaders(githubToken) },
+      )
+      if (!response.ok) throw new Error(`Failed to fetch workflow run (${response.status})`)
+      const run = await response.json() as GithubWorkflowRun
+      if (run.status === 'completed') return
+    } catch (error) {
+      logger.warn('Unable to fetch workflow status', error)
+    }
+    await delay(POLL_INTERVAL_MS)
+  }
+}
+
+const fetchIssue = async ({ githubToken, repo, issueNumber }: {
+  githubToken: string
+  repo: { owner: string; name: string }
+  issueNumber: number
+}): Promise<GithubIssueResponse | null> => {
+  try {
+    const response = await fetch(
+      buildApiUrl(repo.owner, repo.name, `/issues/${issueNumber}`),
+      { headers: buildHeaders(githubToken) },
+    )
+    if (!response.ok) throw new Error(`Failed to fetch issue (${response.status})`)
+    return await response.json() as GithubIssueResponse
+  } catch (error) {
+    logger.error('Failed to fetch issue details', error)
+    return null
+  }
+}
+
+const parseLogfmt = (input: string): Record<string, string> => {
+  const result: Record<string, string> = {}
+  const regex = /(\w+)="([^"]*)"/g
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(input)) !== null) {
+    const key = match[1] ?? ''
+    const value = match[2] ?? ''
+    if (key) {
+      result[key] = value
+    }
+  }
+
+  return result
+}
+
+const processInvalidLabels = async ({ userId, issue, issueUrl, githubToken, onProgress }: {
+  userId: string
+  issue: GithubIssueResponse
+  issueUrl: string
+  githubToken: string
+  onProgress: (message: string, variant?: string, done?: boolean) => Promise<void>
+}): Promise<boolean> => {
+  const labels = issue.labels || []
+  const invalidNames = labels
+    .map((label) => label?.name)
+    .filter((name): name is string => typeof name === 'string' && name.startsWith('invalid:'))
+
+  if (!invalidNames.length) return false
+
+  let labelDescriptions: Record<string, string> = {}
+  try {
+    const allLabels = await fetchIssueLabels(githubToken)
+    labelDescriptions = allLabels.reduce<Record<string, string>>((acc, label) => {
+      if (label.name && label.description) {
+        acc[label.name] = label.description
+      }
+      return acc
+    }, {})
+  } catch (error) {
+    logger.error('Failed to resolve label descriptions', error)
+  }
+
+  for (const name of invalidNames) {
+    const description = labelDescriptions[name]
+    await sendNotification(userId, {
+      icon: 'warning',
+      title: 'Report Validation Failed',
+      body: description || 'Your report failed automated validation. Please review the details on GitHub.',
+      variant: 'warning',
+      link: issueUrl,
+      linkTooltip: 'Open report on GitHub',
+    })
+  }
+
+  const summary = invalidNames
+    .map((name) => labelDescriptions[name])
+    .filter((desc): desc is string => typeof desc === 'string' && desc.length > 0)
+    .join(' ')
+
+  await onProgress(summary || 'Your report failed automated validation. Please review the details on GitHub.', 'warning', true)
+  return true
+}
+
+const processNoteLabels = async ({ userId, issue, issueUrl, githubToken, onProgress }: {
+  userId: string
+  issue: GithubIssueResponse
+  issueUrl: string
+  githubToken: string
+  onProgress: (message: string, variant?: string) => Promise<void>
+}): Promise<boolean> => {
+  const labels = issue.labels || []
+  const noteNames = labels
+    .map((label) => label?.name)
+    .filter((name): name is string => typeof name === 'string' && name.startsWith('note:'))
+
+  if (!noteNames.length) return false
+
+  let labelDescriptions: Record<string, string> = {}
+  try {
+    const allLabels = await fetchIssueLabels(githubToken)
+    labelDescriptions = allLabels.reduce<Record<string, string>>((acc, label) => {
+      if (label.name && label.description) {
+        acc[label.name] = label.description
+      }
+      return acc
+    }, {})
+  } catch (error) {
+    logger.error('Failed to resolve note label descriptions', error)
+  }
+
+  for (const name of noteNames) {
+    const description = labelDescriptions[name]
+    await sendNotification(userId, {
+      icon: 'info',
+      title: 'Report Update',
+      body: description || 'Your report includes additional notes from validation.',
+      variant: 'info',
+      link: issueUrl,
+      linkTooltip: 'Open report on GitHub',
+    })
+    await onProgress(description || 'Your report includes additional notes from validation.', 'info')
+  }
+
+  return true
+}

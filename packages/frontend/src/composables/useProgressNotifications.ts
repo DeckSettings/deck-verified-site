@@ -6,7 +6,7 @@ export type ProgressValue = number | 'indeterminate' | null
 export interface ProgressNotificationPayload {
   icon?: string
   title: string
-  description: string
+  message: string
   progress: ProgressValue
 }
 
@@ -17,12 +17,12 @@ export interface ProgressNotificationHandle {
 }
 
 const buildOptions = (payload: ProgressNotificationPayload): QNotifyCreateOptions => {
-  const { icon, title, description, progress } = payload
+  const { icon, title, message, progress } = payload
 
   const options: QNotifyCreateOptions = {
     group: false,
     message: title,
-    caption: description,
+    caption: message,
     timeout: 0,
     position: 'bottom-left',
     color: 'dark',
@@ -42,7 +42,7 @@ const buildOptions = (payload: ProgressNotificationPayload): QNotifyCreateOption
   } else {
     options.progress = true
     const clamped = Math.max(0, Math.min(100, progress))
-    options.caption = `${description} (${clamped}% complete)`
+    options.caption = `${message} (${clamped}% complete)`
   }
 
   return options

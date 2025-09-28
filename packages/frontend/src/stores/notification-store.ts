@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
 import { useAuthStore } from 'stores/auth-store'
 import type { NotificationEnvelope, PersistedNotification, UserNotification } from '../../../shared/src/notifications'
+import { useQuasar } from 'quasar'
+import type { QNotifyCreateOptions } from 'quasar'
 
 /** async delay helper. */
 const delay = (ms: number) => new Promise((resolve) => {
@@ -198,12 +200,14 @@ export const useNotificationStore = defineStore('notifications', () => {
   const lastUpdatedAt = ref(0)
   const polling = ref(false)
   const abortController = ref<AbortController | null>(null)
+  const seenNotificationIds = new Set<string>()
 
   let storageListener: ((event: StorageEvent) => void) | null = null
 
   const authStore = useAuthStore()
   const storageKey = computed(() => buildStorageKey(authStore.user?.id))
   const isFeatureActive = computed(() => featureFlags.enableLogin && authStore.isLoggedIn)
+  const $q = typeof window !== 'undefined' ? useQuasar() : null
 
   const notifications = computed(() => state.value.notifications)
   const hasNotifications = computed(() => notifications.value.length > 0)
@@ -218,14 +222,46 @@ export const useNotificationStore = defineStore('notifications', () => {
     writeEnvelopeToStorage(storageKey.value, envelope)
   }
 
+  const toastColorForVariant = (variant?: string): string | undefined => {
+    switch (variant) {
+      case 'positive':
+        return 'positive'
+      case 'negative':
+        return 'negative'
+      case 'warning':
+        return 'warning'
+      case 'info':
+        return 'primary'
+      default:
+        return undefined
+    }
+  }
+
+  const showToastForNotification = (notification: PersistedNotification) => {
+    if (!$q) return
+    const options: QNotifyCreateOptions = {
+      message: notification.title,
+      caption: notification.body,
+      icon: notification.icon,
+      timeout: 2000,
+      position: 'bottom',
+    }
+    const color = toastColorForVariant(notification.variant)
+    if (color) {
+      options.color = color
+    }
+    $q.notify(options)
+  }
+
   /** Applies an envelope to the store and optionally persists it. */
-  const applyEnvelope = (envelope: NotificationEnvelope | null, persist: boolean) => {
+  const applyEnvelope = (envelope: NotificationEnvelope | null, persist: boolean, silent: boolean = false): boolean => {
     if (!isFeatureActive.value) {
       state.value.notifications = []
       state.value.initialized = false
       lastUpdatedAt.value = 0
       if (persist) persistEnvelope(null)
-      return
+      seenNotificationIds.clear()
+      return false
     }
 
     if (!envelope) {
@@ -233,8 +269,12 @@ export const useNotificationStore = defineStore('notifications', () => {
       state.value.initialized = false
       lastUpdatedAt.value = 0
       if (persist) persistEnvelope(null)
-      return
+      seenNotificationIds.clear()
+      return false
     }
+
+    const previousIds = new Set(state.value.notifications.map((n) => n.id))
+    const newlySeen: PersistedNotification[] = []
 
     const updatedAt = typeof envelope.updatedAt === 'number' && Number.isFinite(envelope.updatedAt) && envelope.updatedAt > 0
       ? envelope.updatedAt
@@ -251,6 +291,19 @@ export const useNotificationStore = defineStore('notifications', () => {
     if (persist) {
       persistEnvelope(normalized)
     }
+
+    for (const notification of normalized.notifications) {
+      if (!previousIds.has(notification.id) && !seenNotificationIds.has(notification.id)) {
+        newlySeen.push(notification)
+      }
+      seenNotificationIds.add(notification.id)
+    }
+
+    if (!silent) {
+      newlySeen.forEach(showToastForNotification)
+    }
+
+    return newlySeen.length > 0
   }
 
   /** Hydrates state from the most recent envelope stored in localStorage. */
@@ -258,7 +311,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     if (!isFeatureActive.value) return
     const storedEnvelope = readEnvelopeFromStorage(storageKey.value)
     if (storedEnvelope) {
-      applyEnvelope(storedEnvelope, false)
+      applyEnvelope(storedEnvelope, false, true)
     } else {
       state.value.initialized = false
     }
@@ -268,6 +321,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   const resetState = (clearStorage: boolean = false) => {
     state.value = { notifications: [], initialized: false }
     lastUpdatedAt.value = 0
+    seenNotificationIds.clear()
     if (clearStorage) {
       persistEnvelope(null)
     }
@@ -317,17 +371,17 @@ export const useNotificationStore = defineStore('notifications', () => {
   }
 
   /** Applies server responses or handles auth errors / unexpected status codes. */
-  const handleEnvelopeResponse = async (response: Response): Promise<void> => {
+  const handleEnvelopeResponse = async (response: Response): Promise<boolean> => {
     if (response.status === 401) {
       authStore.logout()
       resetState(true)
-      return
+      return false
     }
     if (!response.ok) {
       throw new Error(`notification_request_failed_${response.status}`)
     }
     const envelope = await response.json() as NotificationEnvelope
-    applyEnvelope(envelope, true)
+    return applyEnvelope(envelope, true)
   }
 
   /** Primary polling loop, guarded by the cross-tab lock to avoid duplicate requests. */
@@ -342,6 +396,7 @@ export const useNotificationStore = defineStore('notifications', () => {
 
       const since = lastUpdatedAt.value > 0 ? lastUpdatedAt.value : null
       let acquired = false
+      let hasNewNotifications = false
       try {
         const result = await withNotificationLock(async () => {
           const query = since ? `?since=${since}` : ''
@@ -349,15 +404,17 @@ export const useNotificationStore = defineStore('notifications', () => {
           abortController.value = controller
           try {
             const response = await fetchWithDvToken(`/deck-verified/api/dv/notifications${query}`, { signal: controller.signal })
-            if (controller.signal.aborted) return
-            await handleEnvelopeResponse(response)
+            if (controller.signal.aborted) return false
+            return await handleEnvelopeResponse(response)
           } finally {
             abortController.value = null
           }
         })
         acquired = result.locked
+        hasNewNotifications = Boolean(result.result)
       } catch (error) {
         console.error('[useNotificationStore] Polling loop error', error)
+        nextDelayMs = Math.min(nextDelayMs * 2, POLL_MAX_INTERVAL_MS)
         await delay(POLL_BACKOFF_MS)
         continue
       }
@@ -368,9 +425,9 @@ export const useNotificationStore = defineStore('notifications', () => {
         continue
       }
 
-      if (state.value.notifications.length > 0) {
+      if (hasNewNotifications) {
         nextDelayMs = POLL_BASE_INTERVAL_MS
-      } else {
+      } else if (state.value.notifications.length === 0) {
         nextDelayMs = Math.min(Math.max(nextDelayMs * 2, POLL_BASE_INTERVAL_MS), POLL_MAX_INTERVAL_MS)
       }
 
@@ -463,6 +520,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     pushNotification,
     dismissNotification,
     dismissAll,
+    refresh: triggerPollingRestart,
   }
 })
 
