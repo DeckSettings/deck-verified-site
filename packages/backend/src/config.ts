@@ -22,6 +22,7 @@ if (missingVars.length > 0) {
 
 const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
+  siteBaseUrl: process.env.BASE_URL || 'https://deckverified.games',
   defaultGithubAuthToken: process.env.GH_TOKEN || null,
   redisHost: process.env.REDIS_HOST || '127.0.0.1',
   redisPort: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -38,7 +39,6 @@ const config = {
   githubPublicWebOrigins: (process.env.PUBLIC_WEB_ORIGINS || '').split(',')
     .map(s => s.trim())
     .filter(Boolean),
-  githubBaseUrl: process.env.BASE_URL || 'https://deckverified.games',
   jwtSecret: process.env.DV_AUTH_JWT_SECRET || null,
 }
 

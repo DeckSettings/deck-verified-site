@@ -148,7 +148,7 @@ export const githubAuthStartHandler = async (mode?: string): Promise<string> => 
     const codeVerifier = generatePkceCodeVerifier()
     const codeChallenge = generatePkceCodeChallenge(codeVerifier)
 
-    const baseUrl = (config.githubBaseUrl || '').replace(/\/$/, '')
+    const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
     const redirectUri = `${baseUrl}/deck-verified/api/auth/callback`
 
     await redisClient.setEx(
@@ -177,7 +177,7 @@ export const githubAuthStartHandler = async (mode?: string): Promise<string> => 
  */
 export const githubAuthCallbackHandler = async (code: string, state: string): Promise<{ redirectUrl: string }> => {
   try {
-    const baseUrl = (config.githubBaseUrl || '').replace(/\/$/, '')
+    const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
     const completeUrl = `${baseUrl}/auth/complete?state=${encodeURIComponent(state)}`
 
     await ensureRedisConnection()
