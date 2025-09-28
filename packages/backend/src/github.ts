@@ -2,6 +2,7 @@ import logfmt from 'logfmt'
 import YAML from 'yaml'
 import config from './config'
 import logger from './logger'
+import type { GitHubIdentity, GitHubTokenResponse } from '../../shared/src/auth'
 import {
   redisCacheAuthorGameReportCount, redisCacheGameReportTemplate,
   redisCacheGitHubIssueLabels,
@@ -32,25 +33,10 @@ import type { GitHubIssueTemplate } from '../../shared/src/game'
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 
-export interface GitHubTokenResponse {
-  access_token?: string
-  expires_in?: number
-  refresh_token?: string
-  refresh_token_expires_in?: number
-  token_type?: string
-  scope?: string
-  error?: string
-  error_description?: string
-}
-
 /**
  * Builds the GitHub OAuth authorize URL with PKCE support using repository configuration.
  */
-export const buildGitHubAuthorizeUrl = ({
-  state,
-  codeChallenge,
-  redirectUri,
-}: {
+export const buildGitHubAuthorizeUrl = ({ state, codeChallenge, redirectUri }: {
   state: string
   codeChallenge: string
   redirectUri: string
@@ -73,11 +59,7 @@ export const buildGitHubAuthorizeUrl = ({
 /**
  * Exchanges the GitHub OAuth code for access and refresh tokens using PKCE verifier.
  */
-export const exchangeGitHubCodeForTokens = async ({
-  code,
-  redirectUri,
-  codeVerifier,
-}: {
+export const exchangeGitHubCodeForTokens = async ({ code, redirectUri, codeVerifier }: {
   code: string
   redirectUri: string
   codeVerifier: string
@@ -117,9 +99,7 @@ export const exchangeGitHubCodeForTokens = async ({
 /**
  * Refreshes a GitHub OAuth access token using the provided refresh token.
  */
-export const refreshGitHubTokens = async ({
-  refreshToken,
-}: {
+export const refreshGitHubTokens = async ({ refreshToken }: {
   refreshToken: string
 }): Promise<GitHubTokenResponse> => {
   const clientId = config.githubAppClientId
@@ -150,6 +130,41 @@ export const refreshGitHubTokens = async ({
   } catch (error) {
     logger.error('GitHub token refresh network error:', error)
     return { error: 'token_refresh_failed', error_description: 'network_error' }
+  }
+}
+
+/**
+ * Fetches the minimal GitHub identity information required to mint DV tokens.
+ */
+export const fetchGitHubUserIdentity = async (accessToken: string): Promise<GitHubIdentity> => {
+  if (!accessToken) {
+    throw new Error('missing_access_token_for_identity_lookup')
+  }
+
+  try {
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'DeckVerified API',
+      },
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      logger.warn(`GitHub identity lookup failed with ${response.status}: ${text}`)
+      throw new Error('github_identity_lookup_failed')
+    }
+
+    const body = await response.json() as Partial<GitHubIdentity>
+    if (typeof body?.id !== 'number' || typeof body?.login !== 'string') {
+      throw new Error('github_identity_lookup_invalid_response')
+    }
+
+    return { id: body.id, login: body.login }
+  } catch (error) {
+    logger.error('GitHub identity lookup error:', error)
+    throw error
   }
 }
 

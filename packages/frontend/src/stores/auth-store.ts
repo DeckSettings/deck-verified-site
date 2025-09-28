@@ -1,22 +1,12 @@
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
+import type { DeckVerifiedAuthTokens } from '../../../shared/src/auth'
 
 export interface GithubUserProfile {
   id: number
   login: string
   name?: string | null
   avatarUrl: string
-}
-
-interface OAuthTokenResponse {
-  access_token?: string
-  refresh_token?: string
-  expires_in?: number
-  refresh_token_expires_in?: number
-  token_type?: string
-  scope?: string
-  error?: string
-  error_description?: string
 }
 
 interface AuthState {
@@ -29,6 +19,7 @@ interface AuthState {
   tokenType: string | null
   scope: string | null
   refreshTimeoutId: number | null
+  dvToken: string | null
 }
 
 const JITTER_MAX_MS = 5 * 60 * 1000               // Apply a jitter of up to 5 minutes
@@ -47,6 +38,7 @@ export const useAuthStore = defineStore('auth', {
     tokenType: null,
     scope: null,
     refreshTimeoutId: null,
+    dvToken: null,
   }),
   getters: {
     isLoggedIn: (state) => state.user !== null,
@@ -68,6 +60,7 @@ export const useAuthStore = defineStore('auth', {
         scope: this.scope,
         expiresAt: this.expiresAt,
         refreshExpiresAt: this.refreshExpiresAt,
+        dvToken: this.dvToken,
       }
       localStorage.setItem('dv_auth', JSON.stringify(payload))
     },
@@ -83,6 +76,7 @@ export const useAuthStore = defineStore('auth', {
         this.scope = obj.scope ?? null
         this.expiresAt = obj.expiresAt ?? null
         this.refreshExpiresAt = obj.refreshExpiresAt ?? null
+        this.dvToken = obj.dvToken ?? null
 
         // If the token is still valid, schedule refresh and fetch the profile
         if (this.accessToken && (!this.expiresAt || this.expiresAt > Date.now())) {
@@ -151,7 +145,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    setTokens(tokens: OAuthTokenResponse) {
+    setTokens(tokens: DeckVerifiedAuthTokens) {
       const now = Date.now()
       this.accessToken = tokens.access_token ?? null
       this.refreshToken = tokens.refresh_token ?? null
@@ -161,6 +155,11 @@ export const useAuthStore = defineStore('auth', {
       this.refreshExpiresAt = tokens.refresh_token_expires_in
         ? now + tokens.refresh_token_expires_in * 1000 - 30000
         : null
+      if (tokens.dv_token) {
+        this.dvToken = tokens.dv_token
+      } else {
+        this.dvToken = null
+      }
 
       this.persistToStorage()
       this.scheduleTokenRefresh()
@@ -173,6 +172,7 @@ export const useAuthStore = defineStore('auth', {
       this.scope = null
       this.expiresAt = null
       this.refreshExpiresAt = null
+      this.dvToken = null
       localStorage.removeItem('dv_auth')
       this.cancelTokenRefresh()
     },
@@ -236,7 +236,7 @@ export const useAuthStore = defineStore('auth', {
             },
             body: JSON.stringify({ refresh_token: this.refreshToken }),
           })
-          const data: OAuthTokenResponse = await r.json()
+          const data: DeckVerifiedAuthTokens = await r.json()
 
           if (!r.ok || !data.access_token) {
             console.warn('[useAuthStore] Token refresh failed', data)
@@ -249,15 +249,17 @@ export const useAuthStore = defineStore('auth', {
           this.setTokens(data)
           // Refresh profile data
           void this.fetchUserProfile()
+          return
         } catch (e) {
           console.error('[useAuthStore] Token refresh error', e)
           this.loadFromStorage()
           if (!this.accessToken) this.logout()
+          return
         }
       })
     },
 
-    async fetchAuthResult(state: string): Promise<OAuthTokenResponse> {
+    async fetchAuthResult(state: string): Promise<DeckVerifiedAuthTokens> {
       const url = `/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`
       const r = await fetch(url, { credentials: 'include' })
       if (!r.ok) {

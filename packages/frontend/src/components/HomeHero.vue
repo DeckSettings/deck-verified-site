@@ -187,7 +187,7 @@ onUnmounted(() => {
 .hero-text-action,
 .hero-primary-action {
   align-self: flex-start;
-  min-with: 195px;
+  min-width: 195px;
 }
 
 .hero-text-footnote {

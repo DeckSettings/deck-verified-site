@@ -1,3 +1,7 @@
+import { createHmac } from 'crypto'
+import cors from 'cors'
+import type { RequestHandler } from 'express'
+import type { DeckVerifiedAuthTokens, GitHubIdentity } from '../../shared/src/auth'
 import config from './config'
 import logger from './logger'
 import { ensureRedisConnection, redisClient } from './redis'
@@ -9,13 +13,101 @@ import {
 import {
   buildGitHubAuthorizeUrl,
   exchangeGitHubCodeForTokens,
+  fetchGitHubUserIdentity,
   refreshGitHubTokens,
 } from './github'
-import cors from 'cors'
-import type { RequestHandler } from 'express'
 
 const PKCE_STATE_TTL_SECONDS = 600
 const AUTH_RESULT_TTL_SECONDS = 120
+const DEFAULT_DV_TOKEN_TTL_SECONDS = 15 * 60 * 60
+const DV_TOKEN_EXPIRY_BUFFER_SECONDS = 30 * 60
+
+/**
+ * Encodes a string or buffer using base64url without padding.
+ */
+const base64UrlEncode = (input: string | Buffer): string => {
+  const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input)
+  return buffer.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
+
+/**
+ * Represents a signed DV token along with its lifetime in seconds.
+ */
+interface InternalDvToken {
+  token: string
+  expiresIn: number
+}
+
+/**
+ * Creates a signed JWT used for Deck Verified internal API authentication.
+ *
+ * @param identity Minimal GitHub user info for claims.
+ * @param ttlSeconds Token lifetime in seconds (clamped to >= 1 second).
+ */
+const createInternalDvToken = (identity: GitHubIdentity, ttlSeconds: number): InternalDvToken => {
+  if (!config.jwtSecret) {
+    throw new Error('jwt_secret_not_configured')
+  }
+
+  const issuedAt = Math.floor(Date.now() / 1000)
+  const expiresIn = Math.max(1, Math.floor(ttlSeconds))
+  const claims = {
+    sub: String(identity.id),
+    login: identity.login,
+    iat: issuedAt,
+    exp: issuedAt + expiresIn,
+    scopes: ['internal'],
+  }
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT',
+  }
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header))
+  const encodedPayload = base64UrlEncode(JSON.stringify(claims))
+  const signature = base64UrlEncode(
+    createHmac('sha256', config.jwtSecret)
+      .update(`${encodedHeader}.${encodedPayload}`)
+      .digest(),
+  )
+
+  return {
+    token: `${encodedHeader}.${encodedPayload}.${signature}`,
+    expiresIn,
+  }
+}
+
+/**
+ * Attaches a freshly minted DV token to the GitHub token payload.
+ */
+const appendInternalDvToken = async (tokens: DeckVerifiedAuthTokens): Promise<DeckVerifiedAuthTokens> => {
+  if (!config.githubAppConfigured) {
+    return tokens
+  }
+  if (!tokens.access_token) {
+    return tokens
+  }
+
+  const accessTokenTtlRaw = tokens.expires_in
+  const accessTokenTtl = typeof accessTokenTtlRaw === 'number' && Number.isFinite(accessTokenTtlRaw)
+    ? Math.floor(accessTokenTtlRaw)
+    : null
+  let dvTokenTtl = DEFAULT_DV_TOKEN_TTL_SECONDS
+  if (accessTokenTtl && accessTokenTtl > 0) {
+    const adjusted = accessTokenTtl - DV_TOKEN_EXPIRY_BUFFER_SECONDS
+    dvTokenTtl = Math.max(60, adjusted)
+    dvTokenTtl = Math.min(dvTokenTtl, accessTokenTtl)
+  }
+
+  const identity = await fetchGitHubUserIdentity(tokens.access_token)
+  const { token, expiresIn } = createInternalDvToken(identity, dvTokenTtl)
+
+  return {
+    ...tokens,
+    dv_token: token,
+    dv_token_expires_in: expiresIn,
+  }
+}
 
 /**
  * Builds a CORS middleware for some auth endpoints.
@@ -126,9 +218,7 @@ export const githubAuthCallbackHandler = async (code: string, state: string): Pr
  * - Expects a "state" query param.
  * - Returns the token payload once, then deletes it.
  */
-export const githubAuthResultHandler = async (state: string): Promise<any> => {
-
-
+export const githubAuthResultHandler = async (state: string): Promise<DeckVerifiedAuthTokens> => {
   try {
     if (!state) {
       throw new Error('missing_state')
@@ -141,9 +231,21 @@ export const githubAuthResultHandler = async (state: string): Promise<any> => {
     if (!payload) {
       throw new Error('not_found_or_already_claimed')
     }
+    let parsed: DeckVerifiedAuthTokens
+    try {
+      parsed = JSON.parse(payload) as DeckVerifiedAuthTokens
+    } catch (parseError) {
+      logger.error('Failed to parse GitHub auth payload from Redis', parseError)
+      throw new Error('invalid_auth_payload')
+    }
+
+    let responsePayload: DeckVerifiedAuthTokens = parsed
+    if (!parsed.error) {
+      responsePayload = await appendInternalDvToken(parsed)
+    }
 
     await redisClient.del(resultKey)
-    return JSON.parse(payload)
+    return responsePayload
   } catch (error) {
     logger.error('Error fetching GitHub auth result:', error)
     throw error
@@ -155,12 +257,17 @@ export const githubAuthResultHandler = async (state: string): Promise<any> => {
  * - Expects JSON body with "refresh_token".
  * - Proxies the refresh request to GitHub and returns the response.
  */
-export const githubAuthRefreshHandler = async (refreshToken: string) => {
-
-
+export const githubAuthRefreshHandler = async (refreshToken: string): Promise<DeckVerifiedAuthTokens> => {
   try {
     const refreshResponse = await refreshGitHubTokens({ refreshToken })
-    return refreshResponse
+    if (refreshResponse.error) {
+      return refreshResponse as DeckVerifiedAuthTokens
+    }
+    if (!refreshResponse.access_token) {
+      return refreshResponse as DeckVerifiedAuthTokens
+    }
+
+    return await appendInternalDvToken(refreshResponse as DeckVerifiedAuthTokens)
   } catch (error) {
     logger.error('Error refreshing GitHub token:', error)
     throw error

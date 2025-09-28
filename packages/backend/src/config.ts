@@ -39,6 +39,12 @@ const config = {
     .map(s => s.trim())
     .filter(Boolean),
   githubBaseUrl: process.env.BASE_URL || 'https://deckverified.games',
+  jwtSecret: process.env.DV_AUTH_JWT_SECRET || null,
 }
 
 export default config
+
+if (config.githubAppConfigured && !config.jwtSecret) {
+  console.error('ERROR! DV_AUTH_JWT_SECRET must be configured when GitHub login is enabled.')
+  process.exit(1)
+}
