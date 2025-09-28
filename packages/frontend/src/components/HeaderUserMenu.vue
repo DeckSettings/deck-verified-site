@@ -30,7 +30,15 @@
             <img v-if="avatarUrl" :src="avatarUrl" alt="GitHub avatar">
             <span v-else>{{ userInitials }}</span>
           </q-avatar>
-          <q-badge v-if="hasNotificationBadge" color="primary" floating />
+          <q-badge
+            v-if="isLoggedIn && hasNotifications"
+            class="q-ml-sm"
+            color="primary"
+            text-color="white"
+            floating
+          >
+            {{ notifications.length }}
+          </q-badge>
 
           <q-menu
             anchor="bottom right"
@@ -96,9 +104,13 @@
       >
         <q-badge
           v-if="isLoggedIn && hasNotifications"
+          class="q-ml-sm"
           color="primary"
+          text-color="white"
           floating
-        />
+        >
+          {{ notifications.length }}
+        </q-badge>
       </q-btn>
 
       <q-dialog
@@ -206,7 +218,7 @@ const displayMode = computed(() => props.displayMode)
 const { enableLogin } = useFeatureFlags()
 
 const authStore = useAuthStore()
-const { hasNotifications } = useNotifications()
+const { notifications, hasNotifications } = useNotifications()
 
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const avatarUrl = computed(() => authStore.avatarUrl)
@@ -238,8 +250,6 @@ const handleLogout = () => {
   authStore.logout()
   closeMobileMenu()
 }
-
-const hasNotificationBadge = computed(() => isLoggedIn.value && hasNotifications.value)
 </script>
 
 <style scoped>

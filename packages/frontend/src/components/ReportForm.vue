@@ -2,7 +2,7 @@
 import { defineProps, onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
-import { useProgressNotify } from 'src/composables/useProgressNotify'
+import { useProgressNotifications } from 'src/composables/useProgressNotifications'
 import { useAuthStore } from 'src/stores/auth-store'
 import { gameReportTemplate } from 'src/services/gh-reports'
 import type {
@@ -15,6 +15,7 @@ import GameSettingsFields from 'components/elements/GameSettingsFields.vue'
 import ReportFormMarkdown from 'components/elements/ReportFormMarkdown.vue'
 import ZoomableImage from 'components/elements/ZoomableImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import AdmonitionBanner from 'components/elements/AdmonitionBanner.vue'
 import LasOfUsGraphicSettingsImage from '../assets/Last-of-Us-Part-1-Graphics-Settings.jpg'
 
 const props = defineProps({
@@ -55,7 +56,13 @@ const { enableLogin } = useFeatureFlags()
 const authStore = useAuthStore()
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const accessToken = computed(() => authStore.accessToken)
-const { createProgressNotification } = useProgressNotify()
+const { createProgressNotification } = useProgressNotifications()
+const emit = defineEmits<{
+  (
+    event: 'submitted',
+    payload: { issueNumber: number; issueUrl: string; createdAt: string },
+  ): void
+}>()
 const PROGRESS_STAGE_CONFIG = {
   uploadingImages: {
     title: 'Uploading images',
@@ -79,12 +86,6 @@ const PROGRESS_STAGE_CONFIG = {
     title: 'Submitting to GitHub',
     description: 'Creating your report issue…',
     icon: 'fab fa-github',
-    progress: 'indeterminate' as const,
-  },
-  awaitingResponse: {
-    title: 'Awaiting confirmation',
-    description: 'Waiting for GitHub to respond…',
-    icon: 'mark_email_read',
     progress: 'indeterminate' as const,
   },
 }
@@ -728,13 +729,17 @@ const submitForm = async () => {
 
         // Replace Game Display Settings with image URLs when using screenshot mode
         if (isInGameImageMode && label === 'Game Display Settings') {
-          valString = inGameImageUrls.value.join('\n')
+          valString = inGameImageUrls.value
+            .map((url) => `![Image](${url})`)
+            .join('\n')
         }
 
         // Append Additional Notes images (not OCR'd)
         if (enableLogin && isLoggedIn.value && label === 'Additional Notes' && additionalNoteImageUrls.value.length > 0) {
-          const urlsMd = additionalNoteImageUrls.value.join('\n')
-          valString = (valString === '_No response_' ? '' : valString + '\n\n') + urlsMd
+          const urlsMd = additionalNoteImageUrls.value
+            .map((url) => `![Image](${url})`)
+            .join('\n')
+          valString = (valString === '_No response_' || valString.trim() === '' ? '' : `${valString}\n\n`) + urlsMd
         }
 
         sections.push(`### ${label}\n\n${valString}`)
@@ -749,9 +754,7 @@ const submitForm = async () => {
   if (shouldUploadAssets) {
     try {
       updateProgressStage('submittingGithub')
-      const apiWritetitle = `(Report submitted from Deck Verified Website)`
-
-      const r = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/issues', {
+      const response = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/issues', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken.value}`,
@@ -759,20 +762,38 @@ const submitForm = async () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          apiWritetitle,
+          title: '(Report submitted from Deck Verified Website)',
           body: reportMarkdown,
         }),
       })
-      updateProgressStage('awaitingResponse')
-      const text = await r.text()
-      if (!r.ok) {
-        throw new Error(`GitHub issue creation failed (${r.status}): ${text}`)
+
+      const raw = await response.text()
+      if (!response.ok) {
+        let detail = raw
+        try {
+          const parsed = JSON.parse(raw) as { message?: string }
+          if (parsed?.message) detail = parsed.message
+        } catch {
+          // ignore parse errors
+        }
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('GitHub rejected the request. Please confirm you are signed in and have granted the required permissions.')
+        }
+        throw new Error(detail || `GitHub issue creation failed (${response.status})`)
       }
-      const js = JSON.parse(text)
+
+      const js = JSON.parse(raw)
       const url: string | undefined = js?.html_url
       $q.notify({ type: 'positive', message: 'Issue created successfully on GitHub.' })
-      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      // if (url) window.open(url, '_blank', 'noopener,noreferrer')
       finishProgress()
+      if (typeof js?.number === 'number' && typeof js?.created_at === 'string' && url) {
+        emit('submitted', {
+          issueNumber: js.number,
+          issueUrl: url,
+          createdAt: js.created_at,
+        })
+      }
       return
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -1152,6 +1173,22 @@ watch(formValues, () => {
                             Limit: up to <span class="text-secondary"><strong>{{ MAX_IN_GAME_IMAGES
                             }}</strong> images, <strong>1MB</strong> each</span>.
                           </div>
+                          <AdmonitionBanner type="note" class="q-mt-sm q-mb-md">
+                            After submitting, the issue will be labeled
+                            <span class="gh-note-label">note:ocr-generated-content</span>
+                            to indicate it contains OCR-extracted settings that still need review.
+                            Open the issue on GitHub and check the in-game settings that were extracted.
+                            If everything looks correct, open the issue on GitHub and edit the body (for example, by
+                            adding a space at the end). Then save your changes.
+                            <q-img
+                              class="q-my-sm"
+                              src="~/assets/github-edit-issue-button.jpg"
+                              alt="Edit Issue On GitHub" />
+                            <br />
+                            This simple edit signals that the report has been reviewed. If you spot any mistakes in the
+                            OCR results, you can also make corrections directly by editing the issue’s markdown. Once
+                            you save your edits, the label will be cleared.
+                          </AdmonitionBanner>
                           <div class="uploader q-mt-sm">
                             <div
                               class="uploader-drop"
@@ -1439,6 +1476,14 @@ watch(formValues, () => {
   top: 24px;
   max-height: calc(100vh - 220px);
   overflow-y: auto;
+}
+
+.gh-note-label {
+  color: white;
+  background: color-mix(in srgb, #5319e7 30%, transparent);
+  border: 1px solid color-mix(in srgb, white 30%, #5319e7);
+  border-radius: 16px;
+  padding: 0 8px;
 }
 
 @media (max-width: 599.98px) {

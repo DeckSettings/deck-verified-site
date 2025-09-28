@@ -10,6 +10,9 @@ export interface UserNotification {
   icon: string
   title: string
   body: string
+  link?: string
+  linkTooltip?: string
+  variant?: string
 }
 
 interface PersistedNotification extends UserNotification {
@@ -33,7 +36,7 @@ const buildStorageKey = (userId: number | null | undefined): string => {
 
 const parseStoredNotifications = (raw: unknown): PersistedNotification[] => {
   if (!Array.isArray(raw)) return []
-  return raw
+  const parsed = raw
     .map((entry) => {
       if (typeof entry !== 'object' || entry === null) return null
       const record = entry as Partial<PersistedNotification>
@@ -42,15 +45,29 @@ const parseStoredNotifications = (raw: unknown): PersistedNotification[] => {
       }
       const id = typeof record.id === 'string' && record.id ? record.id : createNotificationId()
       const createdAt = typeof record.createdAt === 'number' ? record.createdAt : Date.now()
-      return {
+      const base: PersistedNotification = {
+        variant: 'white',
         icon: record.icon,
         title: record.title,
         body: record.body,
         id,
         createdAt,
       }
+      const maybeLink = (record as UserNotification).link
+      if (typeof maybeLink === 'string' && maybeLink) {
+        base.link = maybeLink
+      }
+      const maybeVariant = (record as UserNotification).variant
+      if (typeof maybeVariant === 'string' && maybeVariant) {
+        base.variant = maybeVariant
+      }
+      const maybeTooltip = (record as UserNotification).linkTooltip
+      if (typeof maybeTooltip === 'string' && maybeTooltip) {
+        base.linkTooltip = maybeTooltip
+      }
+      return base
     })
-    .filter((entry): entry is PersistedNotification => entry !== null)
+  return parsed.filter((entry): entry is PersistedNotification => entry !== null)
 }
 
 const createNotificationId = (): string => {
@@ -132,9 +149,20 @@ export const useNotificationStore = defineStore('notifications', () => {
     if (!isFeatureActive.value) return
     hydrateFromStorage()
     const entry: PersistedNotification = {
-      ...notification,
+      icon: notification.icon,
+      title: notification.title,
+      body: notification.body,
       id: createNotificationId(),
       createdAt: Date.now(),
+    }
+    if (typeof notification.link === 'string' && notification.link) {
+      entry.link = notification.link
+    }
+    if (notification.variant) {
+      entry.variant = notification.variant
+    }
+    if (notification.linkTooltip) {
+      entry.linkTooltip = notification.linkTooltip
     }
     state.value.notifications = [entry, ...state.value.notifications]
     persistState()

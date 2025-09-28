@@ -1,5 +1,5 @@
 <template>
-  <section v-if="isActive" class="notification-menu column q-gutter-sm q-mt-none">
+  <section v-if="isActive" class="notification-menu column q-gutter-sm q-mt-md q-mt-md-none">
     <div class="row items-center justify-between no-wrap">
       <div class="row items-center no-wrap text-subtitle2">
         <span>Notifications</span>
@@ -39,13 +39,19 @@
         v-ripple
       >
         <q-item-section avatar>
-          <q-icon :name="notification.icon" size="sm" />
+          <q-icon
+            :name="notification.icon"
+            size="sm"
+            :class="`text-${notification.variant}`"
+          />
         </q-item-section>
         <q-item-section>
           <q-item-label class="text-weight-medium">{{ notification.title }}</q-item-label>
-          <q-item-label caption class="text-white">{{ notification.body }}</q-item-label>
+          <q-item-label caption>
+            {{ notification.body }}
+          </q-item-label>
         </q-item-section>
-        <q-item-section side>
+        <q-item-section side class="row items-center no-wrap q-gutter-xs">
           <q-btn
             flat
             dense
@@ -53,8 +59,21 @@
             icon="close"
             size="sm"
             aria-label="Dismiss notification"
-            @click.stop="handleDismiss(notification.id)"
-          />
+            @click.stop="handleDismiss(notification.id)">
+            <q-tooltip>Dismiss notification</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="notification.link"
+            flat
+            dense
+            round
+            icon="open_in_new"
+            color="primary"
+            size="sm"
+            aria-label="Open related link"
+            @click.stop="handleOpenLink(notification.link)">
+            <q-tooltip>{{ notification.linkTooltip ?? 'Open link' }}</q-tooltip>
+          </q-btn>
         </q-item-section>
       </q-item>
     </q-list>
@@ -85,11 +104,16 @@ const handleDismiss = (id: string) => {
 const handleDismissAll = () => {
   dismissAll()
 }
+
+const handleOpenLink = (link: string) => {
+  if (!link) return
+  window.open(link, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <style scoped>
 .notification-menu__list {
-  border-radius: 12px;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--q-dark) 75%, transparent);
 }
 

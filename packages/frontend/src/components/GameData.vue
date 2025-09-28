@@ -24,6 +24,7 @@ import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import { useMeta } from 'quasar'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 
 dayjs.extend(relativeTime)
 
@@ -62,6 +63,8 @@ const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const dialogAutoOpened = ref(false)
+const pendingMonitorPayload = ref<{ issueNumber: number; issueUrl: string; createdAt: string } | null>(null)
+const { monitorIssue } = useGithubActionsMonitor()
 
 const includeExternalReports = ref(route.query.include_external === 'true')
 const sdhqLink = ref('')
@@ -365,6 +368,19 @@ useMeta(() => {
     },
   }
 })
+
+const handleReportSubmitted = (payload: { issueNumber: number; issueUrl: string; createdAt: string }) => {
+  pendingMonitorPayload.value = payload
+  closeDialog()
+}
+
+watch(reportFormDialogOpen, (open) => {
+  if (!open && pendingMonitorPayload.value) {
+    const payload = pendingMonitorPayload.value
+    pendingMonitorPayload.value = null
+    void monitorIssue(payload)
+  }
+})
 </script>
 
 <template>
@@ -464,7 +480,8 @@ useMeta(() => {
                           :appId="appId ? appId : ''"
                           :gameBanner="gameBanner ? gameBanner : ''"
                           :gameBackground="gameBackground ? gameBackground : ''"
-                          :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}" />
+                          :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}"
+                          @submitted="handleReportSubmitted" />
             </q-dialog>
           </div>
           <!-- END SUBMIT REPORT BUTTON -->

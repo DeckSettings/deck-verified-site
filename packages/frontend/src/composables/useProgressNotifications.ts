@@ -1,4 +1,4 @@
-import { QSpinnerPuff, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import type { QNotifyCreateOptions, QNotifyUpdateOptions } from 'quasar'
 
 export type ProgressValue = number | 'indeterminate' | null
@@ -37,15 +37,12 @@ const buildOptions = (payload: ProgressNotificationPayload): QNotifyCreateOption
 
   if (progress === null) {
     options.progress = false
-    options.spinner = false
   } else if (progress === 'indeterminate') {
     options.progress = true
-    options.spinner = QSpinnerPuff
   } else {
-    const clamped = Math.max(0, Math.min(100, progress))
     options.progress = true
+    const clamped = Math.max(0, Math.min(100, progress))
     options.caption = `${description} (${clamped}% complete)`
-    options.spinner = false
   }
 
   return options
@@ -54,7 +51,7 @@ const buildOptions = (payload: ProgressNotificationPayload): QNotifyCreateOption
 /**
  * Displays a Quasar progress notification and returns helpers to mutate it.
  */
-export const useProgressNotify = () => {
+export const useProgressNotifications = () => {
   const $q = useQuasar()
 
   const createProgressNotification = (initial: ProgressNotificationPayload): ProgressNotificationHandle => {
