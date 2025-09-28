@@ -8,6 +8,8 @@ RUN npm ci --ignore-scripts
 WORKDIR /app/packages/frontend
 COPY ./packages/frontend/. /app/packages/frontend/
 COPY ./packages/shared /app/packages/shared
+ENV \
+    VITE_ENABLE_LOGIN=true
 RUN npm run build:ssr
 
 FROM node:22-alpine

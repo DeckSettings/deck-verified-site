@@ -218,6 +218,9 @@ services:
       RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
       # -- GitHub token (required to increase rate limits on API calls).
       GH_TOKEN: ${GH_TOKEN:?}
+      # -- GitHub User Login
+      GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
+      GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}
       # -- Blogger API key (optional, used for generating blog posts)
       BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
       # -- Cache Config
