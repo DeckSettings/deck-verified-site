@@ -26,6 +26,7 @@ const computedClass = computed(() => {
   if (props.fullWidth) classes.push('full-width')
   return classes
 })
+const emit = defineEmits<{ (e: 'click'): void }>()
 </script>
 
 <template>
@@ -41,7 +42,7 @@ const computedClass = computed(() => {
     :class="computedClass"
     :style="btnStyle"
     v-bind="$attrs"
-    @click="$emit('click', $event)"
+    @click="emit('click')"
   >
     <slot />
   </q-btn>

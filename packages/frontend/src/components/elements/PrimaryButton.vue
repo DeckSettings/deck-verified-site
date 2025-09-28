@@ -31,6 +31,8 @@ const btnStyle = computed(() => {
   const cssVar = `--q-${props.color}`
   return { '--btn-base': `var(${cssVar})` } as Record<string, string>
 })
+ 
+const emit = defineEmits<{ (e: 'click'): void }>()
 </script>
 
 <template>
@@ -49,7 +51,7 @@ const btnStyle = computed(() => {
     :class="computedClass"
     :style="btnStyle"
     v-bind="$attrs"
-    @click="$emit('click', $event)"
+    @click="emit('click')"
   >
     <slot />
   </q-btn>
