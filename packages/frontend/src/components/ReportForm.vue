@@ -762,7 +762,7 @@ const submitForm = async () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: '(Report submitted from Deck Verified Website)',
+          title: isInGameImageMode ? '(Report submitted with images from Deck Verified website)' : '(Report submitted from Deck Verified Website)',
           body: reportMarkdown,
         }),
       })
