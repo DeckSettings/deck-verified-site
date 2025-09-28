@@ -38,7 +38,7 @@ const config = {
   githubPublicWebOrigins: (process.env.PUBLIC_WEB_ORIGINS || '').split(',')
     .map(s => s.trim())
     .filter(Boolean),
-  githubBaseUrl: process.env.BASE_URL || 'http://deckverified.localhost',
+  githubBaseUrl: process.env.BASE_URL || 'https://deckverified.games',
 }
 
 export default config

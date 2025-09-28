@@ -212,6 +212,7 @@ services:
     environment:
       # -- Application execution
       NODE_ENV: production
+      BASE_URL: ${BASE_URL:-}
       DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
       REVERSE_PROXY_COUNT: ${REVERSE_PROXY_COUNT:-0}
       DISABLE_RATE_LIMITER: ${DISABLE_RATE_LIMITER:-false}
@@ -221,6 +222,7 @@ services:
       # -- GitHub User Login
       GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
       GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}
+      PUBLIC_WEB_ORIGINS: ${PUBLIC_WEB_ORIGINS:-}
       # -- Blogger API key (optional, used for generating blog posts)
       BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
       # -- Cache Config
