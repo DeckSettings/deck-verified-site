@@ -61,7 +61,7 @@ jobs:
       - name: Build and push Container image
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc #v6.11.0
         with:
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           context: .
           file: packages/backend/docker/Dockerfile
           pull: true
