@@ -71,8 +71,56 @@ export const useGameStore = defineStore('game', {
     // Set reasonable defaults based on the current game name
     setDefaultGameMetadata() {
       const fallbackName = this.gameName || (this.appId ? `App ${this.appId}` : '')
+      const titles = [
+        'Steam Deck Performance',
+        'Steam Deck Optimisation Guides',
+        'Best Settings for Steam Deck',
+        'Optimised Settings Profiles',
+        'Steam Deck Tweaks & Settings',
+        'Performance Guides for Steam Deck',
+        'Steam Deck Game Configurations',
+        'Ultimate Steam Deck Settings',
+        'Top Performance Settings for Steam Deck',
+        'Steam Deck Graphics Settings',
+        'Optimal Game Settings for Steam Deck',
+        'Steam Deck Battery Life Optimisation',
+        'Hand-Tuned Steam Deck Settings',
+        'Steam Deck Performance Tuning',
+        'Community-Sourced Steam Deck Settings',
+        'Best Playable Settings for Steam Deck',
+        'Steam Deck Verified Performance',
+        'Steam Deck Performance Profiles',
+        'Enhance Your Steam Deck Gameplay',
+        'Steam Deck Custom Configuration Profiles',
+        'The Ultimate Steam Deck Performance Guides',
+        'Steam Deck Graphics & Performance',
+        'Optimal Performance for Steam Deck',
+        'Steam Deck Performance Tweaks',
+        'Mastering Your Steam Deck Settings',
+      ]
+
+      const getSeed = (input: string) => {
+        let hash = 0
+        for (let i = 0; i < input.length; i++) {
+          const char = input.charCodeAt(i)
+          hash = (hash << 5) - hash + char
+          hash |= 0 // Convert to 32bit integer
+        }
+        return Math.abs(hash)
+      }
+
+      const seed = getSeed(fallbackName)
+      const random = (s: number) => () => {
+        s = Math.sin(s) * 10000
+        return s - Math.floor(s)
+      }
+
+      const seededRandom = random(seed)
+      const randomIndex = Math.floor(seededRandom() * titles.length)
+      const randomTitle = titles[randomIndex]
+
       const title = fallbackName
-        ? `${fallbackName} – Steam Deck settings & performance`
+        ? `${fallbackName} – ${randomTitle}`
         : 'Game Report – Steam Deck settings'
       const description = `Best Steam Deck settings and community performance reports for ${fallbackName || 'this game'}. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.`
       this.setMetadata({ title, description })
