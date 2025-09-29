@@ -151,6 +151,9 @@ export const useGameStore = defineStore('game', {
     },
 
     async ensureLoaded(currentRoute: RouteLocationNormalizedLoaded): Promise<void> {
+      if (this.gameData === null) {
+        this.isLoaded = false
+      }
       // Parse intended target from route first
       let parsedGameName: string | null = null
       let parsedAppId: string | null = null
@@ -177,8 +180,11 @@ export const useGameStore = defineStore('game', {
           (parsedGameName && this.gameName === parsedGameName)
         )
       ) {
+        this.isLoaded = true
         return
       }
+
+      this.isLoaded = false
 
       if (ensureLoadedPromise && ensureLoadedKey === targetKey) {
         await ensureLoadedPromise

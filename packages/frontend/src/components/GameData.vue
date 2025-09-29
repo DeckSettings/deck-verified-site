@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { QAjaxBar } from 'quasar'
 import {
   simGithub,
   simSteam,
@@ -38,7 +39,10 @@ const isClient = typeof window !== 'undefined'
 const route = useRoute()
 const gameStore = useGameStore()
 
+const ajaxBar = ref<QAjaxBar | null>(null)
+
 // Load Pinia store state
+const isLoading = computed<boolean>(() => !gameStore.isLoaded)
 const appId = computed<string | null>(() => gameStore.appId)
 const gameName = computed<string>(() => gameStore.gameName)
 const gameReportsSummary = computed<string | null>(() => gameStore.reportsSummary)
@@ -280,7 +284,19 @@ onMounted(async () => {
 
   // Ensure data exists on first client render as well (SSR already fetched via onServerPrefetch)
   if (!gameData.value && typeof gameStore.ensureLoaded === 'function') {
-    await gameStore.ensureLoaded(route)
+    // Trigger Ajax par
+    if (ajaxBar.value) {
+      ajaxBar.value.start()
+    }
+    try {
+      // Trigger game data load if not already in store
+      await gameStore.ensureLoaded(route)
+    } finally {
+      // Ensure we stop the ajax bar after loading
+      if (ajaxBar.value) {
+        ajaxBar.value.stop()
+      }
+    }
   }
 })
 onBeforeUnmount(() => {
@@ -384,19 +400,28 @@ watch(reportFormDialogOpen, (open) => {
 </script>
 
 <template>
+  <q-ajax-bar
+    ref="ajaxBar"
+    position="bottom"
+    color="secondary"
+    size="5px"
+    skip-hijack
+  />
   <div class="background-container"
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
       <div class="col-xs-12 col-md-12 text-center q-pa-md">
         <h1 v-if="!$q.platform.is.mobile" class="text-h2 game-title">
-          {{ gameName }}
+          <q-skeleton v-if="isLoading" type="text" width="400px" class="q-mx-auto" />
+          <template v-else>{{ gameName }}</template>
         </h1>
       </div>
       <div class="col-xs-12 col-md-4 text-center q-pa-md-sm q-pa-xs-none self-start game-links">
         <div class="game-image-container row justify-center">
+          <q-skeleton v-if="isLoading" class="game-banner" height="200px" width="100%" />
           <q-img
-            v-if="gameBanner"
+            v-else-if="gameBanner"
             class="game-banner"
             :src="gameBanner"
             alt="Game Image">
@@ -414,9 +439,19 @@ watch(reportFormDialogOpen, (open) => {
           </q-img>
         </div>
         <h1 v-if="$q.platform.is.mobile" class="text-h6 game-title">
-          {{ gameName }}
+          <q-skeleton v-if="isLoading" type="text" width="200px" class="q-mx-auto" />
+          <template v-else>{{ gameName }}</template>
         </h1>
-        <div v-if="gameData" class="q-pa-md">
+        <div v-if="isLoading" class="q-pa-md">
+          <div class="row q-col-gutter-xs justify-center">
+            <q-skeleton type="QBtn" width="150px" height="46px" class="q-ma-xs" />
+            <q-skeleton type="QBtn" width="150px" height="46px" class="q-ma-xs" />
+          </div>
+          <div class="row justify-center q-mt-md">
+            <q-skeleton type="QBtn" width="100%" height="50px" />
+          </div>
+        </div>
+        <div v-else-if="gameData" class="q-pa-md">
           <!-- START EXTERNAL LINKS -->
           <div class="row q-col-gutter-xs" :class="$q.screen.lt.md ? 'justify-center' : ''">
             <SecondaryButton v-if="githubProjectSearchLink"
@@ -522,7 +557,115 @@ watch(reportFormDialogOpen, (open) => {
       </div>
       <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
         <div class="game-data-container q-mr-lg-sm">
-          <div v-if="gameData">
+          <div v-if="isLoading">
+            <div class="game-data-filters row q-mb-md justify-between items-center">
+              <div class="filters col-xs-12 col-md-8">
+                <q-skeleton type="QInput" width="210px" height="56px" class="filter-select q-my-xs-sm q-mr-xs" />
+                <q-skeleton type="QInput" width="210px" height="56px" class="filter-select q-my-xs-sm q-ml-xs" />
+              </div>
+            </div>
+            <q-list separator>
+              <q-item class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
+                <q-tooltip
+                  transition-show="scale" transition-hide="scale"
+                  anchor="bottom end" self="bottom right" :offset="[-30, -10]">
+                  Click to Show/Hide Report
+                </q-tooltip>
+                <q-item-section class="gt-xs">
+                  <!-- Wrapper for the layout -->
+                  <div class="row items-center q-gutter-sm">
+                    <!-- Avatar Section -->
+                    <div class="col-auto q-ml-md">
+                      <q-avatar>
+                        <q-skeleton type="circle" height="20px" width="80px" />
+                      </q-avatar>
+                    </div>
+                    <!-- Report Summary Section -->
+                    <div class="col q-ml-md">
+                      <q-item-label class="text-h6 text-secondary">
+                        <q-skeleton type="text" width="70%" />
+                      </q-item-label>
+                    </div>
+                    <!-- Reporter-->
+                    <div class="col-auto">
+                      <q-item-label>
+                        <q-skeleton type="QChip" height="20px" width="100px" />
+                      </q-item-label>
+                    </div>
+                  </div>
+                  <!-- Report Description Section -->
+                  <div class="row">
+                    <div class="col-4">
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                    <div class="col-4">
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                    <div class="col-4">
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                      <q-item-label caption lines="1" class="q-pt-sm">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                  </div>
+                </q-item-section>
+                <q-item-section class="lt-sm">
+                  <!-- Wrapper for the layout -->
+                  <div class="row items-center">
+                    <!-- Avatar Section -->
+                    <div class="col-auto">
+                      <q-avatar>
+                        <q-skeleton type="circle" height="20px" width="80px" />
+                      </q-avatar>
+                    </div>
+                    <!-- Report Summary Section -->
+                    <div class="col q-ml-md">
+                      <q-item-label class="text-secondary">
+                        <q-skeleton type="text" width="70%" />
+                      </q-item-label>
+                    </div>
+                  </div>
+                  <!-- Report Description Section -->
+                  <div class="row q-pt-sm">
+                    <div class="col-12 q-mt-xs">
+                      <q-item-label caption lines="1">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                    <div class="col-12 q-mt-xs">
+                      <q-item-label caption lines="1">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                      <q-item-label caption lines="1">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                    <div class="col-12 q-mt-xs">
+                      <q-item-label caption lines="1">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                      <q-item-label caption lines="1">
+                        <q-skeleton type="text" width="30%" />
+                      </q-item-label>
+                    </div>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+          <div v-else-if="gameData">
             <div v-if="filteredReports.length > 0">
               <div class="game-data-filters row q-mb-md justify-between items-center">
                 <!-- Filters (Top Left) -->
