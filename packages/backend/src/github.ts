@@ -278,10 +278,10 @@ const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHu
 
   const rawMetadata = await parseGameProjectBody(project.readme)
   projectDetails.metadata = {
-    poster: rawMetadata.poster === '_No response_' ? null : rawMetadata.poster ?? null,
-    hero: rawMetadata.hero === '_No response_' ? null : rawMetadata.hero ?? null,
-    banner: rawMetadata.banner === '_No response_' ? null : rawMetadata.banner ?? null,
-    background: rawMetadata.background === '_No response_' ? null : rawMetadata.background ?? null,
+    poster: rawMetadata.poster,
+    hero: rawMetadata.hero,
+    banner: rawMetadata.banner,
+    background: rawMetadata.background,
   }
 
   for (const issue of project.issues) {

@@ -399,14 +399,27 @@ export const parseReportBody = async (
  * @returns Object containing extracted game data.
  * @throws Throws if there is an error during parsing.
  */
-export const parseGameProjectBody = async (markdown: string): Promise<Record<string, string | null>> => {
+export const parseGameProjectBody = async (markdown: string | null): Promise<Record<string, string | null>> => {
   try {
+    if (!markdown) {
+      return {
+        poster: null,
+        hero: null,
+        banner: null,
+        background: null,
+      }
+    }
+
     const data: Record<string, string | null> = {}
     const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
     const lines = normalizedMarkdown.split('\n')
-    for (const heading of ['Poster', 'Hero', 'Banner']) {
-      data[heading.toLowerCase()] = await extractHeadingValue(lines, heading)
+
+    for (const heading of ['Poster', 'Hero', 'Banner', 'Background']) {
+      const key = heading.toLowerCase()
+      const value = await extractHeadingValue(lines, heading)
+      data[key] = value === '_No response_' ? null : value
     }
+
     return data
   } catch (error) {
     logger.error('Error fetching or parsing schema:', error)
