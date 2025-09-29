@@ -526,15 +526,18 @@ export const fetchProjectsByAppIdOrGameName = async (
   appId: string | null,
   gameName: string | null,
   authToken: string | null = null,
+  forceRefresh: boolean = false,
 ): Promise<GitHubProjectGameDetails | Record<string, never>> => {
   if (!appId && !gameName) {
     throw new Error('Either appId or gameName must be provided.')
   }
 
-  const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
-  if (cachedData) {
-    logger.info(`Using cached results for GitHub project search by appId:'${appId}', gameName:'${gameName}'`)
-    return cachedData
+  if (!forceRefresh) {
+    const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
+    if (cachedData) {
+      logger.info(`Using cached results for GitHub project search by appId:'${appId}', gameName:'${gameName}'`)
+      return cachedData
+    }
   }
 
   const searchTerm = appId ? `appid="${appId}"` : `name="${decodeURIComponent(gameName!)}"`

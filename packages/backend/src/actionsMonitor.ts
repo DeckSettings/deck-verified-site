@@ -1,7 +1,13 @@
 import logger from './logger'
 import { appendNotification } from './notifications'
-import { fetchIssueLabels } from './github'
+import {
+  fetchIssueLabels,
+  fetchProjectsByAppIdOrGameName,
+  fetchReportBodySchema,
+  fetchHardwareInfo,
+} from './github'
 import { setEventProgress } from './redis'
+import { parseReportBody } from './helpers'
 
 const DEFAULT_REPO = {
   owner: 'DeckSettings',
@@ -50,6 +56,8 @@ interface GithubIssueLabel {
 
 interface GithubIssueResponse {
   labels?: GithubIssueLabel[]
+  body?: string
+  title?: string
 }
 
 const activeMonitors = new Map<string, Promise<void>>()
@@ -112,6 +120,8 @@ export const startGithubActionsMonitor = (payload: MonitorJobPayload): void => {
 
 const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
   const repo = payload.repository ?? DEFAULT_REPO
+  let appId: number | null = null
+  let gameName: string | null = null
 
   await updateProgress(payload, {
     status: 'queued',
@@ -181,6 +191,18 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
       repo,
       issueNumber: payload.issueNumber,
     })
+
+    if (issue && issue.body) {
+      try {
+        const reportBodySchema = await fetchReportBodySchema()
+        const hardwareInfo = await fetchHardwareInfo()
+        const parsedIssueData = await parseReportBody(issue.body, reportBodySchema, hardwareInfo)
+        appId = parsedIssueData.app_id
+        gameName = parsedIssueData.game_name
+      } catch (error) {
+        logger.error('Failed to parse issue body for game details', error)
+      }
+    }
 
     if (!issue) {
       await updateProgress(payload, {
@@ -257,6 +279,16 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
         link: payload.issueUrl,
         linkTooltip: 'Open report on GitHub',
       })
+
+      // Force a refresh of the game data from GitHub
+      if (appId || gameName) {
+        try {
+          logger.info(`Forcing cache refresh for game: appId=${appId}, gameName=${gameName}`)
+          await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+        } catch (error) {
+          logger.error('Failed to force refresh game data after report submission', error)
+        }
+      }
     }
   } catch (error) {
     logger.error('GitHub actions monitor failed', error)
