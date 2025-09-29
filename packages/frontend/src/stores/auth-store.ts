@@ -242,6 +242,7 @@ export const useAuthStore = defineStore('auth', {
             console.warn('[useAuthStore] Token refresh failed', data)
             // One more chance: another tab might have rotated tokens milliseconds ago.
             this.loadFromStorage()
+            // TODO: If we have an error from the backend saying the refresh token is invalid, we should logout or at least reload the page.
             if (!this.accessToken) this.logout()
             return false
           }

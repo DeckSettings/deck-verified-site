@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { useAuthStore } from 'stores/auth-store'
-import { useEventProgressStore } from 'src/stores/event-progress-store'
+import { useTaskProgressStore } from 'src/stores/task-progress-store'
 import { useQuasar } from 'quasar'
 
 interface MonitorOptions {
@@ -13,21 +13,21 @@ interface MonitorOptions {
   }
 }
 
-const createEventId = (): string => {
+const createTaskId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  return `evt_${Math.random().toString(36).slice(2)}`
+  return `task_${Math.random().toString(36).slice(2)}`
 }
 
 /**
  * Starts a GitHub Actions monitor task on the backend, then delegates
- * progress tracking and cross-tab coordination to the event-progress store.
+ * progress tracking and cross-tab coordination to the task-progress store.
  */
 export const useGithubActionsMonitor = () => {
   const $q = useQuasar()
   const authStore = useAuthStore()
-  const eventStore = useEventProgressStore()
+  const taskStore = useTaskProgressStore()
 
   const accessToken = computed(() => authStore.accessToken)
 
@@ -39,10 +39,10 @@ export const useGithubActionsMonitor = () => {
       return
     }
 
-    const eventId = createEventId()
+    const taskId = createTaskId()
 
     try {
-      const response = await fetch('/deck-verified/api/events', {
+      const response = await fetch('/deck-verified/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ export const useGithubActionsMonitor = () => {
           'X-GitHub-Token': token,
         },
         body: JSON.stringify({
-          eventId,
+          taskId,
           taskType: 'github:actions:monitor',
           payload: options,
         }),
@@ -61,8 +61,8 @@ export const useGithubActionsMonitor = () => {
       }
 
       // Persist and begin monitoring (store handles single-leader polling + cross-tab sync)
-      eventStore.addPendingEvent(eventId)
-      void eventStore.ensureMonitoring(eventId)
+      taskStore.addPendingTask(taskId)
+      void taskStore.ensureMonitoring(taskId)
     } catch (error) {
       console.error('Failed to start GitHub actions monitor', error)
       $q.notify({ type: 'negative', message: 'Unable to start GitHub validation monitor.' })
@@ -71,6 +71,6 @@ export const useGithubActionsMonitor = () => {
 
   return {
     monitorIssue,
-    resumePendingFromStorage: eventStore.resumePendingFromStorage,
+    resumePendingFromStorage: taskStore.resumePendingFromStorage,
   }
 }

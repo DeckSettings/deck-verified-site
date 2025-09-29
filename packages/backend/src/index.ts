@@ -19,12 +19,12 @@ import {
   storeGameInRedis,
   searchGamesInRedis, getGamesWithReports,
   logAggregatedMetric, getAggregatedMetrics,
-  getEventProgress,
+  getTaskProgress,
 } from './redis'
 import {
   fetchIssueLabels, fetchPopularReports,
   fetchProjectsByAppIdOrGameName, fetchRecentReports,
-  fetchGameReportTemplate, updateGameIndex, fetchHardwareInfo, fetchReportBodySchema,
+  fetchGameReportTemplate, fetchHardwareInfo, fetchReportBodySchema,
 } from './github'
 import {
   fetchJosh5Avatar,
@@ -52,7 +52,9 @@ import {
   removeNotification,
   sanitizeNotificationInput,
 } from './notifications'
-import { startGithubActionsMonitor } from './actionsMonitor'
+import { githubMonitorQueue } from './jobs'
+import { initializeWorkers } from './jobs/worker'
+import { initScheduledTasks } from './jobs/scheduler'
 
 const delay = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms)
@@ -285,16 +287,16 @@ app.get('/deck-verified/api/dv/notifications', dvAuth, async (req: Request, res:
 const EVENT_LONG_POLL_TIMEOUT_MS = 25_000
 const EVENT_LONG_POLL_INTERVAL_MS = 1_000
 
-app.post('/deck-verified/api/events', dvAuth, express.json(), async (req: Request, res: Response) => {
+app.post('/deck-verified/api/tasks', dvAuth, express.json(), async (req: Request, res: Response) => {
   const identity = res.locals.dvIdentity
   if (!identity) {
     res.status(401).json({ error: 'missing_identity' } as any)
     return
   }
 
-  const { eventId, taskType, payload } = req.body ?? {}
-  if (typeof eventId !== 'string' || !eventId) {
-    res.status(400).json({ error: 'invalid_event_id' })
+  const { taskId, taskType, payload } = req.body ?? {}
+  if (typeof taskId !== 'string' || !taskId) {
+    res.status(400).json({ error: 'invalid_task_id' })
     return
   }
   if (typeof taskType !== 'string' || !taskType) {
@@ -328,8 +330,8 @@ app.post('/deck-verified/api/events', dvAuth, express.json(), async (req: Reques
       }
     }
 
-    startGithubActionsMonitor({
-      eventId,
+    const jobPayload = {
+      taskId,
       userId: identity.id,
       login: identity.login,
       issueNumber,
@@ -337,25 +339,30 @@ app.post('/deck-verified/api/events', dvAuth, express.json(), async (req: Reques
       createdAt,
       repository: repositoryPayload,
       githubToken,
+    }
+
+    await githubMonitorQueue.add('github-monitor-job', jobPayload, {
+      removeOnComplete: true,
+      attempts: 3,
     })
 
-    res.status(202).json({ eventId, status: 'accepted' })
+    res.status(202).json({ taskId, status: 'accepted' })
     return
   }
 
   res.status(400).json({ error: 'unsupported_task_type' })
 })
 
-app.get('/deck-verified/api/events/:eventId/progress', dvAuth, async (req: Request, res: Response) => {
+app.get('/deck-verified/api/tasks/:taskId/progress', dvAuth, async (req: Request, res: Response) => {
   const identity = res.locals.dvIdentity
   if (!identity) {
     res.status(401).json({ error: 'missing_identity' } as any)
     return
   }
 
-  const { eventId } = req.params
-  if (!eventId) {
-    res.status(400).json({ error: 'invalid_event_id' })
+  const { taskId } = req.params
+  if (!taskId) {
+    res.status(400).json({ error: 'invalid_task_id' })
     return
   }
 
@@ -368,9 +375,9 @@ app.get('/deck-verified/api/events/:eventId/progress', dvAuth, async (req: Reque
   })
 
   while (!aborted) {
-    const progress = await getEventProgress(identity.id, eventId)
+    const progress = await getTaskProgress(identity.id, taskId)
     if (!progress) {
-      res.status(404).json({ error: 'event_not_found' })
+      res.status(404).json({ error: 'task_not_found' })
       return
     }
 
@@ -1259,17 +1266,15 @@ const startServer = async () => {
     logger.info('Redis connected. Proceeding with the rest of the script...')
 
     // Optionally, run scheduled tasks
-    const noScheduledTasks = process.argv.includes('--no-scheduled-tasks')
-    if (!noScheduledTasks) {
-      // Schedule updateGameIndex to run every hour
-      logger.info(`Starting scheduled tasks to run every ${3600 * 1000} milliseconds`)
-      setInterval(updateGameIndex, 3600 * 1000)
-      // Optionally run on start also
-      if (config.runScheduledTaskOnStart) {
-        await updateGameIndex()
-      }
+    const bullmqDisabled = process.argv.includes('--disable-bullmq')
+    if (!bullmqDisabled) {
+      // Start BullMQ workers
+      initializeWorkers()
+
+      // Create scheduled tasks
+      await initScheduledTasks()
     } else {
-      logger.info('Running with scheduled tasks disabled.')
+      logger.info('BullMQ disabled via CLI flag. Skipping worker and scheduler initialization.')
     }
 
     // Enable sentry

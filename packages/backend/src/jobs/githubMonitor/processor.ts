@@ -1,13 +1,17 @@
-import logger from './logger'
-import { appendNotification } from './notifications'
+import type { Job } from 'bullmq'
+import logger from '../../logger'
+import { appendNotification } from '../../notifications'
 import {
   fetchIssueLabels,
   fetchProjectsByAppIdOrGameName,
   fetchReportBodySchema,
   fetchHardwareInfo,
-} from './github'
-import { setEventProgress } from './redis'
-import { parseReportBody } from './helpers'
+} from '../../github'
+import { setTaskProgress } from '../../redis'
+import { parseReportBody } from '../../helpers'
+import type { GithubMonitorJobData } from './types'
+
+// --- Constants and Types --- //
 
 const DEFAULT_REPO = {
   owner: 'DeckSettings',
@@ -18,24 +22,6 @@ const INITIAL_DELAY_MS = 10_000
 const POLL_INTERVAL_MS = 5_000
 const MAX_RUN_SEARCH_ATTEMPTS = 6
 const MAX_RUN_STATUS_ATTEMPTS = 24
-
-const delay = (ms: number) => new Promise((resolve) => {
-  setTimeout(resolve, ms)
-})
-
-interface MonitorJobPayload {
-  eventId: string
-  userId: string
-  login: string
-  issueNumber: number
-  issueUrl: string
-  createdAt: string
-  repository?: {
-    owner: string
-    name: string
-  }
-  githubToken: string
-}
 
 interface GithubWorkflowRun {
   id: number
@@ -60,30 +46,6 @@ interface GithubIssueResponse {
   title?: string
 }
 
-const activeMonitors = new Map<string, Promise<void>>()
-
-const buildHeaders = (token: string) => ({
-  Authorization: `Bearer ${token}`,
-  Accept: 'application/vnd.github+json',
-})
-
-const buildApiUrl = (owner: string, repo: string, path: string) => `https://api.github.com/repos/${owner}/${repo}${path}`
-
-const sendNotification = async (userId: string, notification: {
-  icon: string;
-  title: string;
-  body: string;
-  variant?: string;
-  link?: string;
-  linkTooltip?: string
-}) => {
-  try {
-    await appendNotification(userId, notification)
-  } catch (error) {
-    logger.error('Failed to append monitor notification', error)
-  }
-}
-
 type ProgressParams = {
   status: string
   icon: string | null
@@ -94,8 +56,36 @@ type ProgressParams = {
   variant?: string
 }
 
-const updateProgress = async (payload: MonitorJobPayload, params: ProgressParams) => {
-  await setEventProgress(payload.userId, payload.eventId, {
+// --- Helper Functions --- //
+
+const delay = (ms: number) => new Promise((resolve) => {
+  setTimeout(resolve, ms)
+})
+
+const buildHeaders = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  Accept: 'application/vnd.github+json',
+})
+
+const buildApiUrl = (owner: string, repo: string, path: string) => `https://api.github.com/repos/${owner}/${repo}${path}`
+
+const sendNotification = async (userId: string, notification: {
+  icon: string
+  title: string
+  body: string
+  variant?: string
+  link?: string
+  linkTooltip?: string
+}) => {
+  try {
+    await appendNotification(userId, notification)
+  } catch (error) {
+    logger.error('Failed to append monitor notification', error)
+  }
+}
+
+const updateProgress = async (payload: GithubMonitorJobData, params: ProgressParams) => {
+  await setTaskProgress(payload.userId, payload.taskId, {
     status: params.status,
     icon: params.icon,
     title: params.title,
@@ -106,19 +96,10 @@ const updateProgress = async (payload: MonitorJobPayload, params: ProgressParams
   })
 }
 
-export const startGithubActionsMonitor = (payload: MonitorJobPayload): void => {
-  if (activeMonitors.has(payload.eventId)) {
-    return
-  }
+// --- Main Job Processor --- //
 
-  const job = runMonitor(payload).finally(() => {
-    activeMonitors.delete(payload.eventId)
-  })
-
-  activeMonitors.set(payload.eventId, job)
-}
-
-const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
+export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
+  const payload = job.data
   const repo = payload.repository ?? DEFAULT_REPO
   let appId: number | null = null
   let gameName: string | null = null
@@ -136,14 +117,14 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
   try {
     await delay(INITIAL_DELAY_MS)
 
-    const run = await waitForWorkflowRun({
+    const workflowRun = await waitForWorkflowRun({
       githubToken: payload.githubToken,
       repo,
       issueCreatedAt: payload.createdAt,
       issueNumber: payload.issueNumber,
     })
 
-    if (!run) {
+    if (!workflowRun) {
       await updateProgress(payload, {
         status: 'warning',
         icon: 'schedule',
@@ -168,13 +149,13 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
       status: 'running',
       icon: 'play_arrow',
       title: 'GitHub Actions running…',
-      message: run.name || 'GitHub workflow is in progress…',
+      message: workflowRun.name || 'GitHub workflow is in progress…',
       progress: 'indeterminate',
       done: false,
       variant: 'info',
     })
 
-    await waitForRunCompletion({ githubToken: payload.githubToken, repo, runId: run.id })
+    await waitForRunCompletion({ githubToken: payload.githubToken, repo, runId: workflowRun.id })
 
     await updateProgress(payload, {
       status: 'running',
@@ -291,7 +272,7 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
       }
     }
   } catch (error) {
-    logger.error('GitHub actions monitor failed', error)
+    logger.error(`Job ${job.id} failed`, error)
     await updateProgress(payload, {
       status: 'failed',
       icon: 'error',
@@ -309,8 +290,12 @@ const runMonitor = async (payload: MonitorJobPayload): Promise<void> => {
       link: payload.issueUrl,
       linkTooltip: 'Open report on GitHub',
     })
+    // Re-throw the error to let BullMQ know the job has failed
+    throw error
   }
 }
+
+// --- Polling and Processing Helpers --- //
 
 const waitForWorkflowRun = async ({ githubToken, repo, issueCreatedAt, issueNumber }: {
   githubToken: string
@@ -326,8 +311,8 @@ const waitForWorkflowRun = async ({ githubToken, repo, issueCreatedAt, issueNumb
         { headers: buildHeaders(githubToken) },
       )
       if (!response.ok) throw new Error(`Failed to fetch workflow runs (${response.status})`)
-      const payload = await response.json() as GithubWorkflowRunsResponse
-      const run = payload.workflow_runs.find((candidate) => {
+      const responsePayload = await response.json() as GithubWorkflowRunsResponse
+      const run = responsePayload.workflow_runs.find((candidate) => {
         if (!candidate || candidate.event !== 'issues' || Date.parse(candidate.created_at) < issueCreatedMs - 2000) {
           return false
         }

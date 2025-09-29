@@ -17,8 +17,8 @@ import {
 } from '../../shared/src/game'
 import { isValidNumber } from './helpers'
 
-export interface EventProgressState {
-  eventId: string
+export interface TaskProgressState {
+  taskId: string
   status: string
   icon: string | null
   title: string
@@ -32,13 +32,19 @@ export interface EventProgressState {
 
 const EVENT_PROGRESS_TTL_SECONDS = 30 * 60
 
+export const redisConnectionOptions = {
+  host: config.redisHost,
+  port: config.redisPort,
+  password: config.redisPassword,
+}
+
 // Redis client
 export const redisClient: RedisClientType = createClient({
   socket: {
-    host: config.redisHost,
-    port: config.redisPort,
+    host: redisConnectionOptions.host,
+    port: redisConnectionOptions.port,
   },
-  password: config.redisPassword,
+  password: redisConnectionOptions.password,
 })
 
 /**
@@ -144,42 +150,42 @@ export const acquireRedisLock = async (
   }
 }
 
-export const setEventProgress = async (
+export const setTaskProgress = async (
   userId: string,
-  eventId: string,
-  data: Omit<EventProgressState, 'eventId' | 'updatedAt' | 'revision'>,
-): Promise<EventProgressState> => {
+  taskId: string,
+  data: Omit<TaskProgressState, 'taskId' | 'updatedAt' | 'revision'>,
+): Promise<TaskProgressState> => {
   await ensureRedisConnection()
   const updatedAt = Date.now()
   const revision = updatedAt.toString()
-  const payload: EventProgressState = {
-    eventId,
+  const payload: TaskProgressState = {
+    taskId,
     updatedAt,
     revision,
     ...data,
   }
-  const key = `dv:${userId}:eventprogress:${eventId}`
+  const key = `dv:${userId}:taskprogress:${taskId}`
   try {
     await redisClient.set(key, JSON.stringify(payload), { EX: EVENT_PROGRESS_TTL_SECONDS })
   } catch (error) {
-    logger.error('Failed to set event progress', error)
+    logger.error('Failed to set task progress', error)
   }
   return payload
 }
 
-export const getEventProgress = async (
+export const getTaskProgress = async (
   userId: string,
-  eventId: string,
-): Promise<EventProgressState | null> => {
+  taskId: string,
+): Promise<TaskProgressState | null> => {
   await ensureRedisConnection()
-  const key = `dv:${userId}:eventprogress:${eventId}`
+  const key = `dv:${userId}:taskprogress:${taskId}`
   try {
     const raw = await redisClient.get(key)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as EventProgressState
+    const parsed = JSON.parse(raw) as TaskProgressState
     return parsed
   } catch (error) {
-    logger.error('Failed to get event progress', error)
+    logger.error('Failed to get task progress', error)
     return null
   }
 }
@@ -192,11 +198,11 @@ export const getEventProgress = async (
  *        we are unable to search on these special characters.
  */
 export const storeGameInRedis = async (options: {
-  gameName: string;
-  appId?: string | null;
-  banner?: string | null;
-  poster?: string | null;
-  reportCount?: number | null;
+  gameName: string
+  appId?: string | null
+  banner?: string | null
+  poster?: string | null
+  reportCount?: number | null
 }): Promise<void> => {
   const { gameName, appId = null, banner = null, poster = null, reportCount = null } = options
   if (!gameName) {

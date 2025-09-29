@@ -4,11 +4,11 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useEventProgressStore } from 'src/stores/event-progress-store'
+import { useTaskProgressStore } from 'src/stores/task-progress-store'
 
-const eventProgress = useEventProgressStore()
+const taskProgress = useTaskProgressStore()
 
 onMounted(() => {
-  void eventProgress.resumePendingFromStorage()
+  void taskProgress.resumePendingFromStorage()
 })
 </script>
