@@ -27,50 +27,100 @@ export interface HomeReport {
   reviewScore: string;
 }
 
-export const fetchRecentReports = async (): Promise<HomeReport[]> => {
-  const url = apiUrl('/deck-verified/api/v1/recent_reports')
-  try {
-    const response = await fetch(url)
-    const data = await response.json() as GameReport[]
-    return data.map((report) => {
-      const reactionDiff = (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
-      const reviewScore = reactionDiff > 0 ? 'positive' : reactionDiff < 0 ? 'negative' : 'neutral'
-      return {
-        id: report.id,
-        data: report.data,
-        metadata: report.metadata,
-        reactions: report.reactions,
-        user: report.user,
-        reviewScore,
-      }
-    })
-  } catch (error) {
-    console.error('Error fetching or parsing data:', error)
-    return []
+const REPORTS_CACHE_DURATION = 60 * 1000 // 1 minute in milliseconds
+const LABELS_CACHE_DURATION = 3 * 60 * 1000 // 3 minutes in milliseconds
+
+const buildHomeReport = (report: GameReport): HomeReport => {
+  const reactionDiff = (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
+  const reviewScore = reactionDiff > 0 ? 'positive' : reactionDiff < 0 ? 'negative' : 'neutral'
+  return {
+    id: report.id,
+    data: report.data,
+    metadata: report.metadata,
+    reactions: report.reactions,
+    user: report.user,
+    reviewScore,
   }
 }
 
-export const fetchPopularReports = async (): Promise<HomeReport[]> => {
-  const url = apiUrl('/deck-verified/api/v1/popular_reports')
-  try {
-    const response = await fetch(url)
-    const data = await response.json() as GameReport[]
-    return data.map((report) => {
-      const reactionDiff = (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
-      const reviewScore = reactionDiff > 0 ? 'positive' : reactionDiff < 0 ? 'negative' : 'neutral'
-      return {
-        id: report.id,
-        data: report.data,
-        metadata: report.metadata,
-        reactions: report.reactions,
-        user: report.user,
-        reviewScore,
-      }
-    })
-  } catch (error) {
-    console.error('Error fetching or parsing data:', error)
-    return []
+let recentReportsCache: HomeReport[] = []
+let recentReportsLastFetch: number | null = null
+let recentReportsPromise: Promise<HomeReport[]> | null = null
+export const fetchRecentReports = async (): Promise<HomeReport[]> => {
+  const currentTime = Date.now()
+  const url = apiUrl('/deck-verified/api/v1/recent_reports')
+
+  if (recentReportsCache.length > 0 && recentReportsLastFetch && currentTime - recentReportsLastFetch < REPORTS_CACHE_DURATION) {
+    console.debug('Serving recent reports from cache')
+    return recentReportsCache
   }
+
+  if (recentReportsPromise) {
+    console.debug('Waiting for existing recent reports fetch to complete')
+    return recentReportsPromise
+  }
+
+  recentReportsPromise = (async () => {
+    try {
+      console.debug('Fetching recent reports from backend')
+      const response = await fetch(url)
+      if (!response.ok) {
+        const errorBody = await response.text()
+        throw new Error(`Failed to fetch recent reports: ${response.status} - ${errorBody}`)
+      }
+      const data = await response.json() as GameReport[]
+      recentReportsCache = data.map(buildHomeReport)
+      recentReportsLastFetch = Date.now()
+      return recentReportsCache
+    } catch (error) {
+      console.error('Error fetching or parsing recent reports:', error)
+      return []
+    } finally {
+      recentReportsPromise = null
+    }
+  })()
+
+  return recentReportsPromise
+}
+
+let popularReportsCache: HomeReport[] = []
+let popularReportsLastFetch: number | null = null
+let popularReportsPromise: Promise<HomeReport[]> | null = null
+export const fetchPopularReports = async (): Promise<HomeReport[]> => {
+  const currentTime = Date.now()
+  const url = apiUrl('/deck-verified/api/v1/popular_reports')
+
+  if (popularReportsCache.length > 0 && popularReportsLastFetch && currentTime - popularReportsLastFetch < REPORTS_CACHE_DURATION) {
+    console.debug('Serving popular reports from cache')
+    return popularReportsCache
+  }
+
+  if (popularReportsPromise) {
+    console.debug('Waiting for existing popular reports fetch to complete')
+    return popularReportsPromise
+  }
+
+  popularReportsPromise = (async () => {
+    try {
+      console.debug('Fetching popular reports from backend')
+      const response = await fetch(url)
+      if (!response.ok) {
+        const errorBody = await response.text()
+        throw new Error(`Failed to fetch popular reports: ${response.status} - ${errorBody}`)
+      }
+      const data = await response.json() as GameReport[]
+      popularReportsCache = data.map(buildHomeReport)
+      popularReportsLastFetch = Date.now()
+      return popularReportsCache
+    } catch (error) {
+      console.error('Error fetching or parsing popular reports:', error)
+      return []
+    } finally {
+      popularReportsPromise = null
+    }
+  })()
+
+  return popularReportsPromise
 }
 
 export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameDetails | null> => {
@@ -186,28 +236,43 @@ export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
   }
 }
 
-let labels: GitHubIssueLabel[] = []
-let lastFetchTime: number | null = null
+let labelsCache: GitHubIssueLabel[] = []
+let labelsLastFetchTime: number | null = null
+let labelsPromise: Promise<GitHubIssueLabel[]> | null = null
 export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
   const currentTime = Date.now()
-  const cacheDuration = 30 * 60 * 1000 // 30 minutes in milliseconds
 
-  if (labels && lastFetchTime && currentTime - lastFetchTime < cacheDuration) {
+  if (labelsCache.length > 0 && labelsLastFetchTime && currentTime - labelsLastFetchTime < LABELS_CACHE_DURATION) {
     console.debug('Serving labels from cache')
-    return labels
+    return labelsCache
   }
 
-  try {
-    console.debug('Fetching labels from backend')
-    const response = await fetch(apiUrl('/deck-verified/api/v1/issue_labels'))
-    const data = await response.json()
-    labels = data
-    lastFetchTime = currentTime
-    return labels
-  } catch (error) {
-    console.error('Error fetching labels:', error)
-    return []
+  if (labelsPromise) {
+    console.debug('Waiting for existing fetch to complete')
+    return labelsPromise
   }
+
+  labelsPromise = (async () => {
+    try {
+      console.debug('Fetching labels from backend')
+      const response = await fetch(apiUrl('/deck-verified/api/v1/issue_labels'))
+      if (!response.ok) {
+        const errorBody = await response.text()
+        throw new Error(`Failed to fetch labels: ${response.status} - ${errorBody}`)
+      }
+      const data = await response.json()
+      labelsCache = data
+      labelsLastFetchTime = currentTime
+      return labelsCache
+    } catch (error) {
+      console.error('Error fetching labels:', error)
+      return []
+    } finally {
+      labelsPromise = null
+    }
+  })()
+
+  return labelsPromise
 }
 
 export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report_count: number, max_report_count: number, limit: number | null): Promise<GameDetailsRequestMetricResult[]> => {
