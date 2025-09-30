@@ -3,6 +3,10 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
+import * as dotenv from 'dotenv';
+import path from 'path'
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 export default defineConfig((ctx) => {
   return {
@@ -13,6 +17,7 @@ export default defineConfig((ctx) => {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
+      'platform-check',
       { path: 'handheld-device-check', server: false },
       'i18n',
       'axios',
@@ -111,6 +116,10 @@ export default defineConfig((ctx) => {
         },
       },
       open: false, // opens browser window automatically
+    },
+
+    bin: {
+      linuxAndroidStudio: process.env.ANDROID_STUDIO_BIN || '',
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

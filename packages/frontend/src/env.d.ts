@@ -14,3 +14,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare global {
+  var isCapacitor: boolean
+  var isSsr: boolean
+}
+
+export {}

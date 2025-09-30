@@ -10,13 +10,69 @@ import type {
   GameReportForm,
   GameDetailsRequestMetricResult,
 } from '../../../shared/src/game'
+import { CapacitorHttp } from '@capacitor/core'
+import type { HttpResponse, HttpOptions } from '@capacitor/core'
 
 // Build absolute API URLs during SSR to avoid hitting the SSR server itself
-const SSR = typeof window === 'undefined'
+const SSR = globalThis.isSsr ?? typeof window === 'undefined'
+
+// Detect native (Capacitor) runtime
+const IS_NATIVE = globalThis.isCapacitor ?? false
+
+const DEFAULT_API = 'https://deckverified.games'
 // Prefer SSR_API_ORIGIN; default to production domain
-const SSR_API_ORIGIN = SSR ? (process.env.SSR_API_ORIGIN || 'https://deckverified.games') : ''
+const SSR_API_ORIGIN = SSR ? (process.env.SSR_API_ORIGIN || DEFAULT_API) : ''
+const NATIVE_API_ORIGIN = !SSR && IS_NATIVE ? (process.env.CAPACITOR_API_ORIGIN || DEFAULT_API) : ''
+
 // Build API URL depending on if we are running as SSR or SPA
-const apiUrl = (path: string) => SSR ? `${SSR_API_ORIGIN}${path}` : path
+const apiUrl = (path: string) => {
+  if (SSR) return `${SSR_API_ORIGIN}${path}`
+  if (IS_NATIVE && NATIVE_API_ORIGIN) return `${NATIVE_API_ORIGIN}${path}`
+  return path
+}
+
+const fetchService = async (url: string, options?: RequestInit): Promise<{
+  ok: boolean,
+  status: number,
+  text: () => Promise<string>,
+  json: () => Promise<unknown>,
+  headers: unknown
+}> => {
+  if (IS_NATIVE) {
+    console.debug('Using CapacitorHttp for request:', url)
+    try {
+      const httpOptions: HttpOptions = {
+        method: options?.method || 'GET',
+        url: url,
+        data: options?.body,
+      }
+      if (options?.headers) {
+        httpOptions.headers = options.headers as { [key: string]: string }
+      }
+      const response: HttpResponse = await CapacitorHttp.request(httpOptions)
+
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        text: async () => typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+        json: async () => typeof response.data === 'string' ? JSON.parse(response.data) : response.data,
+        headers: response.headers,
+      }
+    } catch (error) {
+      console.error('CapacitorHttp request failed', error)
+      throw error
+    }
+  } else {
+    const response = await fetch(url, options)
+    return {
+      ok: response.ok,
+      status: response.status,
+      text: response.text.bind(response),
+      json: response.json.bind(response),
+      headers: response.headers,
+    }
+  }
+}
 
 export interface HomeReport {
   id: number | null;
@@ -63,7 +119,7 @@ export const fetchRecentReports = async (): Promise<HomeReport[]> => {
   recentReportsPromise = (async () => {
     try {
       console.debug('Fetching recent reports from backend')
-      const response = await fetch(url)
+      const response = await fetchService(url)
       if (!response.ok) {
         const errorBody = await response.text()
         throw new Error(`Failed to fetch recent reports: ${response.status} - ${errorBody}`)
@@ -103,7 +159,7 @@ export const fetchPopularReports = async (): Promise<HomeReport[]> => {
   popularReportsPromise = (async () => {
     try {
       console.debug('Fetching popular reports from backend')
-      const response = await fetch(url)
+      const response = await fetchService(url)
       if (!response.ok) {
         const errorBody = await response.text()
         throw new Error(`Failed to fetch popular reports: ${response.status} - ${errorBody}`)
@@ -135,7 +191,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
   }
 
   try {
-    const response = await fetch(url)
+    const response = await fetchService(url)
     if (response.status === 204) {
       return null
     }
@@ -163,7 +219,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
 export const fetchGamesWithReports = async (from: number, limit: number): Promise<GameSearchResult[] | null> => {
   const url = apiUrl(`/deck-verified/api/v1/games_with_reports?from=${from}&limit=${limit}&orderBy=appname&orderDirection=ASC`)
   try {
-    const response = await fetch(url)
+    const response = await fetchService(url)
     if (response.status === 204) {
       console.log('No results found')
       return []
@@ -195,7 +251,7 @@ export const searchGames = async (searchString: string | null, includeExternal: 
   }
 
   try {
-    const response = await fetch(url)
+    const response = await fetchService(url)
     if (response.status === 204) {
       console.log('No results found')
       return []
@@ -216,7 +272,7 @@ export const searchGames = async (searchString: string | null, includeExternal: 
 
 export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
   try {
-    const response = await fetch(apiUrl('/deck-verified/api/v1/report_form'))
+    const response = await fetchService(apiUrl('/deck-verified/api/v1/report_form'))
     if (response.status === 204) {
       console.log('No results found')
       return null
@@ -255,12 +311,12 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
   labelsPromise = (async () => {
     try {
       console.debug('Fetching labels from backend')
-      const response = await fetch(apiUrl('/deck-verified/api/v1/issue_labels'))
+      const response = await fetchService(apiUrl('/deck-verified/api/v1/issue_labels'))
       if (!response.ok) {
         const errorBody = await response.text()
         throw new Error(`Failed to fetch labels: ${response.status} - ${errorBody}`)
       }
-      const data = await response.json()
+      const data = await response.json() as GitHubIssueLabel[]
       labelsCache = data
       labelsLastFetchTime = currentTime
       return labelsCache
@@ -281,7 +337,7 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
     url += '&limit=' + limit
   }
   try {
-    const response = await fetch(url)
+    const response = await fetchService(url)
     if (response.status === 204) {
       // 204 - No Content
       console.log('No results found')
@@ -293,11 +349,11 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
       console.error(`Failed to fetch any results data: ${response.status} - ${errorBody}`)
       return []
     }
-    const data = await response.json()
+    const data = await response.json() as { results: GameDetailsRequestMetricResult[] }
     if (!data.results) {
       return []
     }
-    return data.results as GameDetailsRequestMetricResult[]
+    return data.results
   } catch (error) {
     console.error('Error fetching project data:', error)
     return []

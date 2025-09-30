@@ -12,10 +12,13 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "dev:ssr": "quasar dev -m ssr",
+    "dev:android": "quasar dev --mode capacitor --target android",
     "build": "quasar build -m spa",
-    "build:ssr": "quasar build -m ssr"
+    "build:ssr": "quasar build -m ssr",
+    "build:android": "quasar build --mode capacitor --target android --ide"
   },
   "dependencies": {
+    "@capacitor/core": "^7.4.3",
     "@fontsource/exo-2": "^5.1.1",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
@@ -33,9 +36,11 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
     "@eslint/js": "^9.14.0",
     "@intlify/unplugin-vue-i18n": "^2.0.0",
     "@quasar/app-vite": "^2.0.0",
+    "@types/gsap": "^1.20.2",
     "@types/logfmt": "^1.2.6",
     "@types/node": "^20.5.9",
     "@vue/eslint-config-prettier": "^10.1.0",

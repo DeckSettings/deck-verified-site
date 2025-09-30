@@ -1,0 +1,13 @@
+{
+  "name": "deck-verified-web",
+  "version": "0.0.1",
+  "description": "Deck Verified is an open-source, community-driven database of performance reports, settings, and tweaks for handheld gaming PCs like the Steam Deck, ROG Ally, and Legion Go.",
+  "author": "Josh Sunnex <josh@wisealpha.com>",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  }
+}

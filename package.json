@@ -6,13 +6,16 @@
     "packages/*"
   ],
   "scripts": {
+    "build-box": "infra/android-build-box/run.sh bash",
     "clean": "npm run clean:backend && npm run clean:frontend && rm -rf ./node_modules",
     "clean:backend": "cd packages/backend && rm -rf ./dist ./node_modules",
     "clean:frontend": "cd packages/frontend && rm -rf ./dist ./node_modules",
     "watch:backend": "cd packages/backend && npm run watch",
     "watch:frontend": "cd packages/frontend && npm run dev",
+    "watch:android": "cd packages/frontend && npm run dev:android",
     "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd packages/backend && npm run build",
-    "build:frontend": "cd packages/frontend && npm run build && npm run build:ssr"
+    "build:frontend": "cd packages/frontend && npm run build && npm run build:ssr",
+    "build:android": "cd packages/frontend && npm run build:android"
   }
 }

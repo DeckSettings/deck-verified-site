@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Deck Verified</string>
+    <string name="title_activity_main">Deck Verified</string>
+    <string name="package_name">nz.co.streamingtech.deckverified</string>
+    <string name="custom_url_scheme">nz.co.streamingtech.deckverified</string>
+</resources>

@@ -70,6 +70,12 @@ export default [
 
     // add your custom rules here
     rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          varsIgnorePattern: 'NodeJS|ImportMeta',
+        },
+      ],
       'prefer-promise-reject-errors': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
