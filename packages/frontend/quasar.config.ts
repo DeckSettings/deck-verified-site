@@ -57,6 +57,10 @@ export default defineConfig((ctx) => {
       },
 
       vueRouterMode: 'history', // available values: 'hash', 'history'
+      env: {
+        BUILD_TARGET: process.env.BUILD_TARGET || 'web',
+        BACKEND_API_ORIGIN: process.env.BACKEND_API_ORIGIN || 'https://deckverified.games'
+      },
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -110,7 +114,7 @@ export default defineConfig((ctx) => {
           // Environments:
           //  - Local: 'http://localhost:9022'
           //  - Prod: 'https://deckverified.games'
-          target: 'http://localhost:9022',
+          target: process.env.BACKEND_API_ORIGIN || 'http://localhost:9022',
           changeOrigin: true,   // Modify the origin to match the target's origin (required to fetch from CDN)
           secure: false,         // Disable SSL certificate validation (as cert will not be "localhost")
         },

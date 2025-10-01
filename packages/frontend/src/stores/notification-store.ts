@@ -1,3 +1,4 @@
+import { apiUrl } from 'src/utils/api';
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
@@ -403,7 +404,7 @@ export const useNotificationStore = defineStore('notifications', () => {
           const controller = new AbortController()
           abortController.value = controller
           try {
-            const response = await fetchWithDvToken(`/deck-verified/api/dv/notifications${query}`, { signal: controller.signal })
+            const response = await fetchWithDvToken(apiUrl(`/deck-verified/api/dv/notifications${query}`), { signal: controller.signal })
             if (controller.signal.aborted) return false
             return await handleEnvelopeResponse(response)
           } finally {
@@ -449,7 +450,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   const dismissAll = async (): Promise<void> => {
     if (!isFeatureActive.value) return
     try {
-      const response = await fetchWithDvToken('/deck-verified/api/dv/notifications', { method: 'DELETE' })
+      const response = await fetchWithDvToken(apiUrl('/deck-verified/api/dv/notifications'), { method: 'DELETE' })
       await handleEnvelopeResponse(response)
     } catch (error) {
       console.error('[useNotificationStore] Failed to clear notifications', error)
@@ -462,7 +463,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   const dismissNotification = async (id: string): Promise<void> => {
     if (!isFeatureActive.value) return
     try {
-      const response = await fetchWithDvToken(`/deck-verified/api/dv/notifications/${encodeURIComponent(id)}`, {
+      const response = await fetchWithDvToken(apiUrl(`/deck-verified/api/dv/notifications/${encodeURIComponent(id)}`), {
         method: 'DELETE',
       })
       await handleEnvelopeResponse(response)
@@ -477,7 +478,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   const pushNotification = async (notification: UserNotification): Promise<void> => {
     if (!isFeatureActive.value) return
     try {
-      const response = await fetchWithDvToken('/deck-verified/api/dv/notifications', {
+      const response = await fetchWithDvToken(apiUrl('/deck-verified/api/dv/notifications'), {
         method: 'PUT',
         body: JSON.stringify({ notification }),
       })

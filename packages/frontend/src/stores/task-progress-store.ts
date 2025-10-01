@@ -1,3 +1,4 @@
+import { apiUrl } from 'src/utils/api';
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useAuthStore } from 'stores/auth-store'
@@ -259,7 +260,7 @@ export const useTaskProgressStore = defineStore('task-progress', () => {
       try {
         renewLeaderLock(taskId, owner)
 
-        const url = `/deck-verified/api/tasks/${encodeURIComponent(taskId)}/progress` + (lastRevision ? `?last=${encodeURIComponent(lastRevision)}` : '')
+        const url = apiUrl(`/deck-verified/api/tasks/${encodeURIComponent(taskId)}/progress`) + (lastRevision ? `?last=${encodeURIComponent(lastRevision)}` : '')
         controller = new AbortController()
         abortControllers.set(taskId, controller)
         const response = await fetch(url, {

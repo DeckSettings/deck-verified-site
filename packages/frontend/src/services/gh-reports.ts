@@ -12,24 +12,7 @@ import type {
 } from '../../../shared/src/game'
 import { CapacitorHttp } from '@capacitor/core'
 import type { HttpResponse, HttpOptions } from '@capacitor/core'
-
-// Build absolute API URLs during SSR to avoid hitting the SSR server itself
-const SSR = globalThis.isSsr ?? typeof window === 'undefined'
-
-// Detect native (Capacitor) runtime
-const IS_NATIVE = globalThis.isCapacitor ?? false
-
-const DEFAULT_API = 'https://deckverified.games'
-// Prefer SSR_API_ORIGIN; default to production domain
-const SSR_API_ORIGIN = SSR ? (process.env.SSR_API_ORIGIN || DEFAULT_API) : ''
-const NATIVE_API_ORIGIN = !SSR && IS_NATIVE ? (process.env.CAPACITOR_API_ORIGIN || DEFAULT_API) : ''
-
-// Build API URL depending on if we are running as SSR or SPA
-const apiUrl = (path: string) => {
-  if (SSR) return `${SSR_API_ORIGIN}${path}`
-  if (IS_NATIVE && NATIVE_API_ORIGIN) return `${NATIVE_API_ORIGIN}${path}`
-  return path
-}
+import { apiUrl } from 'src/utils/api'
 
 const fetchService = async (url: string, options?: RequestInit): Promise<{
   ok: boolean,
@@ -38,7 +21,7 @@ const fetchService = async (url: string, options?: RequestInit): Promise<{
   json: () => Promise<unknown>,
   headers: unknown
 }> => {
-  if (IS_NATIVE) {
+  if (globalThis.isCapacitor ?? false) {
     console.debug('Using CapacitorHttp for request:', url)
     try {
       const httpOptions: HttpOptions = {
@@ -83,7 +66,7 @@ export interface HomeReport {
   reviewScore: string;
 }
 
-const REPORTS_CACHE_DURATION = 60 * 1000 // 1 minute in milliseconds
+
 const LABELS_CACHE_DURATION = 3 * 60 * 1000 // 3 minutes in milliseconds
 
 const buildHomeReport = (report: GameReport): HomeReport => {
@@ -99,84 +82,40 @@ const buildHomeReport = (report: GameReport): HomeReport => {
   }
 }
 
-let recentReportsCache: HomeReport[] = []
-let recentReportsLastFetch: number | null = null
-let recentReportsPromise: Promise<HomeReport[]> | null = null
-export const fetchRecentReports = async (): Promise<HomeReport[]> => {
-  const currentTime = Date.now()
-  const url = apiUrl('/deck-verified/api/v1/recent_reports')
+export const fetchRecentReports = async (count: number = 5): Promise<HomeReport[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/recent_reports?count=${count}`)
 
-  if (recentReportsCache.length > 0 && recentReportsLastFetch && currentTime - recentReportsLastFetch < REPORTS_CACHE_DURATION) {
-    console.debug('Serving recent reports from cache')
-    return recentReportsCache
-  }
-
-  if (recentReportsPromise) {
-    console.debug('Waiting for existing recent reports fetch to complete')
-    return recentReportsPromise
-  }
-
-  recentReportsPromise = (async () => {
-    try {
-      console.debug('Fetching recent reports from backend')
-      const response = await fetchService(url)
-      if (!response.ok) {
-        const errorBody = await response.text()
-        throw new Error(`Failed to fetch recent reports: ${response.status} - ${errorBody}`)
-      }
-      const data = await response.json() as GameReport[]
-      recentReportsCache = data.map(buildHomeReport)
-      recentReportsLastFetch = Date.now()
-      return recentReportsCache
-    } catch (error) {
-      console.error('Error fetching or parsing recent reports:', error)
-      return []
-    } finally {
-      recentReportsPromise = null
+  try {
+    console.debug('Fetching recent reports from backend')
+    const response = await fetchService(url)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      throw new Error(`Failed to fetch recent reports: ${response.status} - ${errorBody}`)
     }
-  })()
-
-  return recentReportsPromise
+    const data = await response.json() as GameReport[]
+    return data.map(buildHomeReport)
+  } catch (error) {
+    console.error('Error fetching or parsing recent reports:', error)
+    return []
+  }
 }
 
-let popularReportsCache: HomeReport[] = []
-let popularReportsLastFetch: number | null = null
-let popularReportsPromise: Promise<HomeReport[]> | null = null
-export const fetchPopularReports = async (): Promise<HomeReport[]> => {
-  const currentTime = Date.now()
-  const url = apiUrl('/deck-verified/api/v1/popular_reports')
+export const fetchPopularReports = async (count: number = 5): Promise<HomeReport[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/popular_reports?count=${count}`)
 
-  if (popularReportsCache.length > 0 && popularReportsLastFetch && currentTime - popularReportsLastFetch < REPORTS_CACHE_DURATION) {
-    console.debug('Serving popular reports from cache')
-    return popularReportsCache
-  }
-
-  if (popularReportsPromise) {
-    console.debug('Waiting for existing popular reports fetch to complete')
-    return popularReportsPromise
-  }
-
-  popularReportsPromise = (async () => {
-    try {
-      console.debug('Fetching popular reports from backend')
-      const response = await fetchService(url)
-      if (!response.ok) {
-        const errorBody = await response.text()
-        throw new Error(`Failed to fetch popular reports: ${response.status} - ${errorBody}`)
-      }
-      const data = await response.json() as GameReport[]
-      popularReportsCache = data.map(buildHomeReport)
-      popularReportsLastFetch = Date.now()
-      return popularReportsCache
-    } catch (error) {
-      console.error('Error fetching or parsing popular reports:', error)
-      return []
-    } finally {
-      popularReportsPromise = null
+  try {
+    console.debug('Fetching popular reports from backend')
+    const response = await fetchService(url)
+    if (!response.ok) {
+      const errorBody = await response.text()
+      throw new Error(`Failed to fetch popular reports: ${response.status} - ${errorBody}`)
     }
-  })()
-
-  return popularReportsPromise
+    const data = await response.json() as GameReport[]
+    return data.map(buildHomeReport)
+  } catch (error) {
+    console.error('Error fetching or parsing popular reports:', error)
+    return []
+  }
 }
 
 export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameDetails | null> => {

@@ -1,3 +1,4 @@
+import { apiUrl } from 'src/utils/api';
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
 import type { DeckVerifiedAuthTokens } from '../../../shared/src/auth'
@@ -228,7 +229,7 @@ export const useAuthStore = defineStore('auth', {
         }
 
         try {
-          const r = await fetch('/deck-verified/api/auth/refresh', {
+          const r = await fetch(apiUrl('/deck-verified/api/auth/refresh'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -275,7 +276,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchAuthResult(state: string): Promise<DeckVerifiedAuthTokens> {
-      const url = `/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`
+      const url = apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`)
       const r = await fetch(url, { credentials: 'include' })
       if (!r.ok) {
         throw new Error(`auth_result_error_${r.status}`)
@@ -321,7 +322,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.isAuthenticating = true
       try {
-        window.location.href = '/deck-verified/api/auth/start?mode=redirect'
+        window.location.href = apiUrl('/deck-verified/api/auth/start?mode=redirect')
         return
       } finally {
         this.isAuthenticating = false

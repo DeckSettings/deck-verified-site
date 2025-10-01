@@ -12,11 +12,15 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  count: {
+    type: Number,
+    default: 5,
+  },
 })
 
 const reportStore = useReportsStore()
 const listTitle = computed(() => {
-  if (props.reportSelection === 'popular') return 'Most Popular Reports'
+  if (props.reportSelection === 'popular') return 'Most Popular Reports (most likes)'
   if (props.reportSelection === 'recentlyUpdated') return 'Recently Updated Reports'
   if (props.reportSelection === 'views') return 'Most Viewed (Past 7 days)'
   return 'Undefined List Title'
@@ -56,11 +60,11 @@ async function loadReports() {
   await useScrollTrigger()
 
   if (props.reportSelection === 'popular') {
-    await reportStore.loadPopular()
+    await reportStore.loadPopular(props.count)
   } else if (props.reportSelection === 'recentlyUpdated') {
-    await reportStore.loadRecent()
+    await reportStore.loadRecent(props.count)
   } else if (props.reportSelection === 'views') {
-    await reportStore.loadViews()
+    await reportStore.loadViews(props.count)
   }
 
   await nextTick()

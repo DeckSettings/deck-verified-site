@@ -538,17 +538,18 @@ app.get('/deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg', async (req
  * @returns {array} 204 - No reports found.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/recent_reports', async (_req: Request, res: Response) => {
+app.get('/deck-verified/api/v1/recent_reports', async (req: Request, res: Response) => {
   try {
-    const reports = await fetchRecentReports()
+    const count = parseInt(req.query.count as string, 10) || 5
+    const reports = await fetchRecentReports(count)
     if (reports && reports?.length > 0) {
       return res.json(reports)
     }
     logger.info('No reports found.')
     return res.status(204).json([]) // 204 No Content
   } catch (error) {
-    logger.error('Error fetching popular reports:', error)
-    return res.status(500).json({ error: 'Failed to fetch popular reports' })
+    logger.error('Error fetching recent reports:', error)
+    return res.status(500).json({ error: 'Failed to fetch recent reports' })
   }
 })
 
@@ -559,9 +560,10 @@ app.get('/deck-verified/api/v1/recent_reports', async (_req: Request, res: Respo
  * @returns {array} 204 - No reports found.
  * @returns {object} 500 - Internal server error.
  */
-app.get('/deck-verified/api/v1/popular_reports', async (_req: Request, res: Response) => {
+app.get('/deck-verified/api/v1/popular_reports', async (req: Request, res: Response) => {
   try {
-    const reports = await fetchPopularReports()
+    const count = parseInt(req.query.count as string, 10) || 5
+    const reports = await fetchPopularReports(count)
     if (reports && reports?.length > 0) {
       return res.json(reports)
     }

@@ -39,6 +39,11 @@ const props = defineProps({
     type: Object,
     required: false,
   },
+  displayFullscreen: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
 })
 
 const $q = useQuasar()
@@ -872,7 +877,9 @@ watch(formValues, () => {
 </script>
 
 <template>
-  <q-card bordered class="report-card">
+  <q-card class="report-card"
+          :class="displayFullscreen ? 'fullscreen' : ''"
+          :style="displayFullscreen ? 'margin-top:58px;' : ''">
     <q-card-section class="report-header">
       <div class="header-content">
         <div class="header-info">
@@ -1348,9 +1355,14 @@ watch(formValues, () => {
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  background: rgba(8, 16, 24, 0.98);
+  background: color-mix(in srgb, var(--q-dark) 95%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 3px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  z-index: 1000;
 }
 
 .report-header {

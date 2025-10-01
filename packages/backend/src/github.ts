@@ -428,19 +428,19 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
  * If not cached, it fetches the reports from GitHub, parses the data into GameReport format,
  * and caches the results in Redis for future use.
  */
-export const fetchRecentReports = async (): Promise<GameReport[]> => {
+export const fetchRecentReports = async (count: number = 5): Promise<GameReport[]> => {
   try {
-    const cachedData = await redisLookupRecentGameReports()
+    const cachedData = await redisLookupRecentGameReports(count)
     if (cachedData) {
       logger.info('Serving recent reports from Redis cache')
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, 'open', null, 'updated', 'desc', 5)
+    const reports = await fetchReports(undefined, 'open', null, 'updated', 'desc', count)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       // Store the transformed data in the Redis cache
-      await redisCacheRecentGameReports(returnData)
+      await redisCacheRecentGameReports(returnData, count)
       return returnData
     }
 
@@ -450,7 +450,7 @@ export const fetchRecentReports = async (): Promise<GameReport[]> => {
     logger.error('Error fetching popular reports:', error)
 
     // Cache an empty response for a short period of time
-    await redisCacheRecentGameReports([])
+    await redisCacheRecentGameReports([], count)
     return []
   }
 }
@@ -461,19 +461,19 @@ export const fetchRecentReports = async (): Promise<GameReport[]> => {
  * from GitHub, parses the data into GameReport format, and caches the results in Redis
  * for future use.
  */
-export const fetchPopularReports = async (): Promise<GameReport[]> => {
+export const fetchPopularReports = async (count: number = 5): Promise<GameReport[]> => {
   try {
-    const cachedData = await redisLookupPopularGameReports()
+    const cachedData = await redisLookupPopularGameReports(count)
     if (cachedData) {
       logger.info('Serving popular reports from Redis cache')
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', 5)
+    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', count)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       // Store the transformed data in the Redis cache
-      await redisCachePopularGameReports(returnData)
+      await redisCachePopularGameReports(returnData, count)
       return returnData
     }
 
@@ -483,7 +483,7 @@ export const fetchPopularReports = async (): Promise<GameReport[]> => {
     logger.error('Error fetching popular reports:', error)
 
     // Cache an empty response for a short period of time
-    await redisCachePopularGameReports([])
+    await redisCachePopularGameReports([], count)
     return []
   }
 }

@@ -424,11 +424,11 @@ export const getAggregatedMetrics = async (
 /**
  * Caches recent game reports from GitHub in Redis.
  */
-export const redisCacheRecentGameReports = async (data: GameReport[]): Promise<void> => {
+export const redisCacheRecentGameReports = async (data: GameReport[], count: number = 5): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub recent game reports.')
   }
-  const redisKey = 'github_game_reports_recent'
+  const redisKey = `github_game_reports_recent:${count}`
   const cacheTime = config.defaultCacheTime
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub recent game reports for ${cacheTime} seconds with key ${redisKey}`)
@@ -439,8 +439,8 @@ export const redisCacheRecentGameReports = async (data: GameReport[]): Promise<v
  *
  * @returns {Promise<GameReport[] | null>} - Returns cached data or null if no cache exists.
  */
-export const redisLookupRecentGameReports = async (): Promise<GameReport[] | null> => {
-  const redisKey = 'github_game_reports_recent'
+export const redisLookupRecentGameReports = async (count: number = 5): Promise<GameReport[] | null> => {
+  const redisKey = `github_game_reports_recent:${count}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
@@ -457,11 +457,11 @@ export const redisLookupRecentGameReports = async (): Promise<GameReport[] | nul
 /**
  * Caches popular game reports from GitHub in Redis.
  */
-export const redisCachePopularGameReports = async (data: GameReport[]): Promise<void> => {
+export const redisCachePopularGameReports = async (data: GameReport[], count: number = 5): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub popular game reports.')
   }
-  const redisKey = 'github_game_reports_popular'
+  const redisKey = `github_game_reports_popular:${count}`
   const cacheTime = config.defaultCacheTime
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub popular game reports for ${cacheTime} seconds with key ${redisKey}`)
@@ -470,8 +470,8 @@ export const redisCachePopularGameReports = async (data: GameReport[]): Promise<
 /**
  * Looks up popular game reports cached in Redis.
  */
-export const redisLookupPopularGameReports = async (): Promise<GameReport[] | null> => {
-  const redisKey = 'github_game_reports_popular'
+export const redisLookupPopularGameReports = async (count: number = 5): Promise<GameReport[] | null> => {
+  const redisKey = `github_game_reports_popular:${count}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
