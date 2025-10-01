@@ -177,9 +177,6 @@ export const githubAuthStartHandler = async (mode?: string): Promise<string> => 
  */
 export const githubAuthCallbackHandler = async (code: string, state: string): Promise<{ redirectUrl: string }> => {
   try {
-    const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
-    const completeUrl = `${baseUrl}/auth/complete?state=${encodeURIComponent(state)}`
-
     await ensureRedisConnection()
 
     const cacheKey = `dv:pkce:${state}`
@@ -188,9 +185,10 @@ export const githubAuthCallbackHandler = async (code: string, state: string): Pr
       throw new Error('invalid_or_expired_state')
     }
 
-    const { codeVerifier, redirectUri } = JSON.parse(cached) as {
-      codeVerifier: string
-      redirectUri: string
+    const { codeVerifier, redirectUri, mode } = JSON.parse(cached) as {
+      codeVerifier: string;
+      redirectUri: string;
+      mode?: string;
     }
 
     const tokenResponse = await exchangeGitHubCodeForTokens({ code, redirectUri, codeVerifier })
@@ -205,7 +203,16 @@ export const githubAuthCallbackHandler = async (code: string, state: string): Pr
     await redisClient.setEx(resultKey, AUTH_RESULT_TTL_SECONDS, JSON.stringify(tokenResponse))
     await redisClient.del(cacheKey)
 
-    return { redirectUrl: completeUrl }
+    // Adjust the redirect URL based on the login mode
+    let redirectUrl
+    if (mode === 'capacitor') {
+      redirectUrl = `deckverified://auth/complete?state=${encodeURIComponent(state)}`
+    } else {
+      const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
+      redirectUrl = `${baseUrl}/auth/complete?state=${encodeURIComponent(state)}`
+    }
+
+    return { redirectUrl }
   } catch (error) {
     logger.error('Error processing GitHub auth callback:', error)
     throw error

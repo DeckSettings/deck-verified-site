@@ -149,17 +149,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  * @returns {object} 404 - Auth disabled.
  * @returns {object} 500 - Failed to initiate GitHub auth flow.
  */
-app.get('/deck-verified/api/auth/start', async (req: Request, res: Response) => {
+app.get('/deck-verified/api/auth/start', buildAuthResultCors(), async (req: Request, res: Response) => {
   if (!config.githubAppConfigured) {
     res.status(404).send('Auth disabled')
     return
   }
   try {
-    const authorizeUrl = await githubAuthStartHandler(typeof req.query.mode === 'string' ? req.query.mode : undefined)
+    const mode = typeof req.query.mode === 'string' ? req.query.mode : undefined
+    const authorizeUrl = await githubAuthStartHandler(mode)
+
     if (authorizeUrl) {
-      res.redirect(authorizeUrl)
+      if (mode === 'capacitor') {
+        res.json({ url: authorizeUrl })
+      } else {
+        res.redirect(authorizeUrl)
+      }
       return
     }
+
     logger.error('Failed to initiate GitHub auth flow: empty authorizeUrl')
     res.status(500).send('Auth start error')
   } catch (error) {
