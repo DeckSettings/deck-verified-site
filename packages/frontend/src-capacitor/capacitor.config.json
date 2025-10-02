@@ -1,5 +1,10 @@
 {
   "appId": "nz.co.streamingtech.deckverified",
   "appName": "Deck Verified",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "App": {
+      "urlScheme": "deckverified"
+    }
+  }
 }

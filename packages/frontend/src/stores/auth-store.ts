@@ -1,7 +1,11 @@
-import { apiUrl } from 'src/utils/api';
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
 import type { DeckVerifiedAuthTokens } from '../../../shared/src/auth'
+import { Browser } from '@capacitor/browser'
+import { App } from '@capacitor/app'
+import { SecureStorage } from '@aparajita/capacitor-secure-storage'
+import { apiUrl, fetchService } from 'src/utils/api'
+
 
 export interface GithubUserProfile {
   id: number
@@ -53,7 +57,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
     },
 
-    persistToStorage() {
+    async persistToStorage() {
       const payload = {
         accessToken: this.accessToken,
         refreshToken: this.refreshToken,
@@ -63,11 +67,21 @@ export const useAuthStore = defineStore('auth', {
         refreshExpiresAt: this.refreshExpiresAt,
         dvToken: this.dvToken,
       }
-      localStorage.setItem('dv_auth', JSON.stringify(payload))
+      if (globalThis.isCapacitor) {
+        await SecureStorage.set('dv_auth', JSON.stringify(payload))
+      } else {
+        localStorage.setItem('dv_auth', JSON.stringify(payload))
+      }
     },
 
-    loadFromStorage() {
-      const raw = localStorage.getItem('dv_auth')
+    async loadFromStorage() {
+      let raw: string | null | undefined
+      if (globalThis.isCapacitor) {
+        raw = await SecureStorage.get('dv_auth') as string
+      } else {
+        raw = localStorage.getItem('dv_auth')
+      }
+
       if (!raw) return
       try {
         const obj = JSON.parse(raw)
@@ -174,7 +188,11 @@ export const useAuthStore = defineStore('auth', {
       this.expiresAt = null
       this.refreshExpiresAt = null
       this.dvToken = null
-      localStorage.removeItem('dv_auth')
+      if (globalThis.isCapacitor) {
+        void SecureStorage.remove('dv_auth')
+      } else {
+        localStorage.removeItem('dv_auth')
+      }
       this.cancelTokenRefresh()
     },
 
@@ -229,7 +247,7 @@ export const useAuthStore = defineStore('auth', {
         }
 
         try {
-          const r = await fetch(apiUrl('/deck-verified/api/auth/refresh'), {
+          const r = await fetchService(apiUrl('/deck-verified/api/auth/refresh'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -237,7 +255,7 @@ export const useAuthStore = defineStore('auth', {
             },
             body: JSON.stringify({ refresh_token: this.refreshToken }),
           })
-          const data: DeckVerifiedAuthTokens = await r.json()
+          const data = await r.json() as DeckVerifiedAuthTokens
 
           if (!r.ok || !data.access_token) {
             console.warn('[useAuthStore] Token refresh failed', data)
@@ -277,11 +295,11 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchAuthResult(state: string): Promise<DeckVerifiedAuthTokens> {
       const url = apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`)
-      const r = await fetch(url, { credentials: 'include' })
+      const r = await fetchService(url, { credentials: 'include' })
       if (!r.ok) {
         throw new Error(`auth_result_error_${r.status}`)
       }
-      return await r.json()
+      return await r.json() as DeckVerifiedAuthTokens
     },
 
     async fetchUserProfile() {
@@ -297,12 +315,12 @@ export const useAuthStore = defineStore('auth', {
           console.warn('[useAuthStore] Failed to fetch GitHub user profile')
           return
         }
-        const u = await r.json()
+        const u = await r.json() as GithubUserProfile
         const profile: GithubUserProfile = {
           id: u.id,
           login: u.login,
           name: u.name ?? null,
-          avatarUrl: u.avatar_url,
+          avatarUrl: u.avatarUrl,
         }
         this.setUser(profile)
       } catch (e) {
@@ -322,8 +340,52 @@ export const useAuthStore = defineStore('auth', {
 
       this.isAuthenticating = true
       try {
+        // Use Capacitor's Browser plugin for mobile authentication
+        if (globalThis.isCapacitor) {
+          // 1. Get the GitHub authorization URL from our backend
+          const response = await fetchService(apiUrl('/deck-verified/api/auth/start?mode=capacitor'))
+          const { url: authUrl } = await response.json() as { url: string }
+
+          // 2. Open the in-app browser
+          await Browser.open({ url: authUrl, windowName: '_self' })
+
+          // 3. Listen for the app to be reopened by the custom URL scheme
+          const listener = await App.addListener('appUrlOpen', async (data) => {
+            try {
+              // 4. Handle the redirect and complete the login
+              const url = new URL(data.url)
+              const state = url.searchParams.get('state')
+              if (state) {
+                const tokens = await this.fetchAuthResult(state)
+                if (tokens?.access_token) {
+                  this.setTokens(tokens)
+                  await this.fetchUserProfile()
+                }
+              }
+            } catch (e) {
+              console.error('[useAuthStore] Error completing Capacitor auth', e)
+            } finally {
+              // Clean up and close the browser
+              await listener.remove()
+              await Browser.close()
+              this.isAuthenticating = false
+            }
+          })
+
+          // Clean up the listener when the browser is closed manually
+          const closeListener = await Browser.addListener('browserFinished', () => {
+            void listener.remove()
+            void closeListener.remove()
+            this.isAuthenticating = false
+          })
+
+          return // End execution for native flow
+        }
+
+        // Fallback to standard web redirect
         window.location.href = apiUrl('/deck-verified/api/auth/start?mode=redirect')
-        return
+      } catch (error) {
+        console.error('[useAuthStore] startLogin error', error)
       } finally {
         this.isAuthenticating = false
       }
