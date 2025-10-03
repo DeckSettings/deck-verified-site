@@ -4,7 +4,7 @@
  * This module is selected via a Vite alias for web/SSR builds so that no
  * Capacitor plugins are imported into SPA/SSR bundles.
  */
-import { fetchService } from 'src/utils/api'
+import { fetchService, apiUrl } from 'src/utils/api'
 import type { AuthState } from 'src/utils/auth/types'
 
 export type Tokens = {
@@ -19,9 +19,13 @@ export type Tokens = {
 }
 
 const STORAGE_KEY = 'dv_auth'
-const API_ORIGIN = process.env.BACKEND_API_ORIGIN || ''
+const endpoint = (path: string) => apiUrl(path)
 
-const apiUrl = (p: string) => `${API_ORIGIN}${p}`
+const encodeLocation = (value: string): string => {
+  const percentEncoded = encodeURIComponent(value)
+  const binary = percentEncoded.replace(/%([0-9A-F]{2})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
+  return window.btoa(binary)
+}
 
 export async function persistToStorage(store: AuthState): Promise<void> {
   try {
@@ -67,20 +71,36 @@ export async function clearFromStorage(): Promise<void> {
 }
 
 export async function loginWithPkce(): Promise<Tokens | null> {
-  const res = await fetchService(apiUrl('/deck-verified/api/auth/start?mode=web'), {
-    credentials: 'include',
-  })
-  if (!res.ok) {
-    throw new Error(`auth/start failed: ${res.status}`)
+  const baseUrl = window.location.origin
+  const locationDescriptor = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const params = new URLSearchParams({ mode: 'web', to_base_url: baseUrl })
+  if (locationDescriptor) {
+    params.set('to_location', encodeLocation(locationDescriptor))
+  }
+  const startPath = `/deck-verified/api/auth/start?${params.toString()}`
+  const startUrl = endpoint(startPath)
+
+  try {
+    const res = await fetchService(startUrl, { credentials: 'include' })
+    if (!res.ok) {
+      throw new Error(`auth/start failed: ${res.status}`)
+    }
+
+    const data = await res.json().catch(() => null) as { url?: string } | null
+    if (data?.url) {
+      window.location.assign(String(data.url))
+      return null
+    }
+  } catch (err) {
+    console.warn('[auth/web] start fetch fallback', err)
   }
 
-  const { url } = (await res.json()) as { url: string }
-  window.location.assign(url)
+  window.location.assign(startUrl)
   return null
 }
 
 export async function fetchAuthResult(state: string): Promise<Tokens> {
-  const r = await fetchService(apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`), {
+  const r = await fetchService(endpoint(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`), {
     credentials: 'include',
   })
   if (!r.ok) {

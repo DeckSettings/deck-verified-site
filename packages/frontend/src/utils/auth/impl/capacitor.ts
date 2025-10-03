@@ -14,6 +14,7 @@ import { Browser } from '@capacitor/browser'
 import { App } from '@capacitor/app'
 import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin'
 import { fetchService } from 'src/utils/api'
+import { BACKEND_API_ORIGIN } from 'src/utils/env'
 import type { AuthState } from 'src/utils/auth/types'
 
 export type Tokens = {
@@ -28,11 +29,7 @@ export type Tokens = {
 }
 
 const STORAGE_KEY = 'dv_auth'
-const API_ORIGIN =
-  (typeof process !== 'undefined' && process.env && process.env.BACKEND_API_ORIGIN)
-    ? String(process.env.BACKEND_API_ORIGIN)
-    : ''
-
+const API_ORIGIN = BACKEND_API_ORIGIN
 const apiUrl = (p: string) => `${API_ORIGIN}${p}`
 
 export async function persistToStorage(store: AuthState): Promise<void> {

@@ -12,6 +12,21 @@ import {
 import type { AuthState } from 'src/utils/auth'
 
 
+const decodeLocationParam = (value: string): string | null => {
+  try {
+    const binary = window.atob(value)
+    const percentEncoded = Array.from(binary)
+      .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+      .join('')
+    const decoded = decodeURIComponent(percentEncoded)
+    if (!decoded.startsWith('/')) return null
+    if (decoded.includes('://')) return null
+    return decoded
+  } catch {
+    return null
+  }
+}
+
 export interface GithubUserProfile {
   id: number
   login: string
@@ -325,7 +340,7 @@ export const useAuthStore = defineStore('auth', {
     initialize() {
       void this.loadFromStorage()
     },
-    async completeAuthFromRedirect(redirectTo: string = '/') {
+    async completeAuthFromRedirect(fallbackRedirect: string = '/') {
       // Support same-tab fallback: read ?state= from current URL and finish login.
       if (typeof window === 'undefined') return
       try {
@@ -345,12 +360,25 @@ export const useAuthStore = defineStore('auth', {
         // Clean up the URL and optionally redirect
         try {
           const current = new URL(window.location.href)
+          const encodedLocation = current.searchParams.get('to_location')
           current.searchParams.delete('state')
+          if (encodedLocation) {
+            current.searchParams.delete('to_location')
+          }
           const params = current.searchParams.toString()
           const newUrl = current.pathname + (params ? '?' + params : '') + current.hash
           window.history.replaceState({}, document.title, newUrl)
-          if (redirectTo && window.location.pathname !== redirectTo) {
-            window.location.replace(redirectTo)
+
+          let destination = fallbackRedirect
+          if (encodedLocation) {
+            const decodedLocation = decodeLocationParam(encodedLocation)
+            if (decodedLocation) {
+              destination = decodedLocation
+            }
+          }
+
+          if (destination) {
+            window.location.assign(destination)
           }
         } catch {
           // ignore

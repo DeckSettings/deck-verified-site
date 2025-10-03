@@ -1,4 +1,5 @@
 import { fetchService as aliasFetchService } from '@app/api'
+import { BACKEND_API_ORIGIN } from 'src/utils/env'
 
 import type { FetchServiceResponse } from 'src/utils/api/types'
 
@@ -10,7 +11,7 @@ export type { FetchServiceResponse } from 'src/utils/api/types'
  * builds continue to use the native fetch API.
  */
 export const apiUrl = (path: string) => {
-  const backendApiOrigin = process.env.BACKEND_API_ORIGIN || 'https://deckverified.games'
+  const backendApiOrigin = BACKEND_API_ORIGIN
   const isSsrBuild = globalThis.isSsr ?? typeof window === 'undefined'
   const isNativeBuild = globalThis.isMobile ?? false
   if (isSsrBuild || isNativeBuild) {

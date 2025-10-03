@@ -17,6 +17,66 @@ import {
   refreshGitHubTokens,
 } from './github'
 
+const normalizeOrigin = (value: string | null | undefined): string | null => {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.origin
+  } catch {
+    return null
+  }
+}
+
+const allowedReturnOrigins = (() => {
+  const origins = new Set<string>()
+  const configured = config.githubPublicWebOrigins
+    .map(origin => normalizeOrigin(origin))
+    .filter((origin): origin is string => Boolean(origin))
+  configured.forEach(origin => origins.add(origin))
+
+  const siteOrigin = normalizeOrigin(config.siteBaseUrl)
+  if (siteOrigin) {
+    origins.add(siteOrigin)
+  }
+
+  return origins
+})()
+
+const isAllowedBaseUrl = (raw?: string): string | undefined => {
+  if (!raw) return undefined
+  try {
+    const url = new URL(raw)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return undefined
+    }
+
+    const origin = url.origin
+    if (allowedReturnOrigins.size > 0 && !allowedReturnOrigins.has(origin)) {
+      return undefined
+    }
+
+    url.hash = ''
+    url.search = ''
+    return (url.origin + url.pathname).replace(/\/$/, '')
+  } catch {
+    return undefined
+  }
+}
+
+const sanitizeLocationB64 = (raw?: string): string | undefined => {
+  if (!raw) return undefined
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString('utf8')
+    if (!decoded.startsWith('/')) return undefined
+    if (decoded.includes('://')) return undefined
+    return decoded
+  } catch {
+    return undefined
+  }
+}
+
+const encodeLocationPath = (path: string): string => Buffer.from(path, 'utf8').toString('base64')
+
 const PKCE_STATE_TTL_SECONDS = 600
 const AUTH_RESULT_TTL_SECONDS = 120
 const DEFAULT_DV_TOKEN_TTL_SECONDS = 15 * 60 * 60
@@ -140,7 +200,11 @@ export const buildAuthResultCors = (): RequestHandler => {
  * - Stores verifier + redirectUri in Redis with TTL.
  * - Redirects to GitHub authorize URL.
  */
-export const githubAuthStartHandler = async (mode?: string): Promise<string> => {
+export const githubAuthStartHandler = async (options?: {
+  mode?: string;
+  toBaseUrl?: string;
+  toLocationB64?: string
+}): Promise<string> => {
   try {
     await ensureRedisConnection()
 
@@ -148,13 +212,23 @@ export const githubAuthStartHandler = async (mode?: string): Promise<string> => 
     const codeVerifier = generatePkceCodeVerifier()
     const codeChallenge = generatePkceCodeChallenge(codeVerifier)
 
-    const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
-    const redirectUri = `${baseUrl}/deck-verified/api/auth/callback`
+    const defaultBaseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
+    const overrideBaseUrl = isAllowedBaseUrl(options?.toBaseUrl)
+    const effectiveBaseUrl = overrideBaseUrl ?? defaultBaseUrl
+    const redirectUri = `${effectiveBaseUrl}/deck-verified/api/auth/callback`
+
+    const locationPath = sanitizeLocationB64(options?.toLocationB64)
 
     await redisClient.setEx(
       `dv:pkce:${state}`,
       PKCE_STATE_TTL_SECONDS,
-      JSON.stringify({ codeVerifier, redirectUri, mode }),
+      JSON.stringify({
+        codeVerifier,
+        redirectUri,
+        mode: options?.mode,
+        baseUrl: effectiveBaseUrl,
+        locationPath,
+      }),
     )
 
     return buildGitHubAuthorizeUrl({
@@ -185,10 +259,12 @@ export const githubAuthCallbackHandler = async (code: string, state: string): Pr
       throw new Error('invalid_or_expired_state')
     }
 
-    const { codeVerifier, redirectUri, mode } = JSON.parse(cached) as {
+    const { codeVerifier, redirectUri, mode, baseUrl, locationPath } = JSON.parse(cached) as {
       codeVerifier: string;
       redirectUri: string;
       mode?: string;
+      baseUrl?: string;
+      locationPath?: string;
     }
 
     const tokenResponse = await exchangeGitHubCodeForTokens({ code, redirectUri, codeVerifier })
@@ -208,8 +284,12 @@ export const githubAuthCallbackHandler = async (code: string, state: string): Pr
     if (mode === 'capacitor') {
       redirectUrl = `deckverified://auth/complete?state=${encodeURIComponent(state)}`
     } else {
-      const baseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
-      redirectUrl = `${baseUrl}/auth/complete?state=${encodeURIComponent(state)}`
+      const defaultBaseUrl = (config.siteBaseUrl || '').replace(/\/$/, '')
+      const effectiveBaseUrl = typeof baseUrl === 'string' && baseUrl ? baseUrl : defaultBaseUrl
+      redirectUrl = `${effectiveBaseUrl}/auth/complete?state=${encodeURIComponent(state)}`
+      if (locationPath) {
+        redirectUrl += `&to_location=${encodeURIComponent(encodeLocationPath(locationPath))}`
+      }
     }
 
     return { redirectUrl }

@@ -204,8 +204,9 @@ export const fetchLabels = async (): Promise<GitHubIssueLabel[]> => {
 
   labelsPromise = (async () => {
     try {
-      console.debug('Fetching labels from backend')
-      const response = await fetchService(apiUrl('/deck-verified/api/v1/issue_labels'))
+      const url = apiUrl('/deck-verified/api/v1/issue_labels')
+      console.debug('Fetching labels from backend: ', url)
+      const response = await fetchService(url)
       if (!response.ok) {
         const errorBody = await response.text()
         throw new Error(`Failed to fetch labels: ${response.status} - ${errorBody}`)

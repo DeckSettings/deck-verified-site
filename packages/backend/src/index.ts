@@ -156,7 +156,9 @@ app.get('/deck-verified/api/auth/start', buildAuthResultCors(), async (req: Requ
   }
   try {
     const mode = typeof req.query.mode === 'string' ? req.query.mode : undefined
-    const authorizeUrl = await githubAuthStartHandler(mode)
+    const toBaseUrl = typeof req.query.to_base_url === 'string' ? req.query.to_base_url : undefined
+    const toLocationB64 = typeof req.query.to_location === 'string' ? req.query.to_location : undefined
+    const authorizeUrl = await githubAuthStartHandler({ mode, toBaseUrl, toLocationB64 })
 
     if (authorizeUrl) {
       if (mode === 'capacitor') {
