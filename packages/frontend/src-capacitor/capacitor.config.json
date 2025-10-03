@@ -4,7 +4,8 @@
   "webDir": "www",
   "plugins": {
     "App": {
-      "urlScheme": "deckverified"
+      "urlScheme": "deckverified",
+      "urlHost": "auth"
     }
   }
 }

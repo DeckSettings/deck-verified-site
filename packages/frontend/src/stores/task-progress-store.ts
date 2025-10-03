@@ -1,4 +1,4 @@
-import { apiUrl } from 'src/utils/api';
+import { apiUrl, fetchService } from 'src/utils/api'
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useAuthStore } from 'stores/auth-store'
@@ -263,7 +263,7 @@ export const useTaskProgressStore = defineStore('task-progress', () => {
         const url = apiUrl(`/deck-verified/api/tasks/${encodeURIComponent(taskId)}/progress`) + (lastRevision ? `?last=${encodeURIComponent(lastRevision)}` : '')
         controller = new AbortController()
         abortControllers.set(taskId, controller)
-        const response = await fetch(url, {
+        const response = await fetchService(url, {
           headers: { 'Authorization': `Bearer ${dvToken}` },
           signal: controller.signal,
         })

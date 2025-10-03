@@ -1,4 +1,4 @@
-import { apiUrl } from 'src/utils/api';
+import { apiUrl, fetchService } from 'src/utils/api'
 import { computed } from 'vue'
 import { useAuthStore } from 'stores/auth-store'
 import { useTaskProgressStore } from 'src/stores/task-progress-store'
@@ -43,7 +43,7 @@ export const useGithubActionsMonitor = () => {
     const taskId = createTaskId()
 
     try {
-      const response = await fetch(apiUrl('/deck-verified/api/tasks'), {
+      const response = await fetchService(apiUrl('/deck-verified/api/tasks'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

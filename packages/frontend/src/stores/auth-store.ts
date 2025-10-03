@@ -1,30 +1,28 @@
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
 import type { DeckVerifiedAuthTokens } from '../../../shared/src/auth'
-import { Browser } from '@capacitor/browser'
-import { App } from '@capacitor/app'
-import { SecureStorage } from '@aparajita/capacitor-secure-storage'
 import { apiUrl, fetchService } from 'src/utils/api'
+import {
+  persistToStorage,
+  loadFromStorage,
+  loginWithPkce,
+  fetchAuthResult,
+  clearFromStorage,
+} from 'src/utils/auth'
+import type { AuthState } from 'src/utils/auth'
 
 
 export interface GithubUserProfile {
   id: number
   login: string
   name?: string | null
-  avatarUrl: string
+  avatar_url: string
 }
 
-interface AuthState {
+export interface AuthStoreState extends AuthState {
   user: GithubUserProfile | null
   isAuthenticating: boolean
-  accessToken: string | null
-  refreshToken: string | null
-  expiresAt: number | null
-  refreshExpiresAt: number | null
-  tokenType: string | null
-  scope: string | null
   refreshTimeoutId: number | null
-  dvToken: string | null
 }
 
 const JITTER_MAX_MS = 5 * 60 * 1000               // Apply a jitter of up to 5 minutes
@@ -33,7 +31,7 @@ const REFRESH_LOCK_KEY = 'dv_auth_refresh_lock'
 const REFRESH_LOCK_TTL_MS = 7_000                 // localStorage lock TTL fallback
 
 export const useAuthStore = defineStore('auth', {
-  state: (): AuthState => ({
+  state: (): AuthStoreState => ({
     user: null,
     isAuthenticating: false,
     accessToken: null,
@@ -47,7 +45,7 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isLoggedIn: (state) => state.user !== null,
-    avatarUrl: (state) => state.user?.avatarUrl || '',
+    avatarUrl: (state) => state.user?.avatar_url || '',
   },
   actions: {
     setUser(user: GithubUserProfile) {
@@ -58,7 +56,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async persistToStorage() {
-      const payload = {
+      // Delegate to utils/auth with an explicit AuthState snapshot to avoid leaking store internals.
+      const snapshot: AuthState = {
         accessToken: this.accessToken,
         refreshToken: this.refreshToken,
         tokenType: this.tokenType,
@@ -67,42 +66,26 @@ export const useAuthStore = defineStore('auth', {
         refreshExpiresAt: this.refreshExpiresAt,
         dvToken: this.dvToken,
       }
-      if (globalThis.isCapacitor) {
-        await SecureStorage.set('dv_auth', JSON.stringify(payload))
-      } else {
-        localStorage.setItem('dv_auth', JSON.stringify(payload))
-      }
+      return persistToStorage(snapshot)
     },
 
     async loadFromStorage() {
-      let raw: string | null | undefined
-      if (globalThis.isCapacitor) {
-        raw = await SecureStorage.get('dv_auth') as string
-      } else {
-        raw = localStorage.getItem('dv_auth')
-      }
+      const obj = await loadFromStorage()
+      this.accessToken = obj.accessToken ?? null
+      this.refreshToken = obj.refreshToken ?? null
+      this.tokenType = obj.tokenType ?? null
+      this.scope = obj.scope ?? null
+      this.expiresAt = obj.expiresAt ?? null
+      this.refreshExpiresAt = obj.refreshExpiresAt ?? null
+      this.dvToken = obj.dvToken ?? null
 
-      if (!raw) return
-      try {
-        const obj = JSON.parse(raw)
-        this.accessToken = obj.accessToken ?? null
-        this.refreshToken = obj.refreshToken ?? null
-        this.tokenType = obj.tokenType ?? null
-        this.scope = obj.scope ?? null
-        this.expiresAt = obj.expiresAt ?? null
-        this.refreshExpiresAt = obj.refreshExpiresAt ?? null
-        this.dvToken = obj.dvToken ?? null
-
-        // If the token is still valid, schedule refresh and fetch the profile
-        if (this.accessToken && (!this.expiresAt || this.expiresAt > Date.now())) {
-          this.scheduleTokenRefresh()
-          if (!this.user) {
-            void this.fetchUserProfile()
-          }
-        } else {
-          this.clearTokens()
+      // If the token is still valid, schedule refresh and fetch the profile
+      if (this.accessToken && (!this.expiresAt || this.expiresAt > Date.now())) {
+        this.scheduleTokenRefresh()
+        if (!this.user) {
+          void this.fetchUserProfile()
         }
-      } catch {
+      } else {
         this.clearTokens()
       }
     },
@@ -176,7 +159,7 @@ export const useAuthStore = defineStore('auth', {
         this.dvToken = null
       }
 
-      this.persistToStorage()
+      void this.persistToStorage()
       this.scheduleTokenRefresh()
     },
 
@@ -188,11 +171,7 @@ export const useAuthStore = defineStore('auth', {
       this.expiresAt = null
       this.refreshExpiresAt = null
       this.dvToken = null
-      if (globalThis.isCapacitor) {
-        void SecureStorage.remove('dv_auth')
-      } else {
-        localStorage.removeItem('dv_auth')
-      }
+      void clearFromStorage()
       this.cancelTokenRefresh()
     },
 
@@ -219,7 +198,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.refreshTimeoutId = window.setTimeout(async () => {
         // First check if another tab may have refreshed while we waited.
-        this.loadFromStorage()
+        await this.loadFromStorage()
 
         // If, after syncing, token still exists and is valid for >1h, just reschedule with new jitter
         if (this.expiresAt && this.expiresAt > Date.now() + RESCHEDULE_IF_VALID_FOR_MS) {
@@ -240,7 +219,7 @@ export const useAuthStore = defineStore('auth', {
 
       return this.withRefreshLock(async () => {
         // Re-check once we hold the lock: maybe someone just refreshed
-        this.loadFromStorage()
+        await this.loadFromStorage()
         if (!opts.force && this.expiresAt && this.expiresAt > Date.now() + 60_000) {
           // Valid for > 60s; skip refresh to avoid needless rotation
           return true
@@ -260,7 +239,7 @@ export const useAuthStore = defineStore('auth', {
           if (!r.ok || !data.access_token) {
             console.warn('[useAuthStore] Token refresh failed', data)
             // One more chance: another tab might have rotated tokens milliseconds ago.
-            this.loadFromStorage()
+            await this.loadFromStorage()
             // TODO: If we have an error from the backend saying the refresh token is invalid, we should logout or at least reload the page.
             if (!this.accessToken) this.logout()
             return false
@@ -272,7 +251,7 @@ export const useAuthStore = defineStore('auth', {
           return true
         } catch (e) {
           console.error('[useAuthStore] Token refresh error', e)
-          this.loadFromStorage()
+          await this.loadFromStorage()
           if (!this.accessToken) this.logout()
           return false
         }
@@ -283,23 +262,14 @@ export const useAuthStore = defineStore('auth', {
      * Ensures a DV token is available for backend API calls, forcing a refresh if missing.
      */
     async ensureInternalToken(): Promise<string | null> {
-      this.loadFromStorage()
+      await this.loadFromStorage()
       if (!featureFlags.enableLogin) return null
       if (this.dvToken) return this.dvToken
       if (!this.refreshToken) return null
 
       await this.refreshAccessToken({ force: true })
-      this.loadFromStorage()
+      await this.loadFromStorage()
       return this.dvToken
-    },
-
-    async fetchAuthResult(state: string): Promise<DeckVerifiedAuthTokens> {
-      const url = apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`)
-      const r = await fetchService(url, { credentials: 'include' })
-      if (!r.ok) {
-        throw new Error(`auth_result_error_${r.status}`)
-      }
-      return await r.json() as DeckVerifiedAuthTokens
     },
 
     async fetchUserProfile() {
@@ -320,7 +290,7 @@ export const useAuthStore = defineStore('auth', {
           id: u.id,
           login: u.login,
           name: u.name ?? null,
-          avatarUrl: u.avatarUrl,
+          avatar_url: u.avatar_url,
         }
         this.setUser(profile)
       } catch (e) {
@@ -340,50 +310,11 @@ export const useAuthStore = defineStore('auth', {
 
       this.isAuthenticating = true
       try {
-        // Use Capacitor's Browser plugin for mobile authentication
-        if (globalThis.isCapacitor) {
-          // 1. Get the GitHub authorization URL from our backend
-          const response = await fetchService(apiUrl('/deck-verified/api/auth/start?mode=capacitor'))
-          const { url: authUrl } = await response.json() as { url: string }
-
-          // 2. Open the in-app browser
-          await Browser.open({ url: authUrl, windowName: '_self' })
-
-          // 3. Listen for the app to be reopened by the custom URL scheme
-          const listener = await App.addListener('appUrlOpen', async (data) => {
-            try {
-              // 4. Handle the redirect and complete the login
-              const url = new URL(data.url)
-              const state = url.searchParams.get('state')
-              if (state) {
-                const tokens = await this.fetchAuthResult(state)
-                if (tokens?.access_token) {
-                  this.setTokens(tokens)
-                  await this.fetchUserProfile()
-                }
-              }
-            } catch (e) {
-              console.error('[useAuthStore] Error completing Capacitor auth', e)
-            } finally {
-              // Clean up and close the browser
-              await listener.remove()
-              await Browser.close()
-              this.isAuthenticating = false
-            }
-          })
-
-          // Clean up the listener when the browser is closed manually
-          const closeListener = await Browser.addListener('browserFinished', () => {
-            void listener.remove()
-            void closeListener.remove()
-            this.isAuthenticating = false
-          })
-
-          return // End execution for native flow
+        const tokens = await loginWithPkce()
+        if (tokens?.access_token) {
+          this.setTokens(tokens)
+          await this.fetchUserProfile()
         }
-
-        // Fallback to standard web redirect
-        window.location.href = apiUrl('/deck-verified/api/auth/start?mode=redirect')
       } catch (error) {
         console.error('[useAuthStore] startLogin error', error)
       } finally {
@@ -392,7 +323,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     initialize() {
-      this.loadFromStorage()
+      void this.loadFromStorage()
     },
     async completeAuthFromRedirect(redirectTo: string = '/') {
       // Support same-tab fallback: read ?state= from current URL and finish login.
@@ -403,7 +334,7 @@ export const useAuthStore = defineStore('auth', {
         if (!state) {
           return
         }
-        const tokens = await this.fetchAuthResult(state)
+        const tokens = await fetchAuthResult(state)
         if (tokens?.access_token) {
           this.setTokens(tokens)
           await this.fetchUserProfile()

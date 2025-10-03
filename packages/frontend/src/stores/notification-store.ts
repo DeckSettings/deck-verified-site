@@ -1,4 +1,3 @@
-import { apiUrl } from 'src/utils/api';
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { featureFlags } from 'src/composables/useFeatureFlags'
@@ -6,6 +5,8 @@ import { useAuthStore } from 'stores/auth-store'
 import type { NotificationEnvelope, PersistedNotification, UserNotification } from '../../../shared/src/notifications'
 import { useQuasar } from 'quasar'
 import type { QNotifyCreateOptions } from 'quasar'
+import { apiUrl, fetchService } from 'src/utils/api'
+import type { FetchServiceResponse } from 'src/utils/api'
 
 /** async delay helper. */
 const delay = (ms: number) => new Promise((resolve) => {
@@ -355,7 +356,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   }
 
   /** Wraps fetch with the current DV token attached in the Authorization header. */
-  const fetchWithDvToken = async (input: RequestInfo, init: RequestInit = {}): Promise<Response> => {
+  const fetchWithDvToken = async (url: string, init: RequestInit = {}): Promise<FetchServiceResponse> => {
     const token = await authStore.ensureInternalToken()
     if (!token) {
       throw new Error('missing_dv_token')
@@ -368,11 +369,11 @@ export const useNotificationStore = defineStore('notifications', () => {
       headers.set('Content-Type', 'application/json')
     }
 
-    return fetch(input, { ...init, headers })
+    return fetchService(url, { ...init, headers })
   }
 
   /** Applies server responses or handles auth errors / unexpected status codes. */
-  const handleEnvelopeResponse = async (response: Response): Promise<boolean> => {
+  const handleEnvelopeResponse = async (response: FetchServiceResponse): Promise<boolean> => {
     if (response.status === 401) {
       authStore.logout()
       resetState(true)
