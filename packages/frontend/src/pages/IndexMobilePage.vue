@@ -1,13 +1,383 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card class="bg-grey-9 text-white">
-      <q-card-section>
-        <div class="text-h6">Search for a game in the input above</div>
-      </q-card-section>
-    </q-card>
-  </q-page>
+  <q-pull-to-refresh class="fit" @refresh="handleRefresh">
+    <q-page class="q-pa-md bg-grey-10 text-white">
+      <div class="column q-gutter-lg">
+        <q-card flat bordered class="overflow-hidden">
+          <div class="welcome-background" :style="{ backgroundImage: `url('${heroBackgroundImageUrl}')` }">
+            <div class="welcome-content column text-white q-pa-md q-gutter-md">
+              <!-- Caption -->
+              <div class="text-h5 text-weight-bold">
+                Welcome!
+              </div>
+
+              <!-- Description -->
+              <div class="text-body2 text-grey-4">
+                Discover community reports for Steam Deck, ROG Ally, Legion Go and other handheld consoles. Every report
+                is part of an open-source database built by players like you. Browse, compare, and consider contributing
+                your own to help the community grow.
+              </div>
+
+              <!-- Quick tips -->
+              <div class="text-body2 text-grey-4">
+                <div class="text-weight-bold">Tips:</div>
+
+                <ul class="text-caption q-pl-md q-mt-xs q-mb-none">
+                  <li>Use the search bar above to find a game.</li>
+                  <li>On a game page, tap <strong>Submit report</strong> to share your settings.</li>
+                  <li>Login with your GitHub profile above to access community features:
+                    <ul class="q-pl-md q-mt-xs q-mb-none">
+                      <li>Improved report form.</li>
+                      <li>Manage your own reports from this app.</li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </q-card>
+
+        <q-card
+          v-for="([feedKey, feed]) in feedEntries"
+          :key="feedKey"
+          flat
+          bordered
+        >
+          <div class="relative-position" style="overflow: hidden;">
+            <div class="absolute-top-left feed-header-overlay row items-center q-gutter-sm">
+              <q-avatar v-if="feed.logo" size="36px">
+                <img :src="feed.logo" :alt="`${feed.title} logo`" loading="lazy" />
+              </q-avatar>
+              <div class="text-subtitle2 text-weight-medium text-white">{{ feed.title }}</div>
+            </div>
+
+            <div
+              v-if="(feed.isLoading && feed.items.length === 0) || !isCarouselReady(feed)"
+              class="row no-wrap">
+              <q-card flat bordered class="bg-grey-8 text-grey-5 full-width full-height">
+                <q-skeleton height="160px" width="100%" type="rect" animation="fade" />
+                <div class="q-pa-md column q-gutter-sm">
+                  <q-skeleton type="text" width="80%" animation="fade" />
+                  <q-skeleton type="text" width="60%" animation="fade" />
+                  <q-skeleton type="text" height="48px" animation="fade" />
+                </div>
+              </q-card>
+            </div>
+
+            <div v-else-if="feed.items.length === 0" class="bg-grey-8 text-grey-5 q-pa-lg column items-center">
+              <q-icon name="rss_feed" size="32px" class="q-mb-sm" />
+              <div class="text-body2">No recent articles found. Try refreshing.</div>
+            </div>
+
+            <q-carousel
+              v-else-if="feed.items.length"
+              v-model="carouselModels[feedKey]"
+              swipeable
+              animated
+              arrows
+              class="bg-transparent rounded-borders"
+              transition-prev="slide-right"
+              transition-next="slide-left"
+              control-type="regular"
+              control-color="primary"
+            >
+              <q-carousel-slide
+                v-for="(item, index) in feed.items"
+                :key="item.link"
+                :name="index"
+                class="flex flex-center q-pa-none"
+                :img-src="item.ogImage ?? ''"
+              >
+                <div class="feed-slide-content">
+                  <div class="feed-slide-link">
+                    <q-btn
+                      round
+                      dense
+                      color="primary"
+                      icon="open_in_new"
+                      :href="item.link" target="_blank" rel="noopener"
+                    />
+                  </div>
+                  <div class="feed-slide-caption">
+                    <div class="text-h6 text-weight-bold">{{ item.title }}</div>
+                    <div class="text-caption text-grey-4">
+                      <span v-if="item.author">{{ item.author }}</span>
+                      <span v-if="item.author && item.pubDate">&nbsp;•&nbsp;</span>
+                      <span v-if="item.pubDate">{{ formatRelative(item.pubDate) }} ({{ formatDate(item.pubDate)
+                        }})</span>
+                    </div>
+                    <div class="text-body2">{{ truncate(item.description) }}</div>
+                  </div>
+                </div>
+              </q-carousel-slide>
+            </q-carousel>
+
+          </div>
+
+          <q-banner v-if="feed.error" class="bg-negative text-white" dense>{{ feed.error }}</q-banner>
+        </q-card>
+
+        <q-card flat square class="bg-transparent text-grey-5 text-center q-pa-sm">
+          <div class="column items-center q-gutter-xs">
+            <div>
+              <div class="text-subtitle2 text-weight-bold">Made by Josh Sunnex (Josh.5)</div>
+              <div class="text-caption">
+                Built for the community, free and open-source.
+                <br />
+                If you find it useful, consider supporting development.
+              </div>
+            </div>
+            <div class="row justify-center q-gutter-sm q-mt-xs">
+              <q-btn
+                round
+                dense
+                unelevated
+                color="white"
+                text-color="black"
+                icon="fab fa-patreon"
+                href="https://www.patreon.com/join/josh5"
+                target="_blank"
+                rel="noopener"
+              >
+                <q-tooltip>Support on Patreon</q-tooltip>
+              </q-btn>
+              <q-btn
+                round
+                dense
+                unelevated
+                color="white"
+                text-color="black"
+                icon="fab fa-github"
+                href="https://github.com/sponsors/Josh5"
+                target="_blank"
+                rel="noopener"
+              >
+                <q-tooltip>Sponsor this project on GitHub</q-tooltip>
+              </q-btn>
+              <q-btn
+                round
+                dense
+                unelevated
+                color="white"
+                text-color="black"
+                icon="fas fa-mug-hot"
+                href="https://ko-fi.com/josh5coffee"
+                target="_blank"
+                rel="noopener"
+              >
+                <q-tooltip>Buy Josh a Ko-fi</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </q-card>
+      </div>
+    </q-page>
+  </q-pull-to-refresh>
 </template>
 
 <script setup lang="ts">
-// No script needed for this simple page
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import { useRssFeedStore } from 'src/stores/rss-feed-store'
+import type { FeedDefinition } from 'src/stores/rss-feed-store'
+
+const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
+const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-image.png`)
+
+dayjs.extend(relativeTime)
+
+const INITIAL_FEEDS = [
+  {
+    key: 'sdhq-game-reviews',
+    url: 'https://steamdeckhq.com/feed/?post_type=game-reviews',
+    title: 'Game Settings Reviews',
+    subtitle: 'Deck-ready performance breakdowns and recommended tweaks',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+]
+
+const feedStore = useRssFeedStore()
+const carouselModels = reactive<Record<string, number>>({})
+
+INITIAL_FEEDS.forEach(({ key, url, title, subtitle, logo }) => {
+  feedStore.registerFeed(key, url, { title, subtitle, logo })
+  carouselModels[key] = 0
+})
+
+const feedEntries = computed<[string, FeedDefinition][]>(() => INITIAL_FEEDS
+  .map(({ key }) => {
+    const feed = feedStore.feedByKey(key)
+    return feed ? ([key, feed] as [string, FeedDefinition]) : null
+  })
+  .filter((entry): entry is [string, FeedDefinition] => entry !== null))
+
+
+const isMounted = ref(false)
+
+onMounted(() => {
+  isMounted.value = true
+  void Promise.all(INITIAL_FEEDS.map(({ key }) => feedStore.ensureFeed(key)))
+})
+
+const formatDate = (iso?: string | null) => {
+  if (!iso) return ''
+  const parsed = dayjs(iso)
+  return parsed.isValid() ? parsed.format('MMM D, YYYY') : ''
+}
+
+const formatRelative = (iso?: string | null) => {
+  if (!iso) return ''
+  const parsed = dayjs(iso)
+  return parsed.isValid() ? parsed.fromNow() : ''
+}
+
+const handleRefresh = async (done: () => void) => {
+  try {
+    await Promise.all(feedEntries.value.map(([key]) => feedStore.ensureFeed(key, true)))
+  } finally {
+    done()
+  }
+}
+
+const isCarouselReady = (feed: FeedDefinition) =>
+  feed.items.length > 0 && feed.items.every((item) => item.ogImageStatus !== 'idle' && item.ogImageStatus !== 'loading')
+
+const truncate = (text: string, limit = 150) => {
+  if (!text) return ''
+  return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text
+}
+
+const ogFetchQueue = new Map<string, { key: string; link: string }>()
+let ogFetchTimeout: number | null = null
+
+const scheduleOgFetch = () => {
+  if (!isMounted.value || ogFetchQueue.size === 0) return
+  if (typeof window === 'undefined') return
+  if (ogFetchTimeout !== null) return
+
+  ogFetchTimeout = window.setTimeout(async () => {
+    ogFetchTimeout = null
+    const queueItems = Array.from(ogFetchQueue.values())
+    ogFetchQueue.clear()
+
+    for (const item of queueItems) {
+      await feedStore.ensureOgImage(item.key, item.link)
+    }
+  }, 400)
+}
+
+onBeforeUnmount(() => {
+  if (ogFetchTimeout !== null && typeof window !== 'undefined') {
+    window.clearTimeout(ogFetchTimeout)
+    ogFetchTimeout = null
+  }
+})
+
+watch(feedEntries, (entries) => {
+  entries.forEach(([key, feed]) => {
+    const feedItems = feed.items
+    if (feedItems.length === 0) {
+      carouselModels[key] = 0
+    } else if (carouselModels[key] === undefined || carouselModels[key] >= feedItems.length) {
+      carouselModels[key] = 0
+    }
+
+    if (!isMounted.value) {
+      return
+    }
+
+    feedItems.forEach((item) => {
+      if (item.ogImageStatus === 'idle') {
+        ogFetchQueue.set(`${key}-${item.link}`, { key, link: item.link })
+      }
+    })
+  })
+
+  scheduleOgFetch()
+}, { deep: true })
 </script>
+
+<style scoped>
+.welcome-background {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.welcome-content {
+  background: color-mix(in srgb, var(--q-dark) 85%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.feed-header-overlay {
+  background: color-mix(in srgb, var(--q-dark) 75%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom-right-radius: 12px;
+  color: white;
+  z-index: 2;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-slide-content {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding-top: 64px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.feed-slide-caption {
+  width: 100%;
+  padding: 16px;
+  background: color-mix(in srgb, var(--q-dark) 75%, transparent);
+  backdrop-filter: blur(6px);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feed-slide-caption .text-body2 {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.feed-slide-caption .text-caption {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.feed-slide-link {
+  position: absolute;
+  top: 0;
+  right: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  min-width: 52px;
+  /*background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  border-bottom-left-radius: 12px;*/
+  z-index: 3;
+}
+
+.rounded-borders :deep(.q-carousel__slide) {
+  overflow: hidden;
+}
+
+.rounded-borders :deep(.q-carousel__control) {
+  position: absolute;
+  display: block;
+  top: 100px;
+}
+</style>
