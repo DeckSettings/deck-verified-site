@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { refreshScrollTrigger, useScrollTrigger } from 'src/composables/useScrollTrigger'
 import { useReportsStore } from 'stores/reports-store'
 import ReportList from 'components/elements/ReportList.vue'
@@ -19,12 +19,15 @@ const props = defineProps({
 })
 
 const reportStore = useReportsStore()
+const isLoading = ref(true)
 const listTitle = computed(() => {
   if (props.reportSelection === 'popular') return 'Most Popular Reports (most likes)'
   if (props.reportSelection === 'recentlyUpdated') return 'Recently Updated Reports'
   if (props.reportSelection === 'views') return 'Most Viewed (Past 7 days)'
   return 'Undefined List Title'
 })
+
+const skeletonItems = computed(() => Array.from({ length: props.count }, (_, index) => index))
 
 const reportsList = computed(() => {
   if (props.reportSelection === 'popular') return reportStore.popular as HomeReport[]
@@ -57,18 +60,23 @@ async function scheduleScrollTriggerRefresh() {
 }
 
 async function loadReports() {
-  await useScrollTrigger()
+  isLoading.value = true
+  try {
+    await useScrollTrigger()
 
-  if (props.reportSelection === 'popular') {
-    await reportStore.loadPopular(props.count)
-  } else if (props.reportSelection === 'recentlyUpdated') {
-    await reportStore.loadRecent(props.count)
-  } else if (props.reportSelection === 'views') {
-    await reportStore.loadViews(props.count)
+    if (props.reportSelection === 'popular') {
+      await reportStore.loadPopular(props.count)
+    } else if (props.reportSelection === 'recentlyUpdated') {
+      await reportStore.loadRecent(props.count)
+    } else if (props.reportSelection === 'views') {
+      await reportStore.loadViews(props.count)
+    }
+
+    await nextTick()
+    await scheduleScrollTriggerRefresh()
+  } finally {
+    isLoading.value = false
   }
-
-  await nextTick()
-  await scheduleScrollTriggerRefresh()
 }
 
 onMounted(() => {
@@ -94,11 +102,73 @@ watch(reportsStatsList, async () => {
       <h4 class="text-h6 q-ma-none">{{ listTitle }}</h4>
     </q-card-section>
     <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
+      <div v-if="isLoading" class="q-pa-md-md">
+        <q-list padding>
+          <q-item
+            v-for="item in skeletonItems"
+            :key="item"
+            class="report-item"
+            :class="{ 'q-pl-md': $q.platform.is.mobile }"
+          >
+            <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
+              <q-skeleton
+                type="rect"
+                animation="wave"
+                :width="$q.platform.is.mobile ? '80px' : '100px'"
+                :height="$q.platform.is.mobile ? '120px' : '150px'"
+                class="skeleton-poster"
+              />
+            </q-item-section>
+            <q-item-section class="game-info-section">
+              <q-skeleton
+                type="text"
+                class="q-mb-xs"
+                :width="$q.platform.is.mobile ? '70%' : '60%'"
+                animation="wave"
+              />
+              <q-skeleton
+                type="text"
+                class="q-mb-xs"
+                :width="$q.platform.is.mobile ? '90%' : '80%'"
+                animation="wave"
+              />
+              <q-skeleton
+                type="text"
+                :width="$q.platform.is.mobile ? '60%' : '40%'"
+                animation="wave"
+              />
+              <template v-if="listType === 'ReportStatsList'">
+                <q-skeleton
+                  type="text"
+                  class="q-mt-sm"
+                  :width="$q.platform.is.mobile ? '50%' : '30%'"
+                  animation="wave"
+                />
+                <q-skeleton
+                  type="rect"
+                  class="rounded-borders q-mt-xs"
+                  width="100%"
+                  height="12px"
+                  animation="wave"
+                />
+              </template>
+            </q-item-section>
+            <q-item-section
+              v-if="listType === 'ReportList'"
+              side
+              class="gt-xs q-pl-md"
+            >
+              <q-skeleton type="QChip" width="120px" height="32px" class="q-mb-sm" animation="wave" />
+              <q-skeleton type="text" width="80px" animation="wave" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </div>
       <ReportList
-        v-if="listType === 'ReportList'"
+        v-else-if="listType === 'ReportList'"
         :reports-list="reportsList" />
       <ReportStatsList
-        v-if="listType === 'ReportStatsList'"
+        v-else
         :reports-stats-list="reportsStatsList"
         :items-per-page="0" />
     </q-card-section>
@@ -121,5 +191,9 @@ watch(reportsStatsList, async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.skeleton-poster {
+  border-radius: 12px;
 }
 </style>
