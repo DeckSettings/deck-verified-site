@@ -12,7 +12,9 @@
 
 import { Browser } from '@capacitor/browser'
 import { App } from '@capacitor/app'
+import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin'
 import { fetchService } from 'src/utils/api'
+import type { AuthState } from 'src/utils/auth/types'
 
 export type Tokens = {
   access_token: string
@@ -25,6 +27,7 @@ export type Tokens = {
   dv_token_expires_in: number
 }
 
+const STORAGE_KEY = 'dv_auth'
 const API_ORIGIN =
   (typeof process !== 'undefined' && process.env && process.env.BACKEND_API_ORIGIN)
     ? String(process.env.BACKEND_API_ORIGIN)
@@ -32,20 +35,66 @@ const API_ORIGIN =
 
 const apiUrl = (p: string) => `${API_ORIGIN}${p}`
 
+export async function persistToStorage(store: AuthState): Promise<void> {
+  const payload = {
+    accessToken: store.accessToken ?? null,
+    refreshToken: store.refreshToken ?? null,
+    tokenType: store.tokenType ?? null,
+    scope: store.scope ?? null,
+    expiresAt: store.expiresAt ?? null,
+    refreshExpiresAt: store.refreshExpiresAt ?? null,
+    dvToken: store.dvToken ?? null,
+  }
+
+  try {
+    await SecureStoragePlugin.set({ key: STORAGE_KEY, value: JSON.stringify(payload) })
+  } catch (e) {
+    console.warn('[auth/capacitor] persistToStorage failed', e)
+  }
+}
+
+export async function loadFromStorage(): Promise<Partial<AuthState>> {
+  try {
+    const result = await SecureStoragePlugin.get({ key: STORAGE_KEY })
+    const raw = result.value
+    if (!raw) return {}
+
+    const obj = JSON.parse(raw)
+    return {
+      accessToken: obj.accessToken ?? null,
+      refreshToken: obj.refreshToken ?? null,
+      tokenType: obj.tokenType ?? null,
+      scope: obj.scope ?? null,
+      expiresAt: obj.expiresAt ?? null,
+      refreshExpiresAt: obj.refreshExpiresAt ?? null,
+      dvToken: obj.dvToken ?? null,
+    }
+  } catch (e) {
+    const message = (e as Error)?.message ?? ''
+    const notFound = message.includes('does not exist') || message.includes('NOT FOUND')
+    if (!notFound) {
+      console.warn('[auth/capacitor] loadFromStorage error', e)
+    }
+    await clearFromStorage()
+    return {}
+  }
+}
+
+export async function clearFromStorage(): Promise<void> {
+  try {
+    await SecureStoragePlugin.remove({ key: STORAGE_KEY })
+  } catch (e) {
+    const message = (e as Error)?.message ?? ''
+    if (!(message.includes('does not exist') || message.includes('NOT FOUND'))) {
+      console.warn('[auth/capacitor] clearFromStorage error', e)
+    }
+  }
+}
+
 /**
  * Starts the PKCE login flow for Capacitor builds.
- * - Calls backend to initiate the auth process (server generates state/challenge and returns provider URL)
- * - Opens the in-app browser to the provider (via backend URL)
- * - Waits for the app to be reopened via deep-link (custom scheme or universal link)
- * - Finalises tokens by exchanging the `state` with backend
- *
- * Returns:
- *  - Tokens when finalised successfully
- *  - null if the user closes the in-app browser or times out
  */
 export async function loginWithPkce(): Promise<Tokens | null> {
-  // 1) Ask backend to start the PKCE flow (capacitor mode)
-  console.log('[auth/capacitor] starting auth flow')
   const startRes = await fetchService(apiUrl('/deck-verified/api/auth/start?mode=capacitor'), {
     credentials: 'include',
   })
@@ -54,10 +103,8 @@ export async function loginWithPkce(): Promise<Tokens | null> {
 
   let handled = false
 
-  // 2) Open in-app browser
   await Browser.open({ url: authUrl, windowName: '_self' })
 
-  // 3) Wait for either appUrlOpen (deep-link back) or browserFinished (user closed)
   return await new Promise<Tokens | null>((resolve) => {
     let appUrlOpen: { remove: () => Promise<void> } | undefined
     let browserFinished: { remove: () => Promise<void> } | undefined
@@ -94,7 +141,6 @@ export async function loginWithPkce(): Promise<Tokens | null> {
 
     void attachListeners()
 
-    // Optional safety timeout (e.g., 3 minutes) so we don't wait forever
     setTimeout(async () => {
       if (!handled) {
         handled = true
@@ -107,10 +153,6 @@ export async function loginWithPkce(): Promise<Tokens | null> {
   })
 }
 
-/**
- * Finalize tokens by exchanging the state with backend.
- * (Keeps the same API as the web implementation for consistency.)
- */
 export async function fetchAuthResult(state: string): Promise<Tokens> {
   const r = await fetchService(apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`), {
     credentials: 'include',

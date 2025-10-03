@@ -5,6 +5,7 @@
  * Capacitor plugins are imported into SPA/SSR bundles.
  */
 import { fetchService } from 'src/utils/api'
+import type { AuthState } from 'src/utils/auth/types'
 
 export type Tokens = {
   access_token: string
@@ -17,18 +18,55 @@ export type Tokens = {
   dv_token_expires_in: number
 }
 
+const STORAGE_KEY = 'dv_auth'
 const API_ORIGIN = process.env.BACKEND_API_ORIGIN || ''
 
 const apiUrl = (p: string) => `${API_ORIGIN}${p}`
 
-/**
- * Starts the PKCE login flow for web builds.
- * - Calls backend to initiate the auth process (server generates state/challenge and returns provider URL)
- * - Redirects the page to the provider (via backend URL)
- * - Returns null (control generally does not return after redirect)
- */
+export async function persistToStorage(store: AuthState): Promise<void> {
+  try {
+    const payload = {
+      accessToken: store.accessToken ?? null,
+      refreshToken: store.refreshToken ?? null,
+      tokenType: store.tokenType ?? null,
+      scope: store.scope ?? null,
+      expiresAt: store.expiresAt ?? null,
+      refreshExpiresAt: store.refreshExpiresAt ?? null,
+      dvToken: store.dvToken ?? null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  } catch (e) {
+    console.warn('[auth/web] persistToStorage failed', e)
+  }
+}
+
+export async function loadFromStorage(): Promise<Partial<AuthState>> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return {}
+
+    const obj = JSON.parse(raw)
+    return {
+      accessToken: obj.accessToken ?? null,
+      refreshToken: obj.refreshToken ?? null,
+      tokenType: obj.tokenType ?? null,
+      scope: obj.scope ?? null,
+      expiresAt: obj.expiresAt ?? null,
+      refreshExpiresAt: obj.refreshExpiresAt ?? null,
+      dvToken: obj.dvToken ?? null,
+    }
+  } catch (e) {
+    console.warn('[auth/web] loadFromStorage parse error', e)
+    await clearFromStorage()
+    return {}
+  }
+}
+
+export async function clearFromStorage(): Promise<void> {
+  localStorage.removeItem(STORAGE_KEY)
+}
+
 export async function loginWithPkce(): Promise<Tokens | null> {
-  console.log('[auth/web] starting auth flow')
   const res = await fetchService(apiUrl('/deck-verified/api/auth/start?mode=web'), {
     credentials: 'include',
   })
@@ -37,15 +75,10 @@ export async function loginWithPkce(): Promise<Tokens | null> {
   }
 
   const { url } = (await res.json()) as { url: string }
-  // Redirect to provider via backend
   window.location.assign(url)
   return null
 }
 
-/**
- * Optional helper to finalise tokens from a `state` parameter (web callback flow).
- * Useful if your web callback route handles completion in-app after redirect.
- */
 export async function fetchAuthResult(state: string): Promise<Tokens> {
   const r = await fetchService(apiUrl(`/deck-verified/api/auth/result?state=${encodeURIComponent(state)}`), {
     credentials: 'include',
