@@ -63,7 +63,9 @@ const computedStyle = computed(() => {
     :src="imageSource"
     :alt="altText"
     :style="computedStyle"
-  />
+  >
+    <template #loading />
+  </q-img>
 </template>
 
 <style scoped>
