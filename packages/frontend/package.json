@@ -22,6 +22,7 @@
     "@capacitor/app": "^7.0.0",
     "@capacitor/browser": "^7.0.2",
     "@capacitor/core": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.3",
     "@fontsource/exo-2": "^5.1.1",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",

@@ -6,6 +6,9 @@
     "App": {
       "urlScheme": "deckverified",
       "urlHost": "auth"
+    },
+    "StatusBar": {
+      "overlaysWebView": false
     }
   }
 }
