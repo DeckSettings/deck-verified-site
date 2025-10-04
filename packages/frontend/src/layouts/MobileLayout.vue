@@ -2,8 +2,12 @@
   <q-layout view="lHh lpr lFf" class="mobile-layout">
     <div class="top-bar" ref="topBar">
       <div class="top-bar-inner">
+        <HeaderUserMenu
+          v-if="enableLogin"
+          display-mode="hamburger"
+          class="header-hamburger lt-md"
+        />
         <HeaderSearch class="top-bar-search" />
-        <HeaderUserMenu v-if="enableLogin" class="top-bar-user-menu" />
       </div>
     </div>
 
