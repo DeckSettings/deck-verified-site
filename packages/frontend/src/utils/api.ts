@@ -13,7 +13,7 @@ export type { FetchServiceResponse } from 'src/utils/api/types'
 export const apiUrl = (path: string) => {
   const backendApiOrigin = BACKEND_API_ORIGIN
   const isSsrBuild = globalThis.isSsr ?? typeof window === 'undefined'
-  const isNativeBuild = globalThis.isMobile ?? false
+  const isNativeBuild = globalThis.isCapacitor ?? false
   if (isSsrBuild || isNativeBuild) {
     return `${backendApiOrigin}${path}`
   }
