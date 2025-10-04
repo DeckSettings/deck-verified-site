@@ -43,9 +43,9 @@
           <q-menu
             anchor="bottom right"
             self="top right"
-            :offset="[$q.platform.is.mobile ? 6 : 0, $q.platform.is.mobile ? 18 : 28]"
+            :offset="$q.platform.isMobileUi ? [6, 18] : [0, 28]"
             :style="{
-              width: $q.platform.is.mobile ? '100%' : '420px',
+              width: $q.platform.isMobileUi ? '100%' : '420px',
               backgroundColor: 'color-mix(in srgb, var(--q-dark) 95%, transparent)',
               border: '1px solid rgba(255, 255, 255, 0.5)',
               borderRadius: '0px 0px 3px 3px',

@@ -1,7 +1,15 @@
 import { boot } from 'quasar/wrappers'
 import { Platform } from 'quasar'
 
+// Extend the Platform.is type to include our new flag
+declare module 'quasar' {
+  interface Platform {
+    isMobileUi: boolean
+  }
+}
+
 export default boot(() => {
+  Platform.isMobileUi = process.env.BUILD_TARGET === 'mobile'
   if (process.env.SERVER) {
     globalThis.isCapacitor = false
     globalThis.isSsr = true

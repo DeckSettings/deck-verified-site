@@ -20,6 +20,7 @@ let searchTimeout: ReturnType<typeof setTimeout>
 const performSearch = async () => {
   clearTimeout(searchTimeout)
   isSearching.value = true
+  showDialog.value = true
   try {
     const initialResults = await searchGames(searchQuery.value, false)
     searchResults.value = (initialResults || []).sort((a, b) =>
@@ -80,8 +81,10 @@ const goToGamePage = async (e: Event, path: string) => {
 
 watch(searchQuery, (newValue, oldValue) => {
   if (newValue.length === 0) {
+    clearTimeout(searchTimeout)
     searchResults.value = null
     showDialog.value = false
+    isSearching.value = false
   } else if (newValue !== oldValue) {
     showDialog.value = true
     if (newValue.length > 2) {
@@ -129,7 +132,12 @@ onUnmounted(() => {
       </template>
     </q-input>
 
-    <div v-if="showDialog" ref="searchResultsRef" class="search-results">
+    <div
+      v-if="showDialog"
+      ref="searchResultsRef"
+      class="search-results"
+      :class="{ 'search-results-mobile': $q.platform.isMobileUi }"
+    >
       <q-scroll-area class="scroll-area" :style="scrollAreaStyle">
         <q-list>
           <q-item
@@ -195,9 +203,8 @@ onUnmounted(() => {
 
 .search-results {
   position: absolute;
-  top: 100%;
+  top: 65px;
   left: 0;
-  margin-top: 24px;
   z-index: 10;
   width: 100%;
   background-color: color-mix(in srgb, var(--q-dark) 95%, transparent);
@@ -206,16 +213,51 @@ onUnmounted(() => {
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.9);
 }
 
+.search-results-mobile {
+  left: 0;
+  top: 50px; /* This is fixed on screens smaller than 800px */
+  width: 100%;
+}
+
 .game-image {
   width: 100px;
   height: auto;
   object-fit: contain;
 }
 
+@media (min-width: 1023.98px) {
+  .game-search-container {
+    width: 400px;
+  }
+}
+
+@media (max-width: 799.98px) {
+  .game-search-container {
+    width: inherit;
+  }
+
+  .search-results {
+    position: fixed;
+    top: 90px;
+    width: 100%;
+    max-width: none;
+  }
+
+  .search-results-mobile {
+    top: 60px; /* This is absolute on screens bigger than than 800px */
+    max-width: none;
+  }
+}
+
 /* -sm- */
 @media (max-width: 599.98px) {
   .search-results {
-    margin-top: 16px;
+    top: 115px;
+  }
+
+  .search-results-mobile {
+    top: 60px; /* This is absolute on screens bigger than than 800px */
+    max-width: none;
   }
 }
 
