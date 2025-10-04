@@ -1,5 +1,9 @@
 <template>
-  <q-layout view="lHh lpr lFf" class="mobile-layout">
+  <q-layout
+    view="lHh lpr lFf"
+    class="mobile-layout"
+    :style="layoutStyle"
+  >
     <div class="top-bar" ref="topBar">
       <div class="top-bar-inner">
         <HeaderUserMenu
@@ -22,7 +26,7 @@
         active-color="primary"
         indicator-color="transparent"
         dense
-        justify="around"
+        justify="between"
       >
         <q-route-tab name="home" icon="home" label="Home"
                      to="/" exact />
@@ -40,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import HeaderSearch from 'components/HeaderSearch.vue'
 import HeaderUserMenu from 'components/HeaderUserMenu.vue'
@@ -53,6 +57,11 @@ const topBar = ref<HTMLElement | null>(null)
 const bottomNav = ref<HTMLElement | null>(null)
 const topBarHeight = ref(0)
 const bottomNavHeight = ref(0)
+const topBarOffset = computed(() => topBarHeight.value || 60)
+const bottomNavOffset = computed(() => bottomNavHeight.value || 50)
+
+provide('mobileTopBarHeight', topBarOffset)
+provide('mobileBottomNavHeight', bottomNavOffset)
 
 const activeTab = computed(() => {
   if (route.name === 'home') return 'home'
@@ -73,8 +82,13 @@ onMounted(() => {
 })
 
 const pageContainerStyle = computed(() => ({
-  paddingTop: `${topBarHeight.value}px`,
-  paddingBottom: `${bottomNavHeight.value}px`,
+  paddingTop: `${topBarOffset.value}px`,
+  paddingBottom: `${bottomNavOffset.value}px`,
+}))
+
+const layoutStyle = computed(() => ({
+  '--mobile-top-bar-height': `${topBarOffset.value}px`,
+  '--mobile-bottom-nav-height': `${bottomNavOffset.value}px`,
 }))
 </script>
 
@@ -133,6 +147,10 @@ const pageContainerStyle = computed(() => ({
 .small-tabs :deep(.q-tab) {
   min-height: 40px;
   padding: 0 8px;
+}
+
+.small-tabs :deep(.q-tabs__content) {
+  justify-content: space-between;
 }
 
 .small-tabs :deep(.q-tab__icon) {

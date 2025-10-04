@@ -121,7 +121,11 @@
         transition-show="slide-right"
         transition-hide="slide-left"
       >
-        <q-card class="header-user-menu__mobile-card bg-dark text-white">
+        <q-card
+          class="header-user-menu__mobile-card bg-dark text-white"
+          :style="mobileDialogStyle"
+          v-touch-swipe.touch.left="closeMobileMenu"
+        >
           <q-card-section class="header-user-menu__mobile-header row items-center justify-between no-wrap">
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
@@ -168,9 +172,9 @@
                 />
               </div>
 
-              <q-separator v-if="isLoggedIn" dark />
+              <q-separator v-if="isLoggedIn && !$q.platform.isMobileUi" dark />
 
-              <div class="column q-gutter-sm">
+              <div v-if="!$q.platform.isMobileUi" class="column q-gutter-sm">
                 <q-btn
                   v-if="isLoggedIn"
                   outline
@@ -191,6 +195,24 @@
               </div>
             </div>
           </q-scroll-area>
+          <template v-if="$q.platform.isMobileUi">
+            <q-separator dark class="header-user-menu__mobile-footer-separator" />
+            <div class="header-user-menu__mobile-footer column q-gutter-sm q-pa-md q-pt-lg">
+              <PrimaryButton
+                v-if="isLoggedIn"
+                color="primary"
+                full-width
+                icon="fab fa-github"
+                label="Logout"
+                @click="handleLogout" />
+              <PrimaryButton
+                color="primary"
+                full-width
+                icon="fas fa-times-circle"
+                label="Close"
+                @click="closeMobileMenu" />
+            </div>
+          </template>
         </q-card>
       </q-dialog>
     </template>
@@ -198,11 +220,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type PropType } from 'vue'
+import { computed, ref, type PropType, inject, type ComputedRef } from 'vue'
 import NotificationCenter from 'components/NotificationCenter.vue'
 import { useAuthStore } from 'stores/auth-store'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useNotifications } from 'src/composables/useNotifications'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 // Modern user dropdown combining authentication controls and notifications.
 
@@ -219,6 +242,16 @@ const { enableLogin } = useFeatureFlags()
 
 const authStore = useAuthStore()
 const { notifications, hasNotifications } = useNotifications()
+
+const mobileTopBarHeight = inject<ComputedRef<number>>(
+  'mobileTopBarHeight',
+  computed(() => 60),
+)
+
+const mobileBottomNavHeight = inject<ComputedRef<number>>(
+  'mobileBottomNavHeight',
+  computed(() => 50),
+)
 
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const avatarUrl = computed(() => authStore.avatarUrl)
@@ -250,6 +283,11 @@ const handleLogout = () => {
   authStore.logout()
   closeMobileMenu()
 }
+
+const mobileDialogStyle = computed(() => ({
+  paddingTop: `${mobileTopBarHeight?.value ?? 60}px`,
+  paddingBottom: `${mobileBottomNavHeight?.value ?? 50}px`,
+}))
 </script>
 
 <style scoped>
@@ -290,6 +328,15 @@ const handleLogout = () => {
 
 .header-user-menu__mobile-card {
   min-width: 599px;
+}
+
+.header-user-menu__mobile-footer {
+  background: inherit;
+  border-top: 1px solid color-mix(in srgb, white 12%, transparent);
+}
+
+.header-user-menu__mobile-footer-separator {
+  margin: 0;
 }
 
 @media (max-width: 599.98px) {

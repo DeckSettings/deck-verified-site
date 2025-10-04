@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed, inject, nextTick, type ComputedRef } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { searchGames } from 'src/services/gh-reports'
@@ -15,6 +15,18 @@ const searchQuery = ref('')
 const showDialog = ref(false)
 const searchResults = ref<GameSearchResult[] | null>(null)
 const isSearching = ref(false)
+const searchContainerHeight = ref(0)
+
+const mobileTopBarHeight = inject<ComputedRef<number>>(
+  'mobileTopBarHeight',
+  computed(() => 60),
+)
+
+const updateSearchContainerHeight = () => {
+  if (searchContainerRef.value) {
+    searchContainerHeight.value = searchContainerRef.value.offsetHeight
+  }
+}
 
 let searchTimeout: ReturnType<typeof setTimeout>
 const performSearch = async () => {
@@ -108,12 +120,35 @@ function handleOutsideClick(event: MouseEvent | TouchEvent) {
 onMounted(() => {
   document.addEventListener('mousedown', handleOutsideClick)
   document.addEventListener('touchstart', handleOutsideClick)
+  nextTick(updateSearchContainerHeight)
+  window.addEventListener('resize', updateSearchContainerHeight)
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleOutsideClick)
   document.removeEventListener('touchstart', handleOutsideClick)
+  window.removeEventListener('resize', updateSearchContainerHeight)
 })
+
+watch(
+  () => $q.screen.width,
+  () => {
+    nextTick(() => updateSearchContainerHeight())
+  },
+)
+
+const resultsGap = 0
+const searchResultsTop = computed(() => {
+  const topBarHeight = mobileTopBarHeight?.value ?? 60
+  if ($q.screen.lt.md || $q.platform.isMobileUi) {
+    return `${topBarHeight + resultsGap}px`
+  }
+  return `${searchContainerHeight.value + resultsGap}px`
+})
+
+const searchResultsStyle = computed(() => ({
+  top: searchResultsTop.value,
+}))
 </script>
 
 <template>
@@ -137,6 +172,7 @@ onUnmounted(() => {
       ref="searchResultsRef"
       class="search-results"
       :class="{ 'search-results-mobile': $q.platform.isMobileUi }"
+      :style="searchResultsStyle"
     >
       <q-scroll-area class="scroll-area" :style="scrollAreaStyle">
         <q-list>
@@ -203,7 +239,6 @@ onUnmounted(() => {
 
 .search-results {
   position: absolute;
-  top: 65px;
   left: 0;
   z-index: 10;
   width: 100%;
@@ -215,7 +250,6 @@ onUnmounted(() => {
 
 .search-results-mobile {
   left: 0;
-  top: 50px; /* This is fixed on screens smaller than 800px */
   width: 100%;
 }
 
@@ -238,25 +272,11 @@ onUnmounted(() => {
 
   .search-results {
     position: fixed;
-    top: 90px;
     width: 100%;
     max-width: none;
   }
 
   .search-results-mobile {
-    top: 60px; /* This is absolute on screens bigger than than 800px */
-    max-width: none;
-  }
-}
-
-/* -sm- */
-@media (max-width: 599.98px) {
-  .search-results {
-    top: 115px;
-  }
-
-  .search-results-mobile {
-    top: 60px; /* This is absolute on screens bigger than than 800px */
     max-width: none;
   }
 }
