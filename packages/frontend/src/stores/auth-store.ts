@@ -94,19 +94,25 @@ export const useAuthStore = defineStore('auth', {
       this.refreshExpiresAt = obj.refreshExpiresAt ?? null
       this.dvToken = obj.dvToken ?? null
 
-      // If the token is still valid, schedule refresh and fetch the profile
-      if (this.accessToken && (!this.expiresAt || this.expiresAt > Date.now())) {
-        this.scheduleTokenRefresh()
-        if (!this.user) {
-          void this.fetchUserProfile()
+      const now = Date.now()
+      const msUntilExpiry = this.expiresAt ? this.expiresAt - now : null
+
+      if (this.accessToken) {
+        if (msUntilExpiry !== null && msUntilExpiry <= 0) {
+          console.info('[useAuthStore] loadFromStorage detected expired access token; scheduling refresh', {
+            msUntilExpiry,
+            refreshTokenPresent: Boolean(this.refreshToken),
+            refreshExpiresAt: this.refreshExpiresAt,
+          })
+        } else if (msUntilExpiry !== null && msUntilExpiry > 0) {
+          // We have a token that has not yet expired
+          if (!this.user) {
+            // Fetch user info
+            void this.fetchUserProfile()
+          }
         }
-      } else {
-        const now = Date.now()
-        const msUntilExpiry = this.expiresAt ? this.expiresAt - now : null
-        this.clearTokens('loadFromStorage: token missing or expired', {
-          source: 'loadFromStorage',
-          msUntilExpiry,
-        })
+        // Init a scheduled refresh of our token before it expired
+        this.scheduleTokenRefresh()
       }
     },
 
