@@ -9,11 +9,11 @@ declare module 'quasar' {
 }
 
 export default boot(() => {
-  Platform.isMobileUi = process.env.BUILD_TARGET === 'mobile'
   if (process.env.SERVER) {
     globalThis.isCapacitor = false
     globalThis.isSsr = true
     globalThis.isMobile = process.env.BUILD_TARGET === 'mobile'
+    Platform.isMobileUi = process.env.BUILD_TARGET === 'mobile'
     return
   }
 
@@ -21,4 +21,5 @@ export default boot(() => {
   globalThis.isCapacitor = 'capacitor' in Platform.is ? (Platform.is as { capacitor: boolean }).capacitor : false
   globalThis.isSsr = 'ssr' in Platform.is ? (Platform.is as { ssr: boolean }).ssr : false
   globalThis.isMobile = globalThis.isCapacitor || (process.env.BUILD_TARGET === 'mobile')
+  Platform.isMobileUi = globalThis.isCapacitor || (process.env.BUILD_TARGET === 'mobile')
 })

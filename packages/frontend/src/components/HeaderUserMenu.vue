@@ -98,7 +98,7 @@
         round
         color="white"
         icon="menu"
-        class="header-user-menu__mobile-trigger"
+        class="header-user-menu__dialog-trigger"
         aria-label="Open menu"
         @click="openMobileMenu"
       >
@@ -117,16 +117,16 @@
         v-model="isMobileMenuOpen"
         :position="$q.screen.gt.xs ? 'left' : undefined"
         maximized
-        class="header-user-menu__mobile-dialog"
+        class="header-user-menu__dialog-dialog"
         transition-show="slide-right"
         transition-hide="slide-left"
       >
         <q-card
-          class="header-user-menu__mobile-card bg-dark text-white"
+          class="header-user-menu__dialog-card bg-dark text-white"
           :style="mobileDialogStyle"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
-          <q-card-section class="header-user-menu__mobile-header row items-center justify-between no-wrap">
+          <q-card-section class="header-user-menu__dialog-header row items-center justify-between no-wrap">
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
@@ -153,66 +153,41 @@
 
           <q-separator dark />
 
-          <q-scroll-area class="header-user-menu__mobile-scroll">
-            <div class="header-user-menu__mobile-content column q-pa-md q-gutter-lg">
+          <q-scroll-area class="header-user-menu__dialog-scroll">
+            <div class="header-user-menu__dialog-content column q-pa-md q-gutter-lg">
               <NotificationCenter v-if="isLoggedIn" />
 
               <div v-else class="column q-gutter-sm">
                 <p class="text-body2 text-grey-4">
                   Connect your GitHub account to receive personalised notifications and save your activity.
                 </p>
-                <q-btn
+                <PrimaryButton
                   color="primary"
-                  text-color="white"
-                  unelevated
+                  full-width
                   icon="fab fa-github"
                   label="Login with GitHub"
-                  class="full-width"
-                  @click="handleLogin"
-                />
-              </div>
-
-              <q-separator v-if="isLoggedIn && !$q.platform.isMobileUi" dark />
-
-              <div v-if="!$q.platform.isMobileUi" class="column q-gutter-sm">
-                <q-btn
-                  v-if="isLoggedIn"
-                  outline
-                  color="primary"
-                  icon="logout"
-                  label="Logout"
-                  class="full-width"
-                  @click="handleLogout"
-                />
-                <q-btn
-                  flat
-                  dense
-                  color="grey-5"
-                  label="Close"
-                  class="full-width"
-                  @click="closeMobileMenu"
-                />
+                  @click="handleLogin" />
               </div>
             </div>
           </q-scroll-area>
-          <template v-if="$q.platform.isMobileUi">
-            <q-separator dark class="header-user-menu__mobile-footer-separator" />
-            <div class="header-user-menu__mobile-footer column q-gutter-sm q-pa-md q-pt-lg">
-              <PrimaryButton
-                v-if="isLoggedIn"
-                color="primary"
-                full-width
-                icon="fab fa-github"
-                label="Logout"
-                @click="handleLogout" />
-              <PrimaryButton
-                color="primary"
-                full-width
-                icon="fas fa-times-circle"
-                label="Close"
-                @click="closeMobileMenu" />
-            </div>
-          </template>
+
+          <q-separator dark class="header-user-menu__dialog-footer-separator" />
+
+          <div class="header-user-menu__dialog-footer column q-gutter-sm q-pa-md q-pt-lg">
+            <PrimaryButton
+              v-if="isLoggedIn"
+              color="primary"
+              full-width
+              icon="fab fa-github"
+              label="Logout"
+              @click="handleLogout" />
+            <PrimaryButton
+              color="primary"
+              full-width
+              icon="fas fa-times-circle"
+              label="Close"
+              @click="closeMobileMenu" />
+          </div>
         </q-card>
       </q-dialog>
     </template>
@@ -307,40 +282,40 @@ const mobileDialogStyle = computed(() => ({
   padding: 0;
 }
 
-.header-user-menu__mobile-trigger {
+.header-user-menu__dialog-trigger {
   min-width: 0;
 }
 
-.header-user-menu__mobile-card {
+.header-user-menu__dialog-card {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--q-dark) 92%, transparent);
 }
 
-.header-user-menu__mobile-scroll {
+.header-user-menu__dialog-scroll {
   flex: 1;
 }
 
-.header-user-menu__mobile-content {
+.header-user-menu__dialog-content {
   flex: 1;
 }
 
-.header-user-menu__mobile-card {
+.header-user-menu__dialog-card {
   min-width: 599px;
 }
 
-.header-user-menu__mobile-footer {
+.header-user-menu__dialog-footer {
   background: inherit;
   border-top: 1px solid color-mix(in srgb, white 12%, transparent);
 }
 
-.header-user-menu__mobile-footer-separator {
+.header-user-menu__dialog-footer-separator {
   margin: 0;
 }
 
 @media (max-width: 599.98px) {
-  .header-user-menu__mobile-card {
+  .header-user-menu__dialog-card {
     min-width: 100px;
   }
 }
