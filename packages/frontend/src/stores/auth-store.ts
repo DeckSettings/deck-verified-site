@@ -101,7 +101,12 @@ export const useAuthStore = defineStore('auth', {
           void this.fetchUserProfile()
         }
       } else {
-        this.clearTokens()
+        const now = Date.now()
+        const msUntilExpiry = this.expiresAt ? this.expiresAt - now : null
+        this.clearTokens('loadFromStorage: token missing or expired', {
+          source: 'loadFromStorage',
+          msUntilExpiry,
+        })
       }
     },
 
@@ -178,7 +183,21 @@ export const useAuthStore = defineStore('auth', {
       this.scheduleTokenRefresh()
     },
 
-    clearTokens() {
+    clearTokens(
+      reason: string = 'unspecified',
+      context: Record<string, unknown> = {},
+    ) {
+      const debugPayload = {
+        reason,
+        ...context,
+        accessTokenPresent: Boolean(this.accessToken),
+        refreshTokenPresent: Boolean(this.refreshToken),
+        expiresAt: this.expiresAt,
+        refreshExpiresAt: this.refreshExpiresAt,
+        hasDvToken: Boolean(this.dvToken),
+        timestamp: new Date().toISOString(),
+      }
+      console.info('[useAuthStore] Clearing tokens', debugPayload)
       this.accessToken = null
       this.refreshToken = null
       this.tokenType = null
@@ -228,7 +247,9 @@ export const useAuthStore = defineStore('auth', {
 
     async refreshAccessToken(opts: { force?: boolean } = {}): Promise<boolean> {
       if (!this.refreshToken) {
-        this.logout()
+        this.logout('refreshAccessToken: missing refresh token', {
+          refreshTokenPresent: Boolean(this.refreshToken),
+        })
         return false
       }
 
@@ -256,7 +277,11 @@ export const useAuthStore = defineStore('auth', {
             // One more chance: another tab might have rotated tokens milliseconds ago.
             await this.loadFromStorage()
             // TODO: If we have an error from the backend saying the refresh token is invalid, we should logout or at least reload the page.
-            if (!this.accessToken) this.logout()
+            if (!this.accessToken) {
+              this.logout('refreshAccessToken: refresh response missing access token', {
+                status: r.status,
+              })
+            }
             return false
           }
 
@@ -267,7 +292,11 @@ export const useAuthStore = defineStore('auth', {
         } catch (e) {
           console.error('[useAuthStore] Token refresh error', e)
           await this.loadFromStorage()
-          if (!this.accessToken) this.logout()
+          if (!this.accessToken) {
+            this.logout('refreshAccessToken: exception during refresh and no access token present', {
+              errorName: (e as Error)?.name,
+            })
+          }
           return false
         }
       })
@@ -385,8 +414,11 @@ export const useAuthStore = defineStore('auth', {
         }
       }
     },
-    logout() {
-      this.clearTokens()
+    logout(
+      reason: string = 'logout',
+      context: Record<string, unknown> = {},
+    ) {
+      this.clearTokens(reason, context)
       this.clearUser()
     },
   },
