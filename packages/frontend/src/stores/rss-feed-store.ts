@@ -20,6 +20,7 @@ export interface FeedDefinition {
   lastFetched: number | null
   isLoading: boolean
   error: string | null
+  hasLoadedOnce: boolean
 }
 
 export type OgImageStatus = 'idle' | 'loading' | 'loaded' | 'error'
@@ -122,6 +123,7 @@ const parseFeedXml = (xml: string, feedUrl: string): FeedDefinition => {
     lastFetched: Date.now(),
     isLoading: false,
     error: null,
+    hasLoadedOnce: true,
   }
 }
 
@@ -164,6 +166,7 @@ export const useRssFeedStore = defineStore('rss-feed', {
           lastFetched: null,
           isLoading: false,
           error: null,
+          hasLoadedOnce: false,
         }
       } else {
         const feed = this.feeds[key]
@@ -217,6 +220,7 @@ export const useRssFeedStore = defineStore('rss-feed', {
         feed.lastFetched = parsedFeed.lastFetched
         feed.isLoading = false
         feed.error = null
+        feed.hasLoadedOnce = true
       } catch (error) {
         console.error(`[rss-feed] Failed to load feed ${key}`, error)
         const message = error instanceof Error ? error.message : 'Unable to load feed content'

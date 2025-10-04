@@ -51,7 +51,7 @@
             </div>
 
             <div
-              v-if="(feed.isLoading && feed.items.length === 0) || !isCarouselReady(feed)"
+              v-if="shouldShowSkeleton(feed)"
               class="row no-wrap">
               <q-card flat bordered class="bg-grey-8 text-grey-5 full-width full-height">
                 <q-skeleton height="160px" width="100%" type="rect" animation="fade" />
@@ -110,6 +110,10 @@
                 </div>
               </q-carousel-slide>
             </q-carousel>
+
+            <q-inner-loading v-if="feed.isLoading && feed.hasLoadedOnce">
+              <q-spinner size="32px" color="primary" />
+            </q-inner-loading>
 
           </div>
 
@@ -241,6 +245,17 @@ const handleRefresh = async (done: () => void) => {
 
 const isCarouselReady = (feed: FeedDefinition) =>
   feed.items.length > 0 && feed.items.every((item) => item.ogImageStatus !== 'idle' && item.ogImageStatus !== 'loading')
+
+const shouldShowSkeleton = (feed: FeedDefinition) => {
+  if (!feed.hasLoadedOnce) {
+    if (feed.items.length === 0) {
+      return true
+    }
+    return !isCarouselReady(feed)
+  }
+
+  return feed.items.length === 0 && feed.isLoading
+}
 
 const truncate = (text: string, limit = 150) => {
   if (!text) return ''
