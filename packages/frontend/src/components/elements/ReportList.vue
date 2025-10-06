@@ -125,7 +125,7 @@ const getReportUrl = (report: HomeReport) => {
             />
           </div>
           <q-item-label v-if="$q.platform.is.mobile"
-                        class="absolute-bottom-left q-ml-sm q-mb-lg">
+                        class="absolute-bottom-left device-image-wrapper-mobile">
             <DeviceImage :device="report.data.device" :dropShadow="true" size="small" width="80px" />
           </q-item-label>
           <q-item-label v-else
@@ -135,10 +135,17 @@ const getReportUrl = (report: HomeReport) => {
         </q-item-section>
 
         <q-item-section v-if="!$q.platform.is.mobile" top class="game-info-section">
-          <q-item-label lines="1" class="text-h6 q-mb-xs">
-            {{ report.data.game_name }}: <span style="font-weight:300;"> {{ report.data.summary }}</span>
+          <q-item-label lines="1" class="lt-sm text-h6 ellipsis q-mb-xs" style="margin:0;">
+            <span class="text-h6">{{ report.data.game_name }}</span>
+            <br />
+            <span class="text-caption text-weight-bold text-italic">"{{ report.data.summary }}"</span>
           </q-item-label>
-          <q-item-label caption lines="2" class="q-pt-sm">
+          <q-item-label lines="1" class="gt-xs text-h6 ellipsis" style="margin:0;">
+            <span class="text-h6">{{ report.data.game_name }}: </span>
+            <span class="text-h6 text-weight-regular text-italic">"{{ report.data.summary }}"</span>
+          </q-item-label>
+
+          <q-item-label caption lines="2" class="q-pt-none">
             <div class="row q-gutter-sm">
               <!-- Text Details -->
               <div class="col-12">
@@ -155,16 +162,32 @@ const getReportUrl = (report: HomeReport) => {
                 </template>
                 <template v-else>
                   unknown
+                </template>
+              </div>
+              <div class="col-12">
+                <b>Rating: </b>
+                <template v-if="report.data.performance_rating && report.data.performance_rating !== 'Unrated'">
+                  {{ report.data.performance_rating }}
+                </template>
+                <template v-else>
+                  Not Rated
                 </template>
               </div>
             </div>
           </q-item-label>
         </q-item-section>
         <q-item-section v-else top class="game-info-section">
-          <q-item-label lines="2" class="text-h6">
-            {{ report.data.game_name }}
+          <q-item-label lines="1" class="lt-sm text-h6 ellipsis q-mb-xs" style="margin:0;">
+            <span class="text-h6">{{ report.data.game_name }}</span>
+            <br />
+            <span class="text-caption text-weight-bold text-italic">"{{ report.data.summary }}"</span>
           </q-item-label>
-          <q-item-label caption class="q-pt-sm">
+          <q-item-label lines="1" class="gt-xs text-h6 ellipsis" style="margin:0;">
+            <span class="text-h6">{{ report.data.game_name }}: </span>
+            <span class="text-h6 text-weight-regular text-italic">"{{ report.data.summary }}"</span>
+          </q-item-label>
+
+          <q-item-label caption lines="2" class="q-pt-xs">
             <div class="row q-gutter-sm">
               <!-- Text Details -->
               <div class="col-12">
@@ -181,6 +204,15 @@ const getReportUrl = (report: HomeReport) => {
                 </template>
                 <template v-else>
                   unknown
+                </template>
+              </div>
+              <div class="col-12">
+                <b>Rating: </b>
+                <template v-if="report.data.performance_rating && report.data.performance_rating !== 'Unrated'">
+                  {{ report.data.performance_rating }}
+                </template>
+                <template v-else>
+                  Not Rated
                 </template>
               </div>
             </div>
@@ -243,8 +275,21 @@ const getReportUrl = (report: HomeReport) => {
 }
 
 .device-image-wrapper {
-  margin-left: 90px;
-  margin-bottom: 7px;
+  margin-left: 2px;
+  margin-bottom: 24px;
+}
+
+.device-image-wrapper-mobile {
+  margin-left: 4px;
+  margin-bottom: 24px;
+}
+
+/* -sm- */
+@media (min-width: 600px) {
+  .device-image-wrapper {
+    margin-left: 90px;
+    margin-bottom: 2px;
+  }
 }
 
 /* -md- */
