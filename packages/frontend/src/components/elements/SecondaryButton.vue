@@ -5,6 +5,8 @@ import type { RouteLocationRaw } from 'vue-router'
 const props = withDefaults(defineProps<{
   label?: string
   icon?: string
+  size?: string
+  dense?: boolean
   href?: string
   to?: RouteLocationRaw
   target?: string
@@ -22,7 +24,8 @@ const btnStyle = computed(() => {
   return { '--btn-base': `var(${cssVar})` } as Record<string, string>
 })
 const computedClass = computed(() => {
-  const classes = ['dv-secondary-btn', 'q-my-sm', 'q-mx-xs', 'q-pa-sm', 'q-mx-xs'] as string[]
+  const classes = ['dv-secondary-btn', 'q-my-sm', 'q-mx-xs'] as string[]
+  if (!props.dense) classes.push('q-pa-sm')
   if (props.fullWidth) classes.push('full-width')
   return classes
 })
@@ -34,6 +37,8 @@ const emit = defineEmits<{ (e: 'click'): void }>()
     no-caps flat
     :label="label"
     :icon="icon"
+    :size="size"
+    :dense="dense"
     :href="href"
     :to="to"
     :target="target"

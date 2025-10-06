@@ -7,6 +7,7 @@ const props = withDefaults(defineProps<{
   icon?: string
   iconRight?: string
   size?: string
+  dense?: boolean
   href?: string
   to?: RouteLocationRaw
   target?: string
@@ -20,18 +21,16 @@ const props = withDefaults(defineProps<{
   fullWidth: false,
 })
 
-const computedClass = computed(() => {
-  const classes = ['q-my-sm', 'q-mx-xs', 'dv-primary-btn'] as string[]
-  if (props.fullWidth) classes.push('full-width')
-  return classes
-})
-
-// Expose the base palette color to CSS for subtle border tint
 const btnStyle = computed(() => {
   const cssVar = `--q-${props.color}`
   return { '--btn-base': `var(${cssVar})` } as Record<string, string>
 })
- 
+const computedClass = computed(() => {
+  const classes = ['dv-primary-btn', 'q-my-sm', 'q-mx-xs'] as string[]
+  if (!props.dense) classes.push('q-pa-sm')
+  if (props.fullWidth) classes.push('full-width')
+  return classes
+})
 const emit = defineEmits<{ (e: 'click'): void }>()
 </script>
 
@@ -41,6 +40,7 @@ const emit = defineEmits<{ (e: 'click'): void }>()
     :label="label"
     :icon="icon"
     :size="size"
+    :dense="dense"
     :href="href"
     :to="to"
     :target="target"
