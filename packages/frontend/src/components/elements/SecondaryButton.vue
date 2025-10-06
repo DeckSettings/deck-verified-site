@@ -50,8 +50,8 @@ const emit = defineEmits<{ (e: 'click'): void }>()
 
 <style>
 .dv-secondary-btn {
-  background-color: color-mix(in srgb, var(--btn-base) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--btn-base) 50%, transparent);
+  background-color: color-mix(in srgb, var(--btn-base) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btn-base) 60%, transparent);
   transition: background-color 0.15s ease, border-color 0.15s ease;
   text-decoration: none !important;
 }

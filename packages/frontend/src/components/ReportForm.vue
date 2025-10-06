@@ -44,6 +44,16 @@ const props = defineProps({
     required: false,
     default: false,
   },
+  showCancelButton: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+  showClearButton: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
 })
 
 const $q = useQuasar()
@@ -247,6 +257,13 @@ const saveFormValuesState = () => {
 // Clear saved form state (for instance, when clicking cancel).
 const clearFormState = () => {
   localStorage.removeItem(`gameReportForm-${props.gameName}`)
+}
+
+// Clear form data
+const clearForm = () => {
+  localStorage.removeItem(`gameReportForm-${props.gameName}`)
+  formData.value = null
+  initFormData()
 }
 
 const getSections = () => {
@@ -902,7 +919,7 @@ watch(formValues, () => {
           </div>
         </div>
         <div class="header-actions">
-          <div class="header-action header-action--cancel">
+          <div v-if="showCancelButton" class="header-action header-action--cancel">
             <PrimaryButton
               class="header-btn"
               label="Cancel"
@@ -912,6 +929,17 @@ watch(formValues, () => {
               :dense="$q.screen.lt.sm"
               @click="clearFormState"
               v-close-popup
+            />
+          </div>
+          <div v-if="showClearButton" class="header-action header-action--cancel">
+            <PrimaryButton
+              class="header-btn"
+              label="Clear Form"
+              color="warning"
+              icon="clear_all"
+              full-width
+              :dense="$q.screen.lt.sm"
+              @click="clearForm"
             />
           </div>
           <div class="header-action header-action--submit lt-md">

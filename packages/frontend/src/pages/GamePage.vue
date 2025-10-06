@@ -24,7 +24,7 @@ defineOptions({
 </script>
 
 <template>
-  <q-page class="bg-dark text-white q-pb-xl" padding>
+  <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.isMobileUi">
     <NavBackButton />
     <GameData />
     <ScrollToTop />

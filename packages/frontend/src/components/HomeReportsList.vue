@@ -181,7 +181,7 @@ watch(reportsStatsList, async () => {
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  border-radius: 16px;
+  border-radius: 3px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   z-index: 1000;

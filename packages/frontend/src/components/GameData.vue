@@ -408,6 +408,7 @@ watch(reportFormDialogOpen, (open) => {
     skip-hijack
   />
   <div class="background-container"
+       :class="{ 'background-container-mobile': $q.platform.isMobileUi }"
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
@@ -442,8 +443,8 @@ watch(reportFormDialogOpen, (open) => {
           <q-skeleton v-if="isLoading" type="text" width="200px" class="q-mx-auto" />
           <template v-else>{{ gameName }}</template>
         </h1>
-        <div v-if="isLoading" class="q-pa-md">
-          <div class="row q-col-gutter-xs justify-center">
+        <div v-if="isLoading">
+          <div class="row q-col-gutter-xs" :class="($q.screen.lt.md && !$q.platform.isMobileUi) ? 'justify-center' : ''">
             <q-skeleton type="QBtn" width="150px" height="46px" class="q-ma-xs" />
             <q-skeleton type="QBtn" width="150px" height="46px" class="q-ma-xs" />
           </div>
@@ -451,9 +452,9 @@ watch(reportFormDialogOpen, (open) => {
             <q-skeleton type="QBtn" width="100%" height="50px" />
           </div>
         </div>
-        <div v-else-if="gameData" class="q-pa-md">
+        <div v-else-if="gameData">
           <!-- START EXTERNAL LINKS -->
-          <div class="row q-col-gutter-xs" :class="$q.screen.lt.md ? 'justify-center' : ''">
+          <div class="row q-col-gutter-xs" :class="($q.screen.lt.md && !$q.platform.isMobileUi) ? 'justify-center' : ''">
             <SecondaryButton v-if="githubProjectSearchLink"
                              :icon="simGithub"
                              label="GitHub Reports"
@@ -1098,6 +1099,20 @@ watch(reportFormDialogOpen, (open) => {
   width: 100%;
   height: 800px;
   z-index: 0;
+}
+
+.background-container-mobile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: /* Top fade */ linear-gradient(to bottom, transparent 20%, rgba(0, 0, 0, 0.6) 50%, var(--q-dark) 100%),
+    /* Left fade */ linear-gradient(to right, var(--q-dark) 0%, transparent 30%, transparent 70%, var(--q-dark) 100%),
+    /* Right fade */ linear-gradient(to left, var(--q-dark) 0%, transparent 30%, transparent 70%, var(--q-dark) 100%);
+  mix-blend-mode: darken; /* Ensures darker areas blend naturally with the image */
+  z-index: 1; /* Place it above the background image */
 }
 
 .page-content-container {
