@@ -438,7 +438,7 @@ watch(reportFormDialogOpen, (open) => {
             alt="Game Image">
           </q-img>
         </div>
-        <h1 v-if="$q.platform.is.mobile" class="text-h6 game-title">
+        <h1 v-if="$q.platform.is.mobile" class="text-h5 game-title">
           <q-skeleton v-if="isLoading" type="text" width="200px" class="q-mx-auto" />
           <template v-else>{{ gameName }}</template>
         </h1>
@@ -1111,7 +1111,6 @@ watch(reportFormDialogOpen, (open) => {
 }
 
 .game-image-container {
-  max-width: 300px;
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 20px;
