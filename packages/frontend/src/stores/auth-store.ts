@@ -280,6 +280,11 @@ export const useAuthStore = defineStore('auth', {
 
           if (!r.ok || !data.access_token) {
             console.warn('[useAuthStore] Token refresh failed', data)
+            if (r.status === 401) {
+              this.logout('refreshAccessToken: refresh response 401 unauthorized', {
+                status: r.status,
+              })
+            }
             // One more chance: another tab might have rotated tokens milliseconds ago.
             await this.loadFromStorage()
             // TODO: If we have an error from the backend saying the refresh token is invalid, we should logout or at least reload the page.

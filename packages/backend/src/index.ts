@@ -264,7 +264,7 @@ app.post('/deck-verified/api/auth/refresh', express.json(), async (req: Request,
   }
   try {
     const resp = await githubAuthRefreshHandler(refreshToken)
-    res.status((resp as any)?.error ? 400 : 200).json(resp)
+    res.status(resp?.error ? 401 : 200).json(resp)
   } catch (error) {
     logger.error('Error refreshing token:', error)
     res.status(500).json({ error: 'Refresh error' })
