@@ -32,6 +32,8 @@ const config = {
   enableRateLimiter: (process.env.DISABLE_RATE_LIMITER !== 'true'),
   runScheduledTaskOnStart: (process.env.RUN_SCHEDULED_TASKS_ON_START === 'true'),
   bloggerApiKey: process.env.BLOGGER_API_KEY || null,
+  isThereAnyDealApiKey: process.env.ISTHEREANYDEAL_API_KEY || null,
+  isThereAnyDealCountry: (process.env.ISTHEREANYDEAL_COUNTRY || 'US').toUpperCase(),
   // GitHub App PKCE flow
   githubAppClientId: process.env.GITHUB_APP_CLIENT_ID || null,
   githubAppClientSecret: process.env.GITHUB_APP_CLIENT_SECRET || null,

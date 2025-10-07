@@ -28,12 +28,10 @@ import {
 } from './github'
 import {
   fetchJosh5Avatar,
-  fetchSteamGameSuggestions,
-  fetchSteamStoreGameDetails,
   generateImageLinksFromAppId,
-  generateSDHQReviewData,
   generateSDGReviewData,
   fetchBlogReviewSummary,
+  generateGameRatingsSummary,
 } from './helpers'
 import type {
   AggregateMetricResponse,
@@ -55,6 +53,9 @@ import {
 import { githubMonitorQueue } from './jobs'
 import { initializeWorkers } from './jobs/worker'
 import { initScheduledTasks } from './jobs/scheduler'
+import { generateIsThereAnyDealPriceSummary } from './external/itad'
+import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './external/steam'
+import { generateSDHQReviewData } from './external/sdhq'
 
 const delay = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms)
@@ -914,14 +915,16 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Add additional external source data based on appId
     if (includeExternal && discoveredAppId !== null) {
-      const sdhqReviews = await generateSDHQReviewData(discoveredAppId.toString())
+      const [sdhqReviews, sdgVideoReviews] = await Promise.all([
+        generateSDHQReviewData(discoveredAppId.toString()),
+        generateSDGReviewData(discoveredAppId.toString()),
+      ])
       if (sdhqReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
           ...sdhqReviews,
         ]
       }
-      const sdgVideoReviews = await generateSDGReviewData(discoveredAppId.toString())
       if (sdgVideoReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
@@ -952,6 +955,72 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   } catch (error) {
     logger.error('Error:', error)
     return res.status(500).json({ error: 'Failed to search games' })
+  }
+})
+
+/**
+ * Get price information for a game using IsThereAnyDeal data.
+ *
+ * @queryParam name {string} - Optional game name fallback when appid is not provided.
+ * @queryParam appid {string} - Preferred Steam AppID for the lookup.
+ *
+ * @returns {object} 200 - Price summary for the game.
+ * @returns {object} 204 - No price data available for the given query.
+ * @returns {object} 400 - Missing required query parameters.
+ * @returns {object} 500 - Internal server error.
+ */
+app.get('/deck-verified/api/v1/game_prices', async (req: Request, res: Response) => {
+  const appId = typeof req.query['appid'] === 'string' ? req.query['appid'] : null
+  const gameName = typeof req.query['name'] === 'string' ? req.query['name'] : null
+
+  if (!appId && !gameName) {
+    return res.status(400).json({ error: 'appid or name is required' })
+  }
+
+  try {
+    const summary = await generateIsThereAnyDealPriceSummary({ appId, gameName })
+    if (!summary) {
+      return res.status(204).json({})
+    }
+    return res.json(summary)
+  } catch (error) {
+    logger.error('Error fetching price summary:', error)
+    return res.status(500).json({ error: 'Failed to fetch price data' })
+  }
+})
+
+/**
+ * Get rating information for a game based on ProtonDB and Steam Deck Verified data.
+ *
+ * @queryParam name {string} - Optional game name (currently unused).
+ * @queryParam appid {string} - Steam AppID for the lookup.
+ *
+ * @returns {object} 200 - Ratings summary for the game.
+ * @returns {object} 204 - No rating data available for the given AppID.
+ * @returns {object} 400 - Missing required query parameters.
+ * @returns {object} 500 - Internal server error.
+ */
+app.get('/deck-verified/api/v1/game_ratings', async (req: Request, res: Response) => {
+  const appId = typeof req.query['appid'] === 'string' ? req.query['appid'] : null
+  const gameName = typeof req.query['name'] === 'string' ? req.query['name'] : null
+
+  if (!appId && !gameName) {
+    return res.status(400).json({ error: 'appid or name is required' })
+  }
+
+  if (!appId) {
+    return res.status(400).json({ error: 'appid lookups are required at this time' })
+  }
+
+  try {
+    const summary = await generateGameRatingsSummary(appId, gameName)
+    if (!summary) {
+      return res.status(204).json({})
+    }
+    return res.json(summary)
+  } catch (error) {
+    logger.error('Error fetching ratings summary:', error)
+    return res.status(500).json({ error: 'Failed to fetch ratings data' })
   }
 })
 

@@ -688,41 +688,39 @@ export const redisLookupGitHubProjectDetails = async (appId: string | null = nul
 }
 
 /**
- * Caches an object of Steam app details in Redis.
+ * Caches an object of Steam store details in Redis.
  * The cached data is stored for 2 days to improve search performance and reduce API calls
  * to the Steam store.
  */
-export const redisCacheSteamAppDetails = async (
-  data: SteamStoreAppDetails | Record<string, never>,
-  appId: string,
+export const redisCacheSteamStoreDetails = async (
+  data: unknown,
+  key: string,
   cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching Steam app details.')
   }
-  if (!appId) {
-    throw new Error('An AppID is required to cache Steam app details.')
+  if (!key) {
+    throw new Error('A lookup key is required to cache Steam data.')
   }
-
-  const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
+  const redisKey = `steam_app_details:${escapeRedisKey(key)}`
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached Steam app details for ${cacheTime} seconds with key ${redisKey}`)
 }
 
 /**
- * Retrieves a cached object of Steam details for a given App ID.
+ * Retrieves a cached object of Steam details.
  */
-export const redisLookupSteamAppDetails = async (appId: string): Promise<SteamStoreAppDetails | null> => {
-  if (!appId) {
-    throw new Error('An AppID is required to lookup Steam app details.')
+export const redisLookupSteamStoreDetails = async (key: string): Promise<unknown | null> => {
+  if (!key) {
+    throw new Error('A lookup key is required to lookup Steam data.')
   }
-
-  const redisKey = `steam_app_details:${escapeRedisKey(appId)}`
+  const redisKey = `steam_app_details:${escapeRedisKey(key)}`
   try {
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved Steam app details for "${appId}" from Redis cache`)
-      return JSON.parse(cachedData) as SteamStoreAppDetails
+      logger.info(`Retrieved Steam app details for "${key}" from Redis cache`)
+      return JSON.parse(cachedData)
     }
   } catch (error) {
     logger.error('Redis error while fetching cached Steam app details:', error)
@@ -854,6 +852,82 @@ export const redisLookupSDGReview = async (appId: string): Promise<SDGVideoRevie
     }
   } catch (error) {
     logger.error('Redis error while fetching cached SDG review:', error)
+  }
+  return null
+}
+
+/**
+ * Persists arbitrary IsThereAnyDeal payloads in Redis under a namespaced key for a configurable TTL.
+ */
+export const redisCacheIsThereAnyDealResponse = async (
+  data: unknown,
+  key: string,
+  cacheTime: number = 60 * 60 * 6,
+): Promise<void> => {
+  if (!key) {
+    throw new Error('A lookup key is required to cache IsThereAnyDeal data.')
+  }
+
+  const redisKey = `itad:${escapeRedisKey(key)}`
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached IsThereAnyDeal response for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Retrieves a cached IsThereAnyDeal payload by lookup key, returning null when the entry is missing or on errors.
+ */
+export const redisLookupIsThereAnyDealResponse = async (key: string): Promise<unknown | null> => {
+  if (!key) {
+    throw new Error('A lookup key is required to lookup IsThereAnyDeal data.')
+  }
+
+  const redisKey = `itad:${escapeRedisKey(key)}`
+  try {
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved IsThereAnyDeal response for "${key}" from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached IsThereAnyDeal response:', error)
+  }
+  return null
+}
+
+/**
+ * Stores a ProtonDB summary snapshot for a Steam app ID in Redis with a default 24 hour expiration.
+ */
+export const redisCacheProtonDbSummary = async (
+  data: unknown,
+  appId: string,
+  cacheTime: number = 60 * 60 * 24,
+): Promise<void> => {
+  if (!appId) {
+    throw new Error('An AppID is required to cache ProtonDB summary.')
+  }
+
+  const redisKey = `protondb_summary:${escapeRedisKey(appId)}`
+  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
+  logger.info(`Cached ProtonDB summary for ${cacheTime} seconds with key ${redisKey}`)
+}
+
+/**
+ * Fetches a cached ProtonDB summary for the supplied app ID, returning null if no cache entry exists.
+ */
+export const redisLookupProtonDbSummary = async (appId: string): Promise<unknown | null> => {
+  if (!appId) {
+    throw new Error('An AppID is required to lookup ProtonDB summary.')
+  }
+
+  const redisKey = `protondb_summary:${escapeRedisKey(appId)}`
+  try {
+    const cachedData = await redisClient.get(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved ProtonDB summary for "${appId}" from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached ProtonDB summary:', error)
   }
   return null
 }

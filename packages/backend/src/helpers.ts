@@ -6,28 +6,24 @@ import {
   GameReportData,
   GitHubReportIssueBodySchema,
   YouTubeOEmbedMetadata,
-  SteamGame,
-  SteamStoreAppDetails,
-  SteamSuggestApp,
-  SDHQReview,
   ExternalGameReview,
   ExternalGameReviewReportData,
-  SDGVideoReview, BloggerReportSummary, GameDetails,
+  SDGVideoReview,
+  BloggerReportSummary,
+  GameDetails,
+  GameRatingsSummary,
 } from '../../shared/src/game'
 import {
-  storeGameInRedis,
-  redisCacheSDHQReview,
-  redisLookupSDHQReview,
-  redisCacheSteamAppDetails,
-  redisLookupSteamAppDetails,
-  redisCacheSteamSearchSuggestions,
-  redisLookupSteamSearchSuggestions,
   redisLookupSDGReview,
-  redisCacheSDGReview, redisLookupReportsSummaryBlog, redisCacheReportsSummaryBlog, acquireRedisLock,
+  redisCacheSDGReview,
+  redisLookupReportsSummaryBlog,
+  redisCacheReportsSummaryBlog,
+  acquireRedisLock,
 } from './redis'
-import { fetchHardwareInfo } from './github'
 import NodeCache from 'node-cache'
 import config from './config'
+import { fetchSteamDeckCompatibility, mapSteamDeckCompatibility } from './external/steam'
+import { fetchProtonDbSummary, mapProtonDbSummary } from './external/protondb'
 
 /**
  * Generates a cryptographically secure random state parameter for OAuth flows.
@@ -136,7 +132,7 @@ export const extractHeadingValue = async (
  *    > - **Frame rate limit:** 45
  *
  */
-const parseGameSettingsToMarkdown = (htmlString: string): string => {
+export const parseGameSettingsToMarkdown = (htmlString: string): string => {
   let parsedMarkdown = htmlString
   // Convert <strong>...</strong> to #### ...
   parsedMarkdown = parsedMarkdown.replace(/<strong>(.*?)<\/strong>/gi, '#### $1')
@@ -198,7 +194,7 @@ const parseGameSettingsToMarkdown = (htmlString: string): string => {
  * Battery life in minutes is calculated as:
  * (Battery Size in Wh / Average Power Draw in W) * 60.
  */
-const calculatedBatteryLife = async (deviceInfo: HardwareInfo, averagePowerDraw: number): Promise<number> => {
+export const calculatedBatteryLife = async (deviceInfo: HardwareInfo, averagePowerDraw: number): Promise<number> => {
   // Battery life in minutes = (Battery Size in Wh / Average Power Draw in W) * 60
   return Math.round((deviceInfo.battery_size_wh / averagePowerDraw) * 60)
 }
@@ -206,7 +202,7 @@ const calculatedBatteryLife = async (deviceInfo: HardwareInfo, averagePowerDraw:
 /**
  * Converts a string into a numeric hash using a simple algorithm.
  */
-const numberValueFromString = (str: string): number => {
+export const numberValueFromString = (str: string): number => {
   let num = 0
   for (let i = 0; i < str.length; i++) {
     num = num * 31 + str.charCodeAt(i)
@@ -217,7 +213,7 @@ const numberValueFromString = (str: string): number => {
 /**
  * Converts a numeric rating (out of 5) into a string of star icons.
  */
-const convertRatingToStars = (rating: number): string => {
+export const convertRatingToStars = (rating: number): string => {
   const maxStars = 5
   const filledStars = '★'.repeat(rating)
   const emptyStars = '☆'.repeat(maxStars - rating)
@@ -227,7 +223,7 @@ const convertRatingToStars = (rating: number): string => {
 /**
  * Extract unique YouTube video IDs from HTML content.
  */
-const extractYouTubeVideoIds = (html?: string | null): string[] => {
+export const extractYouTubeVideoIds = (html?: string | null): string[] => {
   if (!html) {
     return []
   }
@@ -270,7 +266,7 @@ const extractYouTubeVideoIds = (html?: string | null): string[] => {
 /**
  * Extracts the first numeric value found in a string.
  */
-const extractNumbersFromString = (numberString: string | undefined): number | null => {
+export const extractNumbersFromString = (numberString: string | undefined): number | null => {
   if (!numberString) return null
   const match = numberString.match(/[\d.]+/)
   return match ? parseFloat(match[0]) : null
@@ -280,7 +276,7 @@ const extractNumbersFromString = (numberString: string | undefined): number | nu
  * Converts a wattage string to a numeric string representation.
  * Uses extractNumbersFromString to extract the numeric value.
  */
-const convertWattageToNumber = (wattage: string | undefined): string => {
+export const convertWattageToNumber = (wattage: string | undefined): string => {
   if (!wattage) return 'Unknown'
   const extracted = extractNumbersFromString(wattage)
   return extracted ? String(extracted) : 'Unknown'
@@ -302,11 +298,57 @@ export const isValidNumber = (value: unknown): value is number => {
  * If the string exceeds 100 characters, it is truncated to 97 characters and "..." is appended,
  * ensuring the final string length is exactly 100 characters.
  */
-function limitStringTo100Characters(input: string): string {
+export const limitStringTo100Characters = (input: string): string => {
   if (input.length <= 100) {
     return input
   }
   return input.substring(0, 97) + '...'
+}
+
+/**
+ * Attempts to coerce various input formats (numbers, raw strings, "app/123", etc.) into a numeric Steam app ID.
+ * Returns null when the value cannot be parsed into a finite number.
+ */
+export const parseAppIdNumber = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined) {
+    return null
+  }
+  const stringValue = typeof value === 'number' ? value.toString() : value
+  if (!stringValue) {
+    return null
+  }
+  const numericPart = stringValue.includes('/') ? stringValue.split('/')[1] : stringValue
+  const parsed = Number(numericPart)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * Normalizes common date representations into an ISO-8601 string, handling ISO-like strings and epoch values in
+ * seconds or milliseconds. Returns null when the input cannot be interpreted as a valid timestamp.
+ */
+export const toIsoDateString = (value: unknown): string | null => {
+  if (!value && value !== 0) {
+    return null
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return null
+    }
+    const parsed = new Date(trimmed)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString()
+    }
+    return trimmed
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const epochMs = value > 1e12 ? value : value * 1000
+    const parsed = new Date(epochMs)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString()
+    }
+  }
+  return null
 }
 
 /**
@@ -469,274 +511,44 @@ const generateYoutubeNumericId = (videoURL: string): number => {
 }
 
 /**
- * Fetches detailed information for a game from the Steam API by its App ID.
- *
- * @param {string} appId - The Steam App ID of the game to fetch.
- * @returns {Promise<Object>} - Object containing the game's data or null if not found.
- * @throws {Error} - Throws if there is an error during the API call.
+ * Aggregates ProtonDB and Steam Deck compatibility data into a single snapshot for UI consumption.
+ * Returns null when no identifiers are supplied or when neither source yields usable data.
  */
-export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamStoreAppDetails | Record<string, never>> => {
-  const cachedData = await redisLookupSteamAppDetails(appId)
-  if (cachedData) {
-    return cachedData
+export const generateGameRatingsSummary = async (
+  appId: string,
+  gameName?: string | null,
+): Promise<GameRatingsSummary | null> => {
+  const normalizedAppId = appId?.toString().trim()
+  if (!normalizedAppId) {
+    logger.warn('generateGameRatingsSummary called without appId.')
+    return null
   }
 
-  const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`
-  try {
-    logger.info(`Fetching game data for appId ${appId} from Steam API...`)
-    const response = await fetch(url)
+  const [protonSummaryRaw, steamCompatibilitySummaryRaw] = await Promise.all([
+    fetchProtonDbSummary(normalizedAppId),
+    fetchSteamDeckCompatibility(normalizedAppId),
+  ])
 
-    // Check if response is ok (status 200)
-    if (!response.ok) {
-      const errorBody = await response.text()
-      logger.error(`Steam app details API request failed with status ${response.status}: ${errorBody}`)
-      await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
-      return {}
+  const protonSummary = mapProtonDbSummary(protonSummaryRaw)
+  const steamDeckCompatibilitySummary = mapSteamDeckCompatibility(steamCompatibilitySummaryRaw)
+
+  if (!protonSummary && !steamDeckCompatibilitySummary) {
+    return {
+      appId: parseAppIdNumber(normalizedAppId),
+      gameName: (steamCompatibilitySummaryRaw as any)?.name || gameName || null,
+      lastChecked: new Date().toISOString(),
+      protonDb: null,
+      steamDeckCompatibility: null,
     }
-
-    const data = await response.json()
-
-    if (data && data[appId]?.success) {
-      const appDetails: SteamStoreAppDetails = data[appId].data
-
-      // Cache results, then return them
-      await redisCacheSteamAppDetails(appDetails, appId)
-
-      // Also cache in search results
-      if (appDetails.name) {
-        const gameImages = await generateImageLinksFromAppId(appId)
-        await storeGameInRedis({
-          gameName: appDetails.name,
-          appId: String(appId),
-          banner: gameImages.banner || null,
-          poster: gameImages.poster || null,
-        })
-      }
-
-      return appDetails
-    } else {
-      logger.warn(`No game data found for appId ${appId}`)
-      await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
-      return {}
-    }
-  } catch (error) {
-    logger.error(`Failed to fetch game data for appId ${appId}:`, error)
   }
 
-  await redisCacheSteamAppDetails({}, appId, 3600) // Cache error response for 1 hour
-  return {}
-}
-
-
-/**
- * Fetches a list of game suggestions from Steam based on a search term.
- * If cached results are available, they are returned immediately. Otherwise,
- * results are fetched from the Steam API and cached in Redis.
- */
-export const fetchSteamGameSuggestions = async (
-  searchTerm: string,
-): Promise<{ suggestions: SteamGame[]; fromCache: boolean }> => {
-  const encodedSearchTerm = encodeURIComponent(searchTerm)
-  const cachedData = await redisLookupSteamSearchSuggestions(encodedSearchTerm)
-
-  if (cachedData) {
-    logger.info(`Using cached results for Steam suggest API with search term: '${searchTerm}'`)
-    return { suggestions: cachedData as SteamGame[], fromCache: true }
+  return {
+    appId: parseAppIdNumber(normalizedAppId) ?? parseAppIdNumber((steamCompatibilitySummaryRaw as any)?.steam_appid),
+    gameName: (steamCompatibilitySummaryRaw as any)?.name || gameName || null,
+    lastChecked: new Date().toISOString(),
+    protonDb: protonSummary,
+    steamDeckCompatibility: steamDeckCompatibilitySummary,
   }
-
-  const url = `https://store.steampowered.com/search/suggest?f=json&cc=US&use_store_query=1&category1=998&ndl=1&term=${encodedSearchTerm}`
-
-  try {
-    logger.info(`Fetching game suggestions for "${searchTerm}" from Steam API...`)
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      const errorBody = await response.text()
-      logger.error(`Steam suggest API request failed with status ${response.status}: ${errorBody}`)
-      await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
-      return { suggestions: [], fromCache: false }
-    }
-
-    const data = await response.json()
-
-    if (!Array.isArray(data)) {
-      logger.error(`Unexpected response format for "${searchTerm}":`, data)
-      await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
-      return { suggestions: [], fromCache: false }
-    }
-
-    const games: SteamGame[] = data
-      .filter((item: SteamSuggestApp) => item.type === 'game')
-      .map((item: SteamSuggestApp) => ({
-        appId: item.id,
-        name: item.name,
-      }))
-
-    await redisCacheSteamSearchSuggestions(games, encodedSearchTerm)
-    return { suggestions: games, fromCache: false }
-  } catch (error) {
-    logger.error('Error fetching Steam game suggestions:', error)
-    await redisCacheSteamSearchSuggestions([], encodedSearchTerm, 3600) // Cache error response for 1 hour
-    return { suggestions: [], fromCache: false }
-  }
-}
-
-/**
- * Fetches SDHQ review data for the given App ID.
- */
-export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
-  const cachedData = await redisLookupSDHQReview(appId)
-  if (cachedData) {
-    return cachedData
-  }
-
-  const url = `https://steamdeckhq.com/wp-json/wp/v2/game-reviews/?meta_key=steam_app_id&meta_value=${appId}`
-  try {
-    logger.info(`Fetching SDHQ review data for appId ${appId} from SDHQ API...`)
-    const response = await fetch(url)
-
-    // Check if response is ok (status 200)
-    if (!response.ok) {
-      const errorBody = await response.text()
-      logger.error(`SDHQ game review PI request failed with status ${response.status}: ${errorBody}`)
-      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
-      return []
-    }
-
-    const data: SDHQReview[] = await response.json()
-
-    if (data.length > 0) {
-
-      // Cache results, then return them
-      await redisCacheSDHQReview(data, appId)
-
-      return data
-    } else {
-      logger.warn(`No SDHQ game data found for appId ${appId}`)
-      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
-      return []
-    }
-  } catch (error) {
-    logger.error(`Failed to fetch SDHQ game data for appId ${appId}:`, error)
-  }
-
-  await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
-  return []
-}
-
-/**
- * Generates ExternalGameReview data based on SDHQ review data.
- *
- * It processes each review to generate a standardized ExternalGameReview object,
- * enriching the data with additional computed values and formatting, such as summary,
- * device assumptions, and additional notes. The goal here is to fill in the gaps.
- */
-export const generateSDHQReviewData = async (appId: string): Promise<ExternalGameReview[]> => {
-  const rawReviews: SDHQReview[] = await fetchSDHQReview(appId)
-  return await Promise.all(
-    rawReviews.map(async review => {
-      // Use optional chaining and fallback to null if sections are missing.
-      const optimizedSettings = review.acf?.optimized_and_recommended_settings || null
-      const steamos = optimizedSettings?.steamos_settings || null
-      const ratingCategories = review.acf?.sdhq_rating_categories || null
-
-      // Build additional notes line by line.
-      let additionalNotes: string = ''
-      let performanceRating = 'Unrated'
-      if (ratingCategories) {
-        const notes: string[] = []
-        if (ratingCategories.performance !== undefined) {
-          performanceRating = `${convertRatingToStars(ratingCategories.performance)} (${ratingCategories.performance}/5)`
-          notes.push(`- **Performance:** ${performanceRating})`)
-        }
-        if (ratingCategories.visuals !== undefined) {
-          notes.push(`- **Visuals:** ${convertRatingToStars(ratingCategories.visuals)} (${ratingCategories.visuals}/5)`)
-        }
-        if (ratingCategories.stability !== undefined) {
-          notes.push(`- **Stability:** ${convertRatingToStars(ratingCategories.stability)} (${ratingCategories.stability}/5)`)
-        }
-        if (ratingCategories.controls !== undefined) {
-          notes.push(`- **Controls:** ${convertRatingToStars(ratingCategories.controls)} (${ratingCategories.controls}/5)`)
-        }
-        if (ratingCategories.battery !== undefined) {
-          notes.push(`- **Battery:** ${convertRatingToStars(ratingCategories.battery)} (${ratingCategories.battery}/5)`)
-        }
-
-        additionalNotes = '#### SDHQ\'s Build Score Breakdown\n'
-        if (ratingCategories.score_breakdown) {
-          additionalNotes += `\n\n${ratingCategories.score_breakdown}\n`
-        }
-        if (notes.length > 0) {
-          additionalNotes += notes.join('\n')
-        }
-      }
-
-      const youtubeVideoIds = extractYouTubeVideoIds(review.content?.rendered)
-      if (youtubeVideoIds.length > 0) {
-        const youtubeSection = `\n${youtubeVideoIds
-          .map(id => `https://youtu.be/${id}`)
-          .join('\n')}`
-        additionalNotes = additionalNotes
-          ? `${additionalNotes}\n\n${youtubeSection}`
-          : youtubeSection
-      }
-
-      const summary = limitStringTo100Characters(
-        review.excerpt.rendered
-          ? review.excerpt.rendered.replace(/<[^>]+>/g, '')
-          : review.title.rendered,
-      )
-      const assumedDevice = 'Steam Deck LCD (256GB/512GB)'
-      const averagePowerDraw = convertWattageToNumber(optimizedSettings?.projected_battery_usage_and_temperature?.wattage)
-      const hardwareInfo = await fetchHardwareInfo()
-      const matchedDevice = hardwareInfo.find(
-        (device) => device.name === assumedDevice,
-      )
-      const calcBatteryLifeMinutes = matchedDevice ? await calculatedBatteryLife(matchedDevice, Number(averagePowerDraw)) : null
-      const gameDisplaySettings = optimizedSettings?.game_settings ? parseGameSettingsToMarkdown(optimizedSettings.game_settings) : ''
-
-      // Build the report data. If any field is missing, assign null.
-      const reportData: ExternalGameReviewReportData = {
-        summary: summary,
-        game_name: review.title.rendered,
-        app_id: Number(appId),
-        average_battery_power_draw: averagePowerDraw,
-        calculated_battery_life_minutes: calcBatteryLifeMinutes,
-        device: assumedDevice,
-        steam_play_compatibility_tool_used: 'Glorious Eggroll Proton (GE)',
-        compatibility_tool_version: optimizedSettings?.proton_version || 'default',
-        game_resolution: 'Default',
-        custom_launch_options: null,
-        frame_limit: extractNumbersFromString(steamos?.fps_cap),
-        disable_frame_limit: 'Off',
-        enable_vrr: 'Off',
-        allow_tearing: 'Off',
-        half_rate_shading: steamos?.half_rate_shading ? 'On' : 'Off',
-        tdp_limit: extractNumbersFromString(steamos?.tdp_limit),
-        manual_gpu_clock: extractNumbersFromString(steamos?.gpu_clock_frequency),
-        scaling_mode: 'Auto',
-        scaling_filter: steamos?.scaling_filter || 'Linear',
-        game_display_settings: gameDisplaySettings,
-        game_graphics_settings: '',
-        additional_notes: additionalNotes,
-        performance_rating: performanceRating,
-      }
-
-      return {
-        id: numberValueFromString('SDHQ') + Number(review.id),
-        title: review.title.rendered || '',
-        html_url: review.link,
-        data: reportData,
-        source: {
-          name: 'SDHQ',
-          avatar_url: 'https://steamdeckhq.com/wp-content/uploads/2022/06/sdhq-holographic-logo.svg',
-          report_count: rawReviews.length,
-        },
-        created_at: review.date || '',
-        updated_at: review.modified || '',
-      }
-    }),
-  )
 }
 
 /**
