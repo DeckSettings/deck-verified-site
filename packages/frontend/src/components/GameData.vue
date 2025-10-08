@@ -9,6 +9,7 @@ import {
   simPcgamingwiki,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
 import { useGameStore } from 'src/stores/game-store'
+import { useGameMarketStore } from 'src/stores/game-market-store'
 import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import type {
   GameReport,
@@ -16,6 +17,7 @@ import type {
   GitHubIssueLabel,
   GameReportData,
   ExternalGameReview,
+  GameRatingsSummary,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
@@ -25,6 +27,7 @@ import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import { useMeta } from 'quasar'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import ProtonBadge from 'components/elements/ProtonBadge.vue'
 import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 
 dayjs.extend(relativeTime)
@@ -38,6 +41,7 @@ interface ExtendedGameReport extends Omit<GameReport, 'data'> {
 const isClient = typeof window !== 'undefined'
 const route = useRoute()
 const gameStore = useGameStore()
+const marketStore = useGameMarketStore()
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
@@ -170,6 +174,25 @@ function isExpanded(id: number) {
 function setExpanded(id: number, val: boolean) {
   expanded.value[id] = val
 }
+
+const ratingsSummary = ref<GameRatingsSummary | null>(null)
+const protonTier = computed<string | null>(() => {
+  const tier = ratingsSummary.value?.protonDb?.tier
+  return tier ? String(tier).trim().toLowerCase() : null
+})
+watch([appId], async ([newAppId]) => {
+  if (!newAppId) {
+    ratingsSummary.value = null
+    return
+  }
+
+  try {
+    const result = await marketStore.loadRatingsSummary({ appId: newAppId })
+    ratingsSummary.value = result ?? null
+  } catch {
+    ratingsSummary.value = null
+  }
+}, { immediate: true })
 
 /** SSR-stable, pure computed reports pipeline */
 const filteredReports = computed<ExtendedGameReport[]>(() => {
@@ -429,24 +452,32 @@ watch(reportFormDialogOpen, (open) => {
       </div>
       <div class="col-xs-12 col-md-4 text-center q-pa-md-sm q-pa-xs-none self-start game-links">
         <div class="game-image-container row justify-center">
-          <q-skeleton v-if="isLoading" class="game-banner" height="200px" width="100%" />
-          <q-img
-            v-else-if="gameBanner"
-            class="game-banner"
-            :src="gameBanner"
-            alt="Game Image">
-            <template v-slot:error>
-              <img
+          <div style="position: relative; width: 100%;">
+            <q-skeleton v-if="isLoading" class="game-banner" height="200px" width="100%" />
+            <template v-else>
+              <q-img
+                v-if="gameBanner"
+                class="game-banner"
+                :src="gameBanner"
+                alt="Game Image">
+                <template v-slot:error>
+                  <img
+                    src="~/assets/banner-placeholder.png"
+                    alt="Placeholder" />
+                </template>
+              </q-img>
+              <q-img
+                v-else
+                class="game-banner"
                 src="~/assets/banner-placeholder.png"
-                alt="Placeholder" />
+                alt="Game Image" />
             </template>
-          </q-img>
-          <q-img
-            v-else
-            class="game-banner"
-            src="~/assets/banner-placeholder.png"
-            alt="Game Image">
-          </q-img>
+
+            <!-- ProtonDB badge (top-left) -->
+            <div v-if="protonTier" class="absolute column q-gutter-xs" style="top:0; left:0;">
+              <ProtonBadge :tier="protonTier" />
+            </div>
+          </div>
         </div>
         <h1 v-if="$q.platform.is.mobile" class="text-h5 game-title">
           <q-skeleton v-if="isLoading" type="text" width="200px" class="q-mx-auto" />
