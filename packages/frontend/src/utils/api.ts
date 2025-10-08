@@ -15,6 +15,8 @@ import type {
   GameDetailsRequestMetricResult,
   GamePriceSummary,
   GameRatingsSummary,
+  UserGameReport,
+  GithubIssuesSearchResultItems,
 } from '../../../shared/src/game'
 
 export type { FetchServiceResponse } from 'src/utils/api/types'
@@ -31,6 +33,8 @@ export type {
   GameDetailsRequestMetricResult,
   GamePriceSummary,
   GameRatingsSummary,
+  UserGameReport,
+  GithubIssuesSearchResultItems,
 }
 
 interface MarketQueryParams {
@@ -40,6 +44,8 @@ interface MarketQueryParams {
 
 export interface HomeReport {
   id: number | null;
+  // Optional full GitHub issue object for user reports (undefined for community reports)
+  issue?: GithubIssuesSearchResultItems | undefined;
   data: GameReportData;
   metadata: GameMetadata;
   reactions: GameReportReactions;
@@ -103,6 +109,8 @@ const buildHomeReport = (report: GameReport): HomeReport => {
     reactions: report.reactions,
     user: report.user,
     reviewScore,
+    // Community/popular reports don't include a full GitHub issue object; leave undefined.
+    issue: undefined,
   }
 }
 
@@ -437,5 +445,37 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
   } catch (error) {
     console.error('Error fetching project data:', error)
     return []
+  }
+}
+
+/**
+ * Fetch all reports for the authenticated user.
+ *
+ * @param githubToken - The user's GitHub access token.
+ * @param dvToken - The user's Deck Verified authentication token.
+ * @returns An array of `UserGameReport` objects or `null` on error.
+ */
+export const getUserReports = async (githubToken: string, dvToken: string): Promise<UserGameReport[] | null> => {
+  const url = apiUrl('/deck-verified/api/user/reports')
+  try {
+    const response = await fetchService(url, {
+      headers: {
+        'X-GitHub-Token': githubToken,
+        'Authorization': `Bearer ${dvToken}`,
+      },
+    })
+    if (response.status === 204) {
+      return []
+    }
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch user reports: ${response.status} - ${errorBody}`)
+      return null
+    }
+    const data = await response.json() as UserGameReport[]
+    return data
+  } catch (error) {
+    console.error('Error fetching user reports:', error)
+    return null
   }
 }

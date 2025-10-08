@@ -143,6 +143,15 @@ defineExpose({
 
               <q-separator dark spaced />
 
+              <q-list dark>
+                <q-item clickable v-ripple :to="{ name: 'user-reports' }">
+                  <q-item-section avatar>
+                    <q-icon square color="primary" text-color="white" name="description" />
+                  </q-item-section>
+                  <q-item-section>My Reports</q-item-section>
+                </q-item>
+              </q-list>
+
               <NotificationCenter />
 
               <q-separator dark spaced />
@@ -217,7 +226,24 @@ defineExpose({
 
           <q-scroll-area class="header-user-menu__dialog-scroll">
             <div class="header-user-menu__dialog-content column q-pa-md q-gutter-lg">
-              <NotificationCenter v-if="isLoggedIn" />
+              <template v-if="isLoggedIn">
+                <q-list dark>
+                  <q-item clickable v-ripple :to="{ name: 'user-reports' }">
+                    <q-item-section avatar>
+                      <q-avatar square color="primary" text-color="white" icon="description" />
+                    </q-item-section>
+                    <q-item-section>My Reports</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+
+                <q-separator dark />
+
+                <NotificationCenter />
+              </template>
+
 
               <div v-else class="column q-gutter-sm">
                 <p class="text-body2 text-grey-4">

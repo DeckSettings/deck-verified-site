@@ -3,12 +3,18 @@ import DeviceImage from 'components/elements/DeviceImage.vue'
 import type { HomeReport } from 'src/utils/api'
 import type { PropType } from 'vue'
 
-defineProps({
+const props = defineProps({
   reportsList: {
     type: Array as PropType<HomeReport[]>,
     required: true,
   },
+  editMode: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+const emit = defineEmits(['edit-report'])
 
 const getReviewScoreIcon = (reviewScore: string) => {
   switch (reviewScore) {
@@ -62,11 +68,50 @@ const getReviewScoreTooltip = (reviewScore: string) => {
   }
 }
 
+/**
+ * Issue visibility helpers
+ */
+const getIssueVisibilityIcon = (issue?: { state?: string } | undefined) => {
+  const open = issue?.state === 'open'
+  return open ? 'visibility' : 'visibility_off'
+}
+const getIssueVisibilityColor = (issue?: { state?: string } | undefined) => {
+  const open = issue?.state === 'open'
+  return open ? 'positive' : 'negative'
+}
+const getIssueVisibilityTooltip = (issue?: { state?: string } | undefined) => {
+  const open = issue?.state === 'open'
+  return open
+    ? 'Open issue — visible in public reports'
+    : 'Closed issue — this report is closed and not visible to the public'
+}
+
+/**
+ * Filter labels that should be shown as chips in the user reports list
+ * (only labels that start with the configured prefixes).
+ */
+const getFilteredLabels = (report: HomeReport) => {
+  const prefixes = ['invalid:', 'note:', 'community:']
+  const labels = report.issue?.labels
+  if (!labels || !Array.isArray(labels)) return []
+  return labels.filter(l => {
+    const name = (l.name || '').toLowerCase()
+    return prefixes.some(p => name.startsWith(p))
+  })
+}
+
 const getReportUrl = (report: HomeReport) => {
+  if (props.editMode) return ''
   const base = report.data.app_id
     ? `/app/${report.data.app_id}`
     : `/game/${encodeURIComponent(report.data.game_name)}`
   return report.id ? `${base}?expandedId=${report.id}` : base
+}
+
+const editReport = (report: HomeReport) => {
+  if (report.issue?.number) {
+    emit('edit-report', report.issue.number)
+  }
 }
 </script>
 
@@ -78,8 +123,8 @@ const getReportUrl = (report: HomeReport) => {
         :key="report.id ?? report.data.app_id ?? report.data.game_name"
         class="report-item"
         :class="{ 'q-pl-md': $q.platform.is.mobile }"
-        v-ripple
-        clickable
+        :v-ripple="!editMode"
+        :clickable="!editMode"
         :to="getReportUrl(report)"
       >
         <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
@@ -220,15 +265,54 @@ const getReportUrl = (report: HomeReport) => {
         </q-item-section>
 
         <q-item-section side top class="gt-xs">
-          <q-chip
-            size="sm"
-            color="brown"
-            text-color="white">
-            <q-avatar color="red" text-color="white">
-              <img :src="report.user.avatar_url">
-            </q-avatar>
-            {{ report.user.login }}
-          </q-chip>
+          <template v-if="!editMode">
+            <!-- User chip -->
+            <q-chip
+              size="sm"
+              color="brown"
+              text-color="white">
+              <q-avatar color="red" text-color="white">
+                <img :src="report.user.avatar_url">
+              </q-avatar>
+              {{ report.user.login }}
+            </q-chip>
+          </template>
+
+          <template v-if="editMode">
+            <!-- Issue visibility chip -->
+            <q-chip
+              v-if="editMode"
+              size="sm"
+              class="q-ml-sm"
+              :color="getIssueVisibilityColor(report.issue)"
+              text-color="white"
+            >
+              <q-avatar
+                :icon="getIssueVisibilityIcon(report.issue)"
+                :color="getIssueVisibilityColor(report.issue)"
+                text-color="white"
+              />
+              <span v-if="report.issue?.state">{{ report.issue?.state === 'open' ? 'Visible' : 'Closed' }}</span>
+              <q-tooltip v-if="report.issue?.state" anchor="center left" self="center right" :offset="[10, 10]">
+                {{ getIssueVisibilityTooltip(report.issue) }}
+              </q-tooltip>
+            </q-chip>
+
+            <!-- Label chips (filtered prefixes) -->
+            <q-chip
+              v-for="label in getFilteredLabels(report)" :key="label.id"
+              size="sm"
+              class="q-ml-sm"
+              :style="{ 'background-color': `#${label.color}`, color: 'black' }"
+            >
+              {{ label.name }}
+              <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
+                {{ label.description || '' }}
+              </q-tooltip>
+            </q-chip>
+          </template>
+
+          <!--Review score chip -->
           <q-chip
             v-if="report.reviewScore === 'positive'"
             size="sm"
@@ -241,6 +325,40 @@ const getReportUrl = (report: HomeReport) => {
               {{ getReviewScoreTooltip(report.reviewScore) }}
             </q-tooltip>
           </q-chip>
+        </q-item-section>
+
+        <q-item-section v-if="editMode" side top>
+          <q-btn-dropdown
+            flat dense rounded
+            color="secondary"
+            dropdown-icon="more_vert"
+            :content-style="{
+              minWidth: '100px',
+              backgroundColor: 'color-mix(in srgb, var(--q-dark) 95%, transparent)',
+              border: '1px solid rgba(255, 255, 255, 0.5)',
+              borderRadius: '0px 0px 3px 3px',
+              boxShadow: '2px 2px 10px rgba(0, 0, 0, 0.9)',
+            }"
+          >
+            <q-list>
+              <q-item clickable v-close-popup @click="editReport(report)">
+                <q-item-section avatar>
+                  <q-avatar icon="edit" color="primary" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Edit</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup :href="report.issue?.html_url" target="_blank" rel="noopener">
+                <q-item-section avatar>
+                  <q-avatar icon="fab fa-github" color="primary" text-color="white" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>View Source</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
         </q-item-section>
       </q-item>
 

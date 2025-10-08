@@ -24,7 +24,8 @@ import {
 import {
   fetchIssueLabels, fetchPopularReports,
   fetchProjectsByAppIdOrGameName, fetchRecentReports,
-  fetchGameReportTemplate, fetchHardwareInfo, fetchReportBodySchema,
+  fetchGameReportTemplate, fetchHardwareInfo,
+  fetchReportBodySchema, fetchReports,
 } from './github'
 import {
   fetchJosh5Avatar,
@@ -41,6 +42,7 @@ import type {
   GameReportForm,
   GameSearchResult,
   GameSearchCache,
+  UserGameReport,
 } from '../../shared/src/game'
 import dvAuth from './middleware/dvAuth'
 import {
@@ -56,6 +58,7 @@ import { initScheduledTasks } from './jobs/scheduler'
 import { generateIsThereAnyDealPriceSummary } from './external/itad'
 import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './external/steam'
 import { generateSDHQReviewData } from './external/sdhq'
+import { parseReportBody } from './helpers'
 
 const delay = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms)
@@ -469,6 +472,107 @@ app.delete('/deck-verified/api/dv/notifications/:id', dvAuth, async (req: Reques
   } catch (error) {
     logger.error('Failed to remove notification', error)
     res.status(500).json({ error: 'notification_remove_failed' } as any)
+  }
+})
+
+app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Response) => {
+  const identity = res.locals.dvIdentity
+  if (!identity) {
+    res.status(401).json({ error: 'missing_identity' })
+    return
+  }
+
+  const githubToken = typeof req.headers['x-github-token'] === 'string' ? req.headers['x-github-token'] : null
+  if (!githubToken) {
+    res.status(400).json({ error: 'missing_github_token' })
+    return
+  }
+
+  try {
+    const reports = await fetchReports(
+      undefined,
+      null,
+      identity.login,
+      'updated',
+      'desc',
+      null,
+      false,
+      githubToken,
+    )
+
+    if (!reports) {
+      res.status(204).json([])
+      return
+    }
+
+    const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
+
+    const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
+      m.banner == null ||
+      m.poster == null ||
+      m.hero == null ||
+      m.background == null
+
+    const userReports: UserGameReport[] = await Promise.all(
+      reports.items.map(async (issue) => {
+        const parsedReport = await parseReportBody(issue.body, schema, hardwareInfo)
+        let metadata: Partial<GameMetadata> = {
+          banner: null,
+          poster: null,
+          hero: null,
+          background: null,
+        }
+        if (parsedReport.game_name) {
+          const games = await searchGamesInRedis(null, null, parsedReport.game_name)
+          if (games.length > 0) {
+            const redisResult = games[0]
+            metadata = {
+              banner: metadata.banner ?? redisResult.banner,
+              poster: metadata.poster ?? redisResult.poster,
+              hero: metadata.hero,
+              background: metadata.background,
+            }
+          }
+        }
+        if (parsedReport.app_id) {
+          if (hasMissingMetadata(metadata)) {
+            const games = await searchGamesInRedis(null, parsedReport.app_id.toString(), null)
+            if (games.length > 0) {
+              const redisResult = games[0]
+              metadata = {
+                banner: metadata.banner ?? redisResult.banner,
+                poster: metadata.poster ?? redisResult.poster,
+                hero: metadata.hero,
+                background: metadata.background,
+              }
+            }
+          }
+          // Generate metadata from AppId links as a fallback if still missing
+          if (hasMissingMetadata(metadata)) {
+            const fallbackImages = await generateImageLinksFromAppId(String(parsedReport.app_id))
+            metadata = {
+              banner: metadata.banner ?? fallbackImages.banner,
+              poster: metadata.poster ?? fallbackImages.poster,
+              hero: metadata.hero ?? fallbackImages.hero,
+              background: metadata.background ?? fallbackImages.background,
+            }
+          }
+        }
+
+        return {
+          issue,
+          parsedReport,
+          issueNumber: issue.number,
+          issueId: issue.id,
+          metadata: metadata as GameMetadata,
+        }
+      }),
+    )
+
+    res.json(userReports)
+  } catch (error) {
+    logger.error('Failed to fetch user reports', error)
+    res.status(500).json({ error: 'failed_to_fetch_user_reports' })
   }
 })
 

@@ -137,11 +137,11 @@ useMeta(() => {
                         :maximized="$q.screen.lt.md"
                         v-model="reportFormDialogOpen"
                         @hide="closeDialog">
-                <ReportForm :gameName="''"
-                            :appId="''"
-                            :gameBanner="''"
-                            :gameBackground="''"
-                            :previousSubmission="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
+                <ReportForm :game-name="''"
+                            :app-id="''"
+                            :game-banner="''"
+                            :game-background="''"
+                            :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
               </q-dialog>
             </div>
           </div>

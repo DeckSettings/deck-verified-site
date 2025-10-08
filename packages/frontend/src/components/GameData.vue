@@ -582,11 +582,11 @@ watch(reportFormDialogOpen, (open) => {
                       :maximized="$q.screen.lt.md"
                       v-model="reportFormDialogOpen"
                       @hide="closeDialog">
-              <ReportForm :gameName="gameName"
-                          :appId="appId ? appId : ''"
-                          :gameBanner="gameBanner ? gameBanner : ''"
-                          :gameBackground="gameBackground ? gameBackground : ''"
-                          :previousSubmission="highestRatedGameReport? highestRatedGameReport : {}"
+              <ReportForm :game-name="gameName"
+                          :app-id="appId ? appId : ''"
+                          :game-banner="gameBanner ? gameBanner : ''"
+                          :game-background="gameBackground ? gameBackground : ''"
+                          :existing-report="highestRatedGameReport? highestRatedGameReport : {}"
                           @submitted="handleReportSubmitted" />
             </q-dialog>
           </div>

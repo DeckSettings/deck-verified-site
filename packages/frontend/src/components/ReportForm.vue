@@ -35,8 +35,12 @@ const props = defineProps({
     type: String,
     required: false,
   },
-  previousSubmission: {
+  existingReport: {
     type: Object,
+    required: false,
+  },
+  issueNumber: {
+    type: Number,
     required: false,
   },
   displayFullscreen: {
@@ -190,35 +194,44 @@ const initFormData = async () => {
       }
     })
 
-    // Override values with ones from a previous submission
-    if (props.previousSubmission) {
-      Object.keys(props.previousSubmission).forEach(key => {
-        if (initOverwriteFields.includes(key)) {
-          const newVal = props.previousSubmission?.[key]
+    // Override values with ones from a previous submission or an existing report
+    if (props.existingReport) {
+      // If issueNumber is present, we are editing, so load all data from the current form
+      if (props.issueNumber) {
+        Object.keys(props.existingReport).forEach(key => {
+          const newVal = props.existingReport?.[key]
           if (newVal !== undefined) {
             tempFormValues[key] = newVal
           }
+        })
+        previousFormValues.value = props.existingReport
+      } else {
+        // If no issueNumber, we are creating a new report based on a previous one, so only overwrite some fields
+        Object.keys(props.existingReport).forEach(key => {
+          if (initOverwriteFields.includes(key)) {
+            const newVal = props.existingReport?.[key]
+            if (newVal !== undefined) {
+              tempFormValues[key] = newVal
+            }
+          }
+        })
+        // Also, if we are creating a new report, import values from localStorage
+        // This is not be done in edit mode when we have existingReport data
+        const importedFormValues = loadSavedFormValues()
+        if (importedFormValues) {
+          // Combine previousSubmission or existingReport values and values pulled from local storage.
+          previousFormValues.value = { ...props.existingReport, ...importedFormValues }
+          // Override ALL values with those pulled from localStorage
+          Object.keys(importedFormValues).forEach(key => {
+            const newVal = importedFormValues[key]
+            if (newVal !== undefined) {
+              tempFormValues[key] = newVal
+            }
+          })
+        } else {
+          previousFormValues.value = props.existingReport
         }
-      })
-    }
-
-    // Import values from localStorage
-    const importedFormValues = loadSavedFormValues()
-    // Combine previousSubmission values and values pulled from local storage.
-    // I did this so that this can be passed to the GameSettingsFields component
-    if (importedFormValues) {
-      previousFormValues.value = { ...props.previousSubmission, ...importedFormValues }
-    } else if (props.previousSubmission) {
-      previousFormValues.value = props.previousSubmission
-    }
-    // Override ALL values with those pulled from localStorage
-    if (importedFormValues) {
-      Object.keys(importedFormValues).forEach(key => {
-        const newVal = importedFormValues[key]
-        if (newVal !== undefined) {
-          tempFormValues[key] = newVal
-        }
-      })
+      }
     }
   }
 
@@ -235,11 +248,11 @@ const loadSavedFormValues = (): Record<string, string | number | null> | null =>
       if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
         return parsed.formValues || null
       } else {
-        localStorage.removeItem(`gameReportForm-${props.gameName}`)
+        clearFormState()
       }
     } catch (e) {
       console.error('Error parsing saved form state', e)
-      localStorage.removeItem(`gameReportForm-${props.gameName}`)
+      clearFormState()
     }
   }
   return null
@@ -257,11 +270,12 @@ const saveFormValuesState = () => {
 // Clear saved form state (for instance, when clicking cancel).
 const clearFormState = () => {
   localStorage.removeItem(`gameReportForm-${props.gameName}`)
+  localStorage.removeItem(`gameReportForm-${props.gameName}-manualInputMode`)
 }
 
 // Clear form data
 const clearForm = () => {
-  localStorage.removeItem(`gameReportForm-${props.gameName}`)
+  clearFormState()
   formData.value = null
   initFormData()
 }
@@ -776,17 +790,31 @@ const submitForm = async () => {
   if (shouldUploadAssets) {
     try {
       updateProgressStage('submittingGithub')
-      const response = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/issues', {
-        method: 'POST',
+
+      const isEditMode = !!props.issueNumber
+      const url = isEditMode
+        ? `https://api.github.com/repos/DeckSettings/game-reports-steamos/issues/${props.issueNumber}`
+        : 'https://api.github.com/repos/DeckSettings/game-reports-steamos/issues'
+
+      const method = isEditMode ? 'PATCH' : 'POST'
+
+      const title = isEditMode
+        ? (isInGameImageMode ? '(Report updated with images from Deck Verified website)' : '(Report updated from Deck Verified Website)')
+        : (isInGameImageMode ? '(Report submitted with images from Deck Verified website)' : '(Report submitted from Deck Verified Website)')
+
+      const body = {
+        title,
+        body: reportMarkdown,
+      }
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Authorization': `Bearer ${accessToken.value}`,
           'Accept': 'application/vnd.github+json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: isInGameImageMode ? '(Report submitted with images from Deck Verified website)' : '(Report submitted from Deck Verified Website)',
-          body: reportMarkdown,
-        }),
+        body: JSON.stringify(body),
       })
 
       const raw = await response.text()
@@ -801,25 +829,28 @@ const submitForm = async () => {
         if (response.status === 401 || response.status === 403) {
           throw new Error('GitHub rejected the request. Please confirm you are signed in and have granted the required permissions.')
         }
-        throw new Error(detail || `GitHub issue creation failed (${response.status})`)
+        throw new Error(detail || `GitHub issue creation/update failed (${response.status})`)
       }
 
       const js = JSON.parse(raw)
-      const url: string | undefined = js?.html_url
-      $q.notify({ type: 'positive', message: 'Issue created successfully on GitHub.' })
-      // if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      const responseUrl: string | undefined = js?.html_url
+      $q.notify({ type: 'positive', message: `Issue ${isEditMode ? 'updated' : 'created'} successfully on GitHub.` })
+      // if (responseUrl) window.open(responseUrl, '_blank', 'noopener,noreferrer')
       finishProgress()
-      if (typeof js?.number === 'number' && typeof js?.created_at === 'string' && url) {
+      if (typeof js?.number === 'number' && typeof js?.created_at === 'string' && responseUrl) {
         emit('submitted', {
           issueNumber: js.number,
-          issueUrl: url,
+          issueUrl: responseUrl,
           createdAt: js.created_at,
         })
       }
       return
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      $q.notify({ type: 'negative', message: `Failed to create GitHub issue: ${msg}` })
+      $q.notify({
+        type: 'negative',
+        message: `Failed to ${props.issueNumber ? 'update' : 'create'} GitHub issue: ${msg}`,
+      })
       dismissProgress()
       return
     }
@@ -863,15 +894,19 @@ const onConfirmDialogCancel = () => {
 onMounted(async () => {
   await initFormData()
   // Initialize modes (restore manualInputMode from storage if available)
-  try {
-    const raw = localStorage.getItem(`gameReportForm-${props.gameName}-manualInputMode`)
-    if (raw !== null) {
-      manualInputMode.value = !!JSON.parse(raw)
-    } else {
+  if (props.existingReport && props.issueNumber) {
+    manualInputMode.value = true
+  } else {
+    try {
+      const raw = localStorage.getItem(`gameReportForm-${props.gameName}-manualInputMode`)
+      if (raw !== null) {
+        manualInputMode.value = !!JSON.parse(raw)
+      } else {
+        manualInputMode.value = !(enableLogin && isLoggedIn.value)
+      }
+    } catch {
       manualInputMode.value = !(enableLogin && isLoggedIn.value)
     }
-  } catch {
-    manualInputMode.value = !(enableLogin && isLoggedIn.value)
   }
   // Ensure manual input when logged out on mount
   if (!isLoggedIn.value) {

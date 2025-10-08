@@ -494,3 +494,11 @@ export interface GameDetailsRequestMetricResult {
 export interface BloggerReportSummary {
   reports_summary: string | null;
 }
+
+export interface UserGameReport {
+  issue: GithubIssuesSearchResultItems;
+  parsedReport: GameReportData;
+  issueNumber: number;
+  issueId: number;
+  metadata?: GameMetadata;
+}

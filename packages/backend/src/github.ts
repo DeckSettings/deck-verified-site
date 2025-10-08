@@ -174,12 +174,13 @@ export const fetchGitHubUserIdentity = async (accessToken: string): Promise<GitH
  */
 export const fetchReports = async (
   repoName: string = 'game-reports-steamos',
-  filterState: 'open' | 'closed' | 'all' = 'open',
+  filterState: 'open' | 'closed' | null = 'open',
   filterAuthor: string | null = null,
   sort: 'reactions-+1' | 'created' | 'updated' | 'comments' = 'updated',
   direction: 'asc' | 'desc' = 'desc',
   limit: number | null = null,
   excludeInvalid: boolean = true,
+  accessToken: string | null = null,
 ): Promise<GithubIssuesSearchResult | null> => {
   const repoOwner = 'DeckSettings'
   const encodedSort = encodeURIComponent(sort)
@@ -199,7 +200,16 @@ export const fetchReports = async (
   }
 
   try {
-    const response = await fetch(url)
+    const headers: HeadersInit = {}
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
+    }
+
+    const response = await fetch(url, {
+      headers,
+      cache: 'no-store',
+    })
+
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
