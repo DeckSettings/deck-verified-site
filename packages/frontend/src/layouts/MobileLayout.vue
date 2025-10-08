@@ -7,6 +7,7 @@
     <div class="top-bar" ref="topBar">
       <div class="top-bar-inner">
         <HeaderUserMenu
+          ref="headerUserMenu"
           v-if="enableLogin"
           display-mode="hamburger"
           class="header-hamburger lt-md"
@@ -28,6 +29,18 @@
         dense
         justify="between"
       >
+        <q-btn
+          flat
+          dense
+          round
+          color="white"
+          icon="menu"
+          style="padding-left:16px;"
+          aria-label="Open menu"
+          @click="openMenu"
+        >
+        </q-btn>
+
         <q-route-tab name="home" icon="home" label="Home"
                      to="/" exact />
         <q-route-tab name="recent" icon="update" label="Recent"
@@ -49,6 +62,12 @@ import { useRoute } from 'vue-router'
 import HeaderSearch from 'components/HeaderSearch.vue'
 import HeaderUserMenu from 'components/HeaderUserMenu.vue'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+
+const headerUserMenu = ref<InstanceType<typeof HeaderUserMenu> | null>(null)
+
+const openMenu = () => {
+  headerUserMenu.value?.openMobileMenu()
+}
 
 const { enableLogin } = useFeatureFlags()
 const route = useRoute()

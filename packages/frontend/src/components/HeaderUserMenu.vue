@@ -1,3 +1,64 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import type { PropType } from 'vue'
+import NotificationCenter from 'components/NotificationCenter.vue'
+import { useAuthStore } from 'stores/auth-store'
+import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+import { useNotifications } from 'src/composables/useNotifications'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
+
+// Modern user dropdown combining authentication controls and notifications.
+
+const props = defineProps({
+  displayMode: {
+    type: String as PropType<'default' | 'hamburger'>,
+    default: 'default',
+  },
+})
+
+const displayMode = computed(() => props.displayMode)
+
+const { enableLogin } = useFeatureFlags()
+
+const authStore = useAuthStore()
+const { notifications, hasNotifications } = useNotifications()
+
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const avatarUrl = computed(() => authStore.avatarUrl)
+const userDisplayName = computed(() => authStore.user?.name || authStore.user?.login || 'GitHub User')
+const userHandle = computed(() => `@${authStore.user?.login || 'github'}`)
+const userInitials = computed(() => {
+  const login = authStore.user?.login || ''
+  return login.slice(0, 2).toUpperCase() || 'GH'
+})
+
+const isMobileMenuOpen = ref(false)
+
+const openMobileMenu = () => {
+  if (displayMode.value !== 'hamburger') return
+  isMobileMenuOpen.value = true
+}
+
+const closeMobileMenu = () => {
+  if (displayMode.value !== 'hamburger') return
+  isMobileMenuOpen.value = false
+}
+
+const handleLogin = () => {
+  void authStore.startLogin()
+  closeMobileMenu()
+}
+
+const handleLogout = () => {
+  authStore.logout()
+  closeMobileMenu()
+}
+
+defineExpose({
+  openMobileMenu,
+})
+</script>
+
 <template>
   <div
     v-if="enableLogin"
@@ -115,15 +176,14 @@
 
       <q-dialog
         v-model="isMobileMenuOpen"
-        :position="$q.screen.gt.xs ? 'left' : undefined"
         maximized
+        position="left"
         class="header-user-menu__dialog-dialog"
         transition-show="slide-right"
         transition-hide="slide-left"
       >
         <q-card
           class="header-user-menu__dialog-card bg-dark text-white"
-          :style="mobileDialogStyle"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
           <q-card-section class="header-user-menu__dialog-header row items-center justify-between no-wrap">
@@ -194,77 +254,6 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, type PropType, inject, type ComputedRef } from 'vue'
-import NotificationCenter from 'components/NotificationCenter.vue'
-import { useAuthStore } from 'stores/auth-store'
-import { useFeatureFlags } from 'src/composables/useFeatureFlags'
-import { useNotifications } from 'src/composables/useNotifications'
-import PrimaryButton from 'components/elements/PrimaryButton.vue'
-
-// Modern user dropdown combining authentication controls and notifications.
-
-const props = defineProps({
-  displayMode: {
-    type: String as PropType<'default' | 'hamburger'>,
-    default: 'default',
-  },
-})
-
-const displayMode = computed(() => props.displayMode)
-
-const { enableLogin } = useFeatureFlags()
-
-const authStore = useAuthStore()
-const { notifications, hasNotifications } = useNotifications()
-
-const mobileTopBarHeight = inject<ComputedRef<number>>(
-  'mobileTopBarHeight',
-  computed(() => 60),
-)
-
-const mobileBottomNavHeight = inject<ComputedRef<number>>(
-  'mobileBottomNavHeight',
-  computed(() => 50),
-)
-
-const isLoggedIn = computed(() => authStore.isLoggedIn)
-const avatarUrl = computed(() => authStore.avatarUrl)
-const userDisplayName = computed(() => authStore.user?.name || authStore.user?.login || 'GitHub User')
-const userHandle = computed(() => `@${authStore.user?.login || 'github'}`)
-const userInitials = computed(() => {
-  const login = authStore.user?.login || ''
-  return login.slice(0, 2).toUpperCase() || 'GH'
-})
-
-const isMobileMenuOpen = ref(false)
-
-const openMobileMenu = () => {
-  if (displayMode.value !== 'hamburger') return
-  isMobileMenuOpen.value = true
-}
-
-const closeMobileMenu = () => {
-  if (displayMode.value !== 'hamburger') return
-  isMobileMenuOpen.value = false
-}
-
-const handleLogin = () => {
-  void authStore.startLogin()
-  closeMobileMenu()
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  closeMobileMenu()
-}
-
-const mobileDialogStyle = computed(() => ({
-  paddingTop: `${mobileTopBarHeight?.value ?? 60}px`,
-  paddingBottom: `${mobileBottomNavHeight?.value ?? 50}px`,
-}))
-</script>
-
 <style scoped>
 .header-user-menu {
   display: flex;
@@ -288,6 +277,7 @@ const mobileDialogStyle = computed(() => ({
 
 .header-user-menu__dialog-card {
   min-height: 100vh;
+  min-width: 550px;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--q-dark) 92%, transparent);
@@ -301,10 +291,6 @@ const mobileDialogStyle = computed(() => ({
   flex: 1;
 }
 
-.header-user-menu__dialog-card {
-  min-width: 599px;
-}
-
 .header-user-menu__dialog-footer {
   background: inherit;
   border-top: 1px solid color-mix(in srgb, white 12%, transparent);
@@ -316,7 +302,13 @@ const mobileDialogStyle = computed(() => ({
 
 @media (max-width: 599.98px) {
   .header-user-menu__dialog-card {
-    min-width: 100px;
+    min-width: 80vw;
+  }
+}
+
+@media (max-width: 280px) {
+  .header-user-menu__dialog-card {
+    min-width: 0;
   }
 }
 </style>
