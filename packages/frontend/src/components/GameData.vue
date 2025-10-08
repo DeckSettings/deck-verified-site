@@ -29,6 +29,7 @@ import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import ProtonBadge from 'components/elements/ProtonBadge.vue'
 import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
+import SteamCompatBadge from 'components/elements/SteamCompatBadge.vue'
 
 dayjs.extend(relativeTime)
 
@@ -179,6 +180,10 @@ const ratingsSummary = ref<GameRatingsSummary | null>(null)
 const protonTier = computed<string | null>(() => {
   const tier = ratingsSummary.value?.protonDb?.tier
   return tier ? String(tier).trim().toLowerCase() : null
+})
+const steamCompatCode = computed<number | null>(() => {
+  const code = ratingsSummary.value?.steamDeckCompatibility?.compatibilityCode
+  return code ? code : null
 })
 watch([appId], async ([newAppId]) => {
   if (!newAppId) {
@@ -474,8 +479,9 @@ watch(reportFormDialogOpen, (open) => {
             </template>
 
             <!-- ProtonDB badge (top-left) -->
-            <div v-if="protonTier" class="absolute column q-gutter-xs" style="top:0; left:0;">
-              <ProtonBadge :tier="protonTier" />
+            <div class="absolute-top-left column q-gutter-xs">
+              <ProtonBadge class="q-mb-none" v-if="protonTier" :tier="protonTier" />
+              <SteamCompatBadge class="q-mt-none" v-if="steamCompatCode" :compatibility-code="steamCompatCode" />
             </div>
           </div>
         </div>

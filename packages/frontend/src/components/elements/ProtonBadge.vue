@@ -63,12 +63,6 @@ const backgroundColor = computed(() => tierColors.value?.bg ?? DEFAULT_TIER_COLO
 const chipStyle = computed(() => {
   return {
     backgroundColor: backgroundColor.value,
-    borderRadius: '3px',
-    padding: '4px 8px',
-    height: '28px',
-    minHeight: '28px',
-    display: 'inline-flex',
-    alignItems: 'center',
   }
 })
 </script>
@@ -81,53 +75,56 @@ const chipStyle = computed(() => {
     v-if="tierLabel"
     :style="chipStyle"
     :text-color="textColor"
+    class="badge-chip"
     tabindex="-1"
     :aria-label="`ProtonDB rating: ${tierLabel}`"
   >
-    <q-avatar size="40px">
+    <q-avatar size="40px" class="badge-chip-icon">
       <q-icon :name="simProtondb"
               :style="`color:${backgroundColor};background-color:${textColor};border-radius:16px;`" />
     </q-avatar>
-    <div class="proton-badge__content">
-      <span class="proton-badge__label">{{ tierLabel }}</span>
+    <div class="badge-chip-text">
+      {{ tierLabel }}
     </div>
     <q-tooltip v-if="tierLabel">ProtonDB: {{ tierLabel }}</q-tooltip>
   </q-chip>
 
   <q-chip
     v-else
-    dense
+    dense square
     :style="chipStyle"
     :text-color="DEFAULT_TIER_COLORS.text"
-    class="proton-badge"
+    class="badge-chip"
     tabindex="-1"
     aria-label="ProtonDB rating: unknown"
   >
-    <div class="proton-badge__content">
-      <span class="proton-badge__label">Unknown</span>
+    <div class="badge-chip-text">
+      Unknown
     </div>
     <q-tooltip>ProtonDB: Unknown</q-tooltip>
   </q-chip>
 </template>
 
 <style scoped>
-.proton-badge {
+.badge-chip {
   box-shadow: none;
   font-weight: 600;
   font-size: 0.85rem;
   line-height: 1;
-}
-
-.proton-badge__content {
+  border-radius: 0;
+  padding: 4px 8px;
+  height: 28px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
 }
 
-/* Slightly reduce avatar/icon size spacing if used in future */
-.proton-badge__label {
-  display: inline-block;
-  padding: 0;
-  margin: 0;
+.badge-chip-icon {
+  position: absolute;
+  left: 10px;
+}
+
+.badge-chip-text {
+  margin-left: 30px;
 }
 </style>
