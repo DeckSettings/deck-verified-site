@@ -113,8 +113,8 @@ const chipStyle = computed(() => {
   line-height: 1;
   border-radius: 0;
   padding: 4px 8px;
-  height: 28px;
-  min-height: 28px;
+  height: 30px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
 }

@@ -18,6 +18,7 @@ import type {
   GameReportData,
   ExternalGameReview,
   GameRatingsSummary,
+  GamePriceSummary,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
@@ -30,6 +31,7 @@ import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import ProtonBadge from 'components/elements/ProtonBadge.vue'
 import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 import SteamCompatBadge from 'components/elements/SteamCompatBadge.vue'
+import PriceBadge from 'components/elements/PriceBadge.vue'
 
 dayjs.extend(relativeTime)
 
@@ -176,6 +178,10 @@ function setExpanded(id: number, val: boolean) {
   expanded.value[id] = val
 }
 
+const priceSummary = ref<GamePriceSummary | null>(null)
+const priceNew = computed(() => priceSummary.value?.bestDeal?.priceNew ?? null)
+const priceOld = computed(() => priceSummary.value?.bestDeal?.priceOld ?? priceSummary.value?.deals?.[0]?.priceOld ?? null)
+const priceCut = computed(() => priceSummary.value?.bestDeal?.priceCut ?? null)
 const ratingsSummary = ref<GameRatingsSummary | null>(null)
 const protonTier = computed<string | null>(() => {
   const tier = ratingsSummary.value?.protonDb?.tier
@@ -187,14 +193,21 @@ const steamCompatCode = computed<number | null>(() => {
 })
 watch([appId], async ([newAppId]) => {
   if (!newAppId) {
+    priceSummary.value = null
     ratingsSummary.value = null
     return
   }
 
   try {
-    const result = await marketStore.loadRatingsSummary({ appId: newAppId })
-    ratingsSummary.value = result ?? null
+
+    const [priceResult, ratingsResult] = await Promise.all([
+      marketStore.loadPriceSummary({ appId: newAppId }),
+      marketStore.loadRatingsSummary({ appId: newAppId }),
+    ])
+    priceSummary.value = priceResult ?? null
+    ratingsSummary.value = ratingsResult ?? null
   } catch {
+    priceSummary.value = null
     ratingsSummary.value = null
   }
 }, { immediate: true })
@@ -478,10 +491,19 @@ watch(reportFormDialogOpen, (open) => {
                 alt="Game Image" />
             </template>
 
-            <!-- ProtonDB badge (top-left) -->
-            <div class="absolute-top-left column q-gutter-xs">
+            <!-- compatibility badges (top-left) -->
+            <div class="game-banner-badges absolute-top-left column q-gutter-xs">
               <ProtonBadge class="q-mb-none" v-if="protonTier" :tier="protonTier" />
               <SteamCompatBadge class="q-mt-none" v-if="steamCompatCode" :compatibility-code="steamCompatCode" />
+            </div>
+
+            <!-- price badges (top-right) -->
+            <div class="game-banner-badges absolute-top-right column">
+              <PriceBadge v-if="priceSummary"
+                          :itad-slug="priceSummary.itadSlug"
+                          :price-new="priceNew"
+                          :price-old="priceOld"
+                          :price-cut="priceCut" />
             </div>
           </div>
         </div>
@@ -1448,6 +1470,12 @@ watch(reportFormDialogOpen, (open) => {
 
 .game-config {
   transition: all 0.3s ease-in-out;
+}
+
+@media (max-width: 299.98px) {
+  .game-banner-badges {
+    display: none !important;
+  }
 }
 
 /* -sm- */
