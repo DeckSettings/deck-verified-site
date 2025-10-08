@@ -190,7 +190,7 @@ defineExpose({
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
-                <span v-else>{{ userInitials }}</span>
+                <img v-else src="~/assets/icons/dv-app-icon.png" alt="DeckVerified Icon">
               </q-avatar>
               <div class="column">
                 <span class="text-subtitle1 text-weight-medium">
@@ -202,12 +202,14 @@ defineExpose({
               </div>
             </div>
             <q-btn
-              flat
-              dense
-              round
-              icon="close"
-              aria-label="Close menu"
-              @click="closeMobileMenu"
+              v-if="isLoggedIn"
+              outline
+              color="primary"
+              icon="logout"
+              label="Logout"
+              size="sm"
+              class="header-logout-button"
+              @click="handleLogout"
             />
           </q-card-section>
 
@@ -235,18 +237,13 @@ defineExpose({
 
           <div class="header-user-menu__dialog-footer column q-gutter-sm q-pa-md q-pt-lg">
             <PrimaryButton
-              v-if="isLoggedIn"
-              color="primary"
-              full-width
-              icon="fab fa-github"
-              label="Logout"
-              @click="handleLogout" />
-            <PrimaryButton
               color="primary"
               full-width
               icon="fas fa-times-circle"
               label="Close"
-              @click="closeMobileMenu" />
+              class="footer-close-button"
+              @click="closeMobileMenu"
+            />
           </div>
         </q-card>
       </q-dialog>
@@ -292,13 +289,16 @@ defineExpose({
 }
 
 .header-user-menu__dialog-footer {
+  display: none;
   background: inherit;
   border-top: 1px solid color-mix(in srgb, white 12%, transparent);
 }
 
 .header-user-menu__dialog-footer-separator {
+  display: none;
   margin: 0;
 }
+
 
 @media (max-width: 599.98px) {
   .header-user-menu__dialog-card {
@@ -306,9 +306,25 @@ defineExpose({
   }
 }
 
+@media (max-width: 359.98px) {
+  .header-user-menu__dialog-header {
+    flex-wrap: wrap;
+  }
+
+  .header-logout-button {
+    margin-top: 16px;
+    width: 100%;
+  }
+}
+
 @media (max-width: 280px) {
   .header-user-menu__dialog-card {
     min-width: 0;
+  }
+
+  .header-user-menu__dialog-footer-separator,
+  .header-user-menu__dialog-footer {
+    display: inherit;
   }
 }
 </style>
