@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { fetchGameData, fetchLabels } from 'src/services/gh-reports'
+import { fetchGameData, fetchLabels } from 'src/utils/api'
 import type { GameDetails, GitHubIssueLabel } from '../../../shared/src/game'
+
+const LABELS_CACHE_DURATION = 3 * 60 * 1000 // 3 minutes in milliseconds
 
 let ensureLoadedPromise: Promise<void> | null = null
 let ensureLoadedKey: string | null = null
@@ -15,6 +17,8 @@ export const useGameStore = defineStore('game', {
     gameData: null as GameDetails | null,
     deviceLabels: [] as GitHubIssueLabel[],
     launcherLabels: [] as GitHubIssueLabel[],
+    labelsCache: [] as GitHubIssueLabel[],
+    labelsFetchedAt: null as number | null,
     gameBackground: null as string | null,
     gamePoster: null as string | null,
     gameBanner: null as string | null,
@@ -66,6 +70,33 @@ export const useGameStore = defineStore('game', {
       imageHeight: string
     }>) {
       this.metadata = { ...this.metadata, ...partial }
+    },
+
+    /**
+     * Retrieve labels, using the store-local cache when available and fresh.
+     */
+    async getCachedLabels(): Promise<GitHubIssueLabel[]> {
+      const now = Date.now()
+      if (this.labelsCache.length > 0 && this.labelsFetchedAt && (now - this.labelsFetchedAt) < LABELS_CACHE_DURATION) {
+        return this.labelsCache
+      }
+      try {
+        const labels = await fetchLabels()
+        this.labelsCache = labels
+        this.labelsFetchedAt = Date.now()
+        return labels
+      } catch {
+        // If the network call fails, return whatever is currently cached (could be empty)
+        return this.labelsCache || []
+      }
+    },
+
+    /**
+     * Clear the locally cached labels (useful for debugging or forcing a refresh).
+     */
+    clearLabelsCache() {
+      this.labelsCache = []
+      this.labelsFetchedAt = null
     },
 
     // Set reasonable defaults based on the current game name
@@ -200,7 +231,7 @@ export const useGameStore = defineStore('game', {
 
       const loadTask = async () => {
         const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)
-          ? fetchLabels().then((labels) => {
+          ? this.getCachedLabels().then((labels) => {
             this.deviceLabels = labels.filter((l) => l.name.startsWith('DEVICE:'))
             this.launcherLabels = labels.filter((l) => l.name.startsWith('LAUNCHER:'))
           }).catch(() => {

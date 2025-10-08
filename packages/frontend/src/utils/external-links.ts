@@ -3,7 +3,11 @@ export const getPCGamingWikiUrlFromGameName = (gameName: string) => {
     gameName
       .replace(/[^a-zA-Z0-9 ]/g, '')
       .replace(/ /g, '_')
-      .trim()
+      .trim(),
   )
   return `https://www.pcgamingwiki.com/wiki/${encodedGameName}`
+}
+
+export const getItadUrlFromGameSlug = (gameSlug: string) => {
+  return `https://isthereanydeal.com/game/${gameSlug}/info/`
 }

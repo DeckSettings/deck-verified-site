@@ -1,8 +1,8 @@
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue'
-import { fetchTopGameDetailsRequestMetrics } from 'src/services/gh-reports'
+import { fetchTopGameDetailsRequestMetrics } from 'src/utils/api'
 import type { GameDetailsRequestMetricResult } from '../../../shared/src/game'
-import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
+import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
 
 export default defineComponent({

@@ -4,7 +4,7 @@ import { useQuasar } from 'quasar'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useProgressNotifications } from 'src/composables/useProgressNotifications'
 import { useAuthStore } from 'src/stores/auth-store'
-import { gameReportTemplate } from 'src/services/gh-reports'
+import { gameReportTemplate } from 'src/utils/api'
 import type {
   GameReportForm,
   GitHubIssueTemplateBody,

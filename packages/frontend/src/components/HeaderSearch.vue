@@ -3,7 +3,7 @@
 import { ref, watch, onMounted, onUnmounted, computed, inject, nextTick, type ComputedRef } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
-import { searchGames } from 'src/services/gh-reports'
+import { searchGames } from 'src/utils/api'
 import type { GameSearchResult } from '../../../shared/src/game'
 
 const $q = useQuasar()

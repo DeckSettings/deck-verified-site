@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { GameDetailsRequestMetricResult } from '../../../../shared/src/game'
 import { simSteam, simSteamdb, simProtondb, simPcgamingwiki } from 'quasar-extras-svg-icons/simple-icons-v14'
-import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
+import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import { useQuasar } from 'quasar'
 

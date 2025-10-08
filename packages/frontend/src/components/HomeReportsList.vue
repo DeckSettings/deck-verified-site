@@ -4,7 +4,7 @@ import { refreshScrollTrigger, useScrollTrigger } from 'src/composables/useScrol
 import { useReportsStore } from 'stores/reports-store'
 import ReportList from 'components/elements/ReportList.vue'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
-import type { HomeReport } from 'src/services/gh-reports'
+import type { HomeReport } from 'src/utils/api'
 import type { GameDetailsRequestMetricResult } from '../../../shared/src/game'
 
 const props = defineProps({

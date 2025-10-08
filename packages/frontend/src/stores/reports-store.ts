@@ -3,8 +3,8 @@ import {
   fetchPopularReports,
   fetchRecentReports,
   fetchTopGameDetailsRequestMetrics,
-} from 'src/services/gh-reports'
-import type { HomeReport } from 'src/services/gh-reports'
+} from 'src/utils/api'
+import type { HomeReport } from 'src/utils/api'
 import type { GameDetailsRequestMetricResult } from '../../../shared/src/game'
 
 const CACHE_DURATION = 60 * 1000 // 1 minute

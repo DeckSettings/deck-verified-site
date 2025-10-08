@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMeta } from 'quasar'
-import { fetchGamesWithReports } from 'src/services/gh-reports'
+import { fetchGamesWithReports } from 'src/utils/api'
 import type { GameSearchResult } from '../../../shared/src/game'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import NavBackButton from 'components/elements/NavBackButton.vue'

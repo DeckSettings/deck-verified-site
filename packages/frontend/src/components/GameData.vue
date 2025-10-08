@@ -9,7 +9,7 @@ import {
   simPcgamingwiki,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
 import { useGameStore } from 'src/stores/game-store'
-import { getPCGamingWikiUrlFromGameName } from 'src/services/external-links'
+import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import type {
   GameReport,
   GameDetails,

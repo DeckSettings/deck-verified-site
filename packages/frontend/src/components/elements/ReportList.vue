@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DeviceImage from 'components/elements/DeviceImage.vue'
-import type { HomeReport } from 'src/services/gh-reports'
+import type { HomeReport } from 'src/utils/api'
 import type { PropType } from 'vue'
 
 defineProps({

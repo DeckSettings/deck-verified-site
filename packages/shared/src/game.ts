@@ -104,6 +104,53 @@ export interface GameDetails {
   reports_summary: string | null;
 }
 
+export interface GamePriceDeal {
+  shopId: string;
+  shopName: string;
+  priceNew: number | null;
+  priceOld: number | null;
+  priceCut: number | null;
+  currency: string | null;
+  url: string | null;
+  recordedAt: string | null;
+  voucher: string | null;
+}
+
+export interface GamePriceSummary {
+  appId: number | null;
+  gameName: string | null;
+  itadSlug: string | null;
+  lastChecked: string | null;
+  deals: GamePriceDeal[];
+  bestDeal: GamePriceDeal | null;
+}
+
+export interface ProtonDBSummary {
+  tier: string | null;
+  score: number | null;
+  confidence: string | null;
+  totalReports: number | null;
+  trendingTier: string | null;
+}
+
+export interface SteamDeckCompatibilitySummaryDetail {
+  code: number | null;
+  description: string | null;
+}
+
+export interface SteamDeckCompatibilitySummary {
+  compatibilityCode: number | null;
+  compatibilityItems: SteamDeckCompatibilitySummaryDetail[];
+}
+
+export interface GameRatingsSummary {
+  appId: number | null;
+  gameName: string | null;
+  lastChecked: string | null;
+  protonDb: ProtonDBSummary | null;
+  steamDeckCompatibility: SteamDeckCompatibilitySummary | null;
+}
+
 export interface GitHubProjectGameDetails extends Omit<GameDetails, 'external_reviews' | 'reports_summary'> {
   projectNumber: number;
   shortDescription: string;
