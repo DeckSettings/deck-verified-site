@@ -108,6 +108,7 @@ watch(reportsStatsList, async () => {
 
 <template>
   <q-ajax-bar
+    v-if="$q.platform.isMobileUi"
     ref="ajaxBar"
     :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
     color="secondary"
