@@ -28,6 +28,13 @@ const updateSearchContainerHeight = () => {
   }
 }
 
+const handleFocus = () => {
+  showDialog.value = true
+  if (searchQuery.value.length > 2 && !isSearching.value && searchResults.value === null) {
+    performSearch()
+  }
+}
+
 let searchTimeout: ReturnType<typeof setTimeout>
 const performSearch = async () => {
   clearTimeout(searchTimeout)
@@ -160,7 +167,8 @@ const searchResultsStyle = computed(() => ({
       class="search-input"
       :class="{'full-width': $q.screen.lt.sm}"
       debounce="500"
-      @focus="showDialog = true"
+      @focus="handleFocus"
+      @keydown.enter.prevent="performSearch"
     >
       <template v-slot:append>
         <q-icon name="search" @click="performSearch" />
