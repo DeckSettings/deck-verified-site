@@ -357,7 +357,7 @@ function getDeviceStyle(item: DeviceItem) {
   max-width: 900px;
   width: 100%;
   z-index: 1000;
-  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
+  background: color-mix(in srgb, var(--q-dark) 80%, transparent);
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);

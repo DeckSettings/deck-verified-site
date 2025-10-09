@@ -38,12 +38,21 @@
           <div class="text-subtitle2 q-mb-md">Community reports and settings for handheld PCs.</div>
 
           <div class="row items-center q-gutter-sm">
-            <q-btn round dense unelevated color="white" text-color="black" icon="fab fa-github"
-                   href="https://github.com/sponsors/Josh5" target="_blank" rel="noopener" />
-            <q-btn round dense unelevated color="white" text-color="black" icon="fas fa-mug-hot"
-                   href="https://ko-fi.com/josh5coffee" target="_blank" rel="noopener" />
-            <q-btn round dense unelevated color="white" text-color="black" icon="fab fa-patreon"
-                   href="https://www.patreon.com/join/josh5" target="_blank" rel="noopener" />
+            <q-btn round dense unelevated color="white" text-color="black" :icon="simGithubsponsors"
+                   href="https://github.com/sponsors/Josh5" target="_blank" rel="noopener"
+            >
+              <q-tooltip>Become one of my GitHub Sponsors</q-tooltip>
+            </q-btn>
+            <q-btn round dense unelevated color="white" text-color="black" :icon="simKofi"
+                   href="https://ko-fi.com/josh5coffee" target="_blank" rel="noopener"
+            >
+              <q-tooltip>Support me on Ko-fi</q-tooltip>
+            </q-btn>
+            <q-btn round dense unelevated color="white" text-color="black" :icon="simPatreon"
+                   href="https://www.patreon.com/join/josh5" target="_blank" rel="noopener"
+            >
+              <q-tooltip>Become a Patreon member</q-tooltip>
+            </q-btn>
           </div>
         </div>
 
@@ -55,8 +64,10 @@
               <li>
                 <router-link class="footer-link" :to="{ name: 'about' }">About</router-link>
               </li>
-              <li><a class="footer-link" href="https://github.com/DeckSettings/deck-verified-site/issues/new/choose"
-                     target="_blank" rel="noopener">Support</a></li>
+              <!--<li>
+                <a class="footer-link" href="https://github.com/DeckSettings/deck-verified-site/issues/new/choose"
+                     target="_blank" rel="noopener">Support</a>
+              </li>-->
               <li>
                 <router-link class="footer-link" :to="{ name: 'privacy-policy' }">Privacy Policy</router-link>
               </li>
@@ -68,15 +79,21 @@
           <div class="col-6">
             <div class="text-subtitle1 q-mb-sm">Community</div>
             <ul class="footer-list">
-              <li><a class="footer-link"
-                     href="https://github.com/DeckSettings/game-reports-steamos/issues/new?template=GAME-REPORT.yml"
-                     target="_blank" rel="noopener">Contribute</a></li>
-              <li><a class="footer-link"
-                     href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
-                     target="_blank" rel="noopener">Add New Device</a></li>
-              <li><a class="footer-link" href="https://streamingtech.co.nz/discord" target="_blank" rel="noopener">Discord</a>
+              <li>
+                <a class="footer-link"
+                   href="https://github.com/DeckSettings/game-reports-steamos/issues/new?template=GAME-REPORT.yml"
+                   target="_blank" rel="noopener">Contribute</a></li>
+              <li>
+                <a class="footer-link"
+                   href="https://github.com/DeckSettings/deck-verified-site/issues/new?template=NEW-DEVICE.yml"
+                   target="_blank" rel="noopener">Add New Device</a></li>
+              <li>
+                <a class="footer-link" href="https://streamingtech.co.nz/discord" target="_blank"
+                   rel="noopener">Discord</a>
               </li>
-              <li><a class="footer-link" href="https://www.patreon.com/join/josh5" target="_blank" rel="noopener">Patreon</a>
+              <li>
+                <a class="footer-link" href="https://www.patreon.com/join/josh5" target="_blank"
+                   rel="noopener">Patreon</a>
               </li>
             </ul>
           </div>
@@ -97,6 +114,7 @@
 import HeaderSearch from 'components/HeaderSearch.vue'
 import HeaderUserMenu from 'components/HeaderUserMenu.vue'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
+import { simGithubsponsors, simKofi, simPatreon } from 'quasar-extras-svg-icons/simple-icons-v14'
 
 const { enableLogin } = useFeatureFlags()
 </script>

@@ -137,7 +137,7 @@
                 unelevated
                 color="white"
                 text-color="black"
-                icon="fab fa-patreon"
+                :icon="simPatreon"
                 href="https://www.patreon.com/join/josh5"
                 target="_blank"
                 rel="noopener"
@@ -150,7 +150,7 @@
                 unelevated
                 color="white"
                 text-color="black"
-                icon="fab fa-github"
+                :icon="simGithubsponsors"
                 href="https://github.com/sponsors/Josh5"
                 target="_blank"
                 rel="noopener"
@@ -163,7 +163,7 @@
                 unelevated
                 color="white"
                 text-color="black"
-                icon="fas fa-mug-hot"
+                :icon="simKofi"
                 href="https://ko-fi.com/josh5coffee"
                 target="_blank"
                 rel="noopener"
@@ -184,6 +184,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useRssFeedStore } from 'src/stores/rss-feed-store'
 import type { FeedDefinition } from 'src/stores/rss-feed-store'
+import { simGithubsponsors, simKofi, simPatreon } from 'quasar-extras-svg-icons/simple-icons-v14'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-image.png`)
