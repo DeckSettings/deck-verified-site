@@ -24,15 +24,15 @@ export default defineComponent({
 
     return {
       showScrollButton,
-      scrollToTop
+      scrollToTop,
     }
-  }
+  },
 })
 </script>
 
 <template>
   <q-btn
-    v-if="showScrollButton"
+    v-if="showScrollButton && !$q.platform.isMobileUi"
     round
     unelevated
     icon="arrow_upward"
