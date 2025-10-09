@@ -17,7 +17,7 @@ const handleRefresh = async (done: () => void) => {
 </script>
 
 <template>
-  <q-pull-to-refresh class="fit" @refresh="handleRefresh">
+  <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="q-pa-md">
       <div v-if="reportType === 'recent'">
         <HomeReportsList

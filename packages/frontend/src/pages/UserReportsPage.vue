@@ -115,7 +115,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 </script>
 
 <template>
-  <q-pull-to-refresh class="fit" @refresh="handleRefresh">
+  <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="bg-dark text-white q-pb-xl" padding>
       <q-ajax-bar
         ref="ajaxBar"

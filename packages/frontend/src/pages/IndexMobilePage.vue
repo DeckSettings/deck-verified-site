@@ -1,5 +1,5 @@
 <template>
-  <q-pull-to-refresh class="fit" @refresh="handleRefresh">
+  <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="q-pa-md bg-grey-10 text-white">
       <div class="column q-gutter-lg">
         <q-card flat bordered class="overflow-hidden">
