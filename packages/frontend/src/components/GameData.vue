@@ -32,6 +32,7 @@ import ProtonBadge from 'components/elements/ProtonBadge.vue'
 import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 import SteamCompatBadge from 'components/elements/SteamCompatBadge.vue'
 import PriceBadge from 'components/elements/PriceBadge.vue'
+import PageHeader from 'components/elements/PageHeader.vue'
 
 dayjs.extend(relativeTime)
 
@@ -457,12 +458,14 @@ watch(reportFormDialogOpen, (open) => {
     size="5px"
     skip-hijack
   />
+  <!-- Show page header without a title. We will show the title per game below as it changes for mobile layouts -->
+  <PageHeader :show-nav-back-button="true" />
   <div class="background-container"
        :class="{ 'background-container-mobile': $q.platform.isMobileUi }"
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
-      <div class="col-xs-12 col-md-12 text-center q-pa-md">
+      <div class="col-xs-12 col-md-12 text-center">
         <h1 v-if="!$q.platform.is.mobile" class="text-h2 game-title">
           <q-skeleton v-if="isLoading" type="text" width="400px" class="q-mx-auto" />
           <template v-else>{{ gameName }}</template>

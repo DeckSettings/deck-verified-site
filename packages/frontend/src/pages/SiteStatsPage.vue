@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMeta } from 'quasar'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
-import NavBackButton from 'components/elements/NavBackButton.vue'
+import PageHeader from 'components/elements/PageHeader.vue'
 import ReportForm from 'components/ReportForm.vue'
 import StatsGameDetailsRequestsList from 'components/StatsGameDetailsRequestsList.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
@@ -108,53 +108,41 @@ useMeta(() => {
 </script>
 
 <template>
-  <q-page class="bg-dark text-white q-pb-xl" padding>
+  <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.isMobileUi">
     <div class="background-container"
          :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
-    <NavBackButton />
+    <PageHeader title="Site Stats" :show-nav-back-button="true">
+      <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
+        <div class="col-12 flex justify-center">
+          <PrimaryButton
+            :size="$q.screen.lt.sm ? 'md': 'lg'"
+            icon="fas fa-file-invoice"
+            label="Submit Report"
+            @click="openDialog"
+          />
+          <q-dialog class="q-ma-none q-pa-none report-dialog"
+                    full-height
+                    :full-width="$q.screen.lt.md"
+                    :maximized="$q.screen.lt.md"
+                    v-model="reportFormDialogOpen"
+                    @hide="closeDialog">
+            <ReportForm :game-name="''"
+                        :app-id="''"
+                        :game-banner="''"
+                        :game-background="''"
+                        :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
+          </q-dialog>
+        </div>
+      </div>
+    </PageHeader>
     <div class="page-content-container">
-      <div class="row items-center justify-between q-mb-md">
-        <div class="col-12 col-md-6">
-          <div class="text-h3 q-ml-xl q-mt-xl q-mb-sm">
-            Site Stats
-          </div>
-          <div class="q-ml-xl q-mb-sm">
-            <!--            All games with community-submitted reports-->
-          </div>
+      <div class="row">
+        <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
+          <StatsGameDetailsRequestsList statSelection="withReports" />
         </div>
-        <div class="col-12 col-md-6">
-          <div class="column">
-            <div class="col q-mt-lg" :class="$q.screen.lt.md ? 'self-center': 'self-end q-mr-xl'">
-              <PrimaryButton
-                :size="$q.screen.lt.sm ? 'md': 'lg'"
-                icon="fas fa-file-invoice"
-                label="Submit Report"
-                @click="openDialog"
-              />
-              <q-dialog class="q-ma-none q-pa-none report-dialog"
-                        full-height
-                        :full-width="$q.screen.lt.md"
-                        :maximized="$q.screen.lt.md"
-                        v-model="reportFormDialogOpen"
-                        @hide="closeDialog">
-                <ReportForm :game-name="''"
-                            :app-id="''"
-                            :game-banner="''"
-                            :game-background="''"
-                            :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
-              </q-dialog>
-            </div>
-          </div>
+        <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
+          <StatsGameDetailsRequestsList statSelection="withoutReports" />
         </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
-        <StatsGameDetailsRequestsList statSelection="withReports" />
-      </div>
-      <div class="col-xs-12 col-md-6" :class="$q.platform.is.mobile ? 'q-pb-md' : 'q-pa-md'">
-        <StatsGameDetailsRequestsList statSelection="withoutReports" />
       </div>
     </div>
 

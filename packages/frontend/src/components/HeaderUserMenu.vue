@@ -143,18 +143,25 @@ defineExpose({
 
               <q-separator dark spaced />
 
-              <q-list dark>
-                <q-item clickable v-ripple :to="{ name: 'user-reports' }">
-                  <q-item-section avatar>
-                    <q-icon square color="primary" text-color="white" name="description" />
-                  </q-item-section>
-                  <q-item-section>My Reports</q-item-section>
-                </q-item>
-              </q-list>
+              <template v-if="isLoggedIn">
+                <q-list dark>
+                  <q-item clickable v-ripple :to="{ name: 'user-reports' }">
+                    <q-item-section avatar>
+                      <q-avatar square color="primary" text-color="white" icon="description" />
+                    </q-item-section>
+                    <q-item-section>My Reports</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
 
-              <NotificationCenter />
+                <q-separator dark />
 
-              <q-separator dark spaced />
+                <NotificationCenter />
+
+                <q-separator dark spaced />
+              </template>
             </div>
           </q-menu>
         </q-btn>

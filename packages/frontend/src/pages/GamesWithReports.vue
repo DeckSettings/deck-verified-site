@@ -4,7 +4,7 @@ import { useMeta } from 'quasar'
 import { fetchGamesWithReports } from 'src/utils/api'
 import type { GameSearchResult } from '../../../shared/src/game'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
-import NavBackButton from 'components/elements/NavBackButton.vue'
+import PageHeader from 'components/elements/PageHeader.vue'
 import ReportForm from 'components/ReportForm.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
@@ -121,51 +121,48 @@ useMeta(() => {
 </script>
 
 <template>
-  <q-page class="bg-dark text-white q-pb-xl" padding>
+  <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.isMobileUi">
     <div class="background-container"
          :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
-    <NavBackButton />
+    <PageHeader
+      title="Steam Deck Game Settings"
+      subtitle="Community-tested graphics settings and performance targets for popular PC games on Steam Deck."
+      :show-nav-back-button="true"
+    >
+      <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
+        <div v-if="$q.screen.gt.sm" class="col-12 col-md-6 flex justify-end">
+          <PrimaryButton
+            size="lg"
+            icon="fas fa-chart-bar"
+            label="View Site Stats"
+            :to="{ name: 'site-stats' }"
+          />
+        </div>
+        <div class="col-12 col-md-6 flex justify-center">
+          <PrimaryButton
+            :size="$q.screen.lt.sm ? 'md': 'lg'"
+            icon="fas fa-file-invoice"
+            label="Submit Report"
+            @click="openDialog"
+          />
+          <q-dialog class="q-ma-none q-pa-none report-dialog"
+                    full-height
+                    :full-width="$q.screen.lt.md"
+                    :maximized="$q.screen.lt.md"
+                    v-model="reportFormDialogOpen"
+                    @hide="closeDialog">
+            <ReportForm :game-name="''"
+                        :app-id="''"
+                        :game-banner="''"
+                        :game-background="''"
+                        :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
+          </q-dialog>
+        </div>
+      </div>
+    </PageHeader>
     <div class="page-content-container">
       <div class="row items-center justify-between q-mb-md">
-        <div class="col-12 col-md-7">
-          <div class="text-h3 q-ml-xl q-mt-xl q-mb-sm">
-            Steam Deck Game Settings
-          </div>
-          <div class="q-ml-xl q-mb-sm">
-            Community-tested graphics settings and performance targets for popular PC games on Steam Deck.
-          </div>
-        </div>
         <div class="col-12 col-md-5">
-          <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">
-            <div v-if="$q.screen.gt.sm" class="col-12 col-md-6 flex justify-end">
-              <PrimaryButton
-                size="lg"
-                icon="fas fa-chart-bar"
-                label="View Site Stats"
-                :to="{ name: 'site-stats' }"
-              />
-            </div>
-            <div class="col-12 col-md-6 flex justify-center">
-              <PrimaryButton
-                :size="$q.screen.lt.sm ? 'md': 'lg'"
-                icon="fas fa-file-invoice"
-                label="Submit Report"
-                @click="openDialog"
-              />
-              <q-dialog class="q-ma-none q-pa-none report-dialog"
-                        full-height
-                        :full-width="$q.screen.lt.md"
-                        :maximized="$q.screen.lt.md"
-                        v-model="reportFormDialogOpen"
-                        @hide="closeDialog">
-                <ReportForm :game-name="''"
-                            :app-id="''"
-                            :game-banner="''"
-                            :game-background="''"
-                            :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
-              </q-dialog>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -263,6 +260,7 @@ useMeta(() => {
   overflow: hidden;
   transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
 }
+
 .game-result:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--q-primary) 35%, transparent);

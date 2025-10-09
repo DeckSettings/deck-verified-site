@@ -17,16 +17,18 @@ const router = useRouter()
 
 <style scoped>
 .back-btn {
-  position: absolute;
+  margin-top: 10px;
+  margin-left: 10px;
+  /*position: absolute;
   top: 26px;
-  left: 26px;
+  left: 26px;*/
   z-index: 10;
 
   /* Hide on mobile */
   display: none;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 599.99px) {
   /* Show only on tablets and larger */
   .back-btn {
     display: block;
