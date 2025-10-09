@@ -6,6 +6,9 @@ import ReportList from 'components/elements/ReportList.vue'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
 import type { HomeReport } from 'src/utils/api'
 import type { GameDetailsRequestMetricResult } from '../../../shared/src/game'
+import { QAjaxBar } from 'quasar'
+
+const ajaxBar = ref<QAjaxBar | null>(null)
 
 const props = defineProps({
   reportSelection: {
@@ -61,6 +64,9 @@ async function scheduleScrollTriggerRefresh() {
 
 async function loadReports() {
   isLoading.value = true
+  if (ajaxBar.value) {
+    ajaxBar.value.start()
+  }
   try {
     await useScrollTrigger()
 
@@ -76,6 +82,10 @@ async function loadReports() {
     await scheduleScrollTriggerRefresh()
   } finally {
     isLoading.value = false
+    // Ensure we stop the ajax bar after loading
+    if (ajaxBar.value) {
+      ajaxBar.value.stop()
+    }
   }
 }
 
@@ -97,6 +107,13 @@ watch(reportsStatsList, async () => {
 </script>
 
 <template>
+  <q-ajax-bar
+    ref="ajaxBar"
+    :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
+    color="secondary"
+    size="5px"
+    skip-hijack
+  />
   <q-card class="home-reports-card text-white">
     <q-card-section class="home-reports-header">
       <h4 class="text-h6 q-ma-none">{{ listTitle }}</h4>

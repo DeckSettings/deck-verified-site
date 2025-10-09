@@ -119,7 +119,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
     <q-page class="bg-dark text-white q-pb-xl" padding>
       <q-ajax-bar
         ref="ajaxBar"
-        position="bottom"
+        :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
         color="secondary"
         size="5px"
         skip-hijack

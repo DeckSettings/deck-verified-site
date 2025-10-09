@@ -453,7 +453,7 @@ watch(reportFormDialogOpen, (open) => {
 <template>
   <q-ajax-bar
     ref="ajaxBar"
-    position="bottom"
+    :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
     color="secondary"
     size="5px"
     skip-hijack
