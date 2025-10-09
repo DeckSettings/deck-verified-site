@@ -116,7 +116,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
 <template>
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
-    <q-page class="bg-dark text-white q-pb-xl" padding>
+    <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.isMobileUi">
       <q-ajax-bar
         ref="ajaxBar"
         :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
@@ -176,7 +176,6 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
             :issue-number="selectedReport.issue.number"
             :existing-report="selectedReport.parsedReport"
             :game-banner="''"
-            :display-fullscreen="true"
             @submitted="handleReportSubmitted"
           />
         </q-dialog>

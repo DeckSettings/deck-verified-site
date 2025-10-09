@@ -43,10 +43,10 @@ const props = defineProps({
     type: Number,
     required: false,
   },
-  displayFullscreen: {
+  inDialog: {
     type: Boolean,
     required: false,
-    default: false,
+    default: true,
   },
   showCancelButton: {
     type: Boolean,
@@ -930,8 +930,8 @@ watch(formValues, () => {
 
 <template>
   <q-card class="report-card"
-          :class="displayFullscreen ? 'fullscreen' : ''"
-          :style="displayFullscreen ? 'margin-top:58px;' : ''">
+          :class="!inDialog ? 'fullscreen' : ''"
+          :style="!inDialog ? 'margin-top:58px;' : ''">
     <q-card-section class="report-header">
       <div class="header-content">
         <div class="header-info">

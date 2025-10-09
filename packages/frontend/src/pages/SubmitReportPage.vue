@@ -13,7 +13,7 @@ const reportFormDialogOpen = ref(true)*/
       :game-banner="''"
       :game-background="''"
       :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}"
-      :display-fullscreen="true"
+      :in-dialog="false"
       :show-cancel-button="false"
       :show-clear-button="true" />
   </q-page>
