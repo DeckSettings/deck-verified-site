@@ -142,7 +142,7 @@
                 target="_blank"
                 rel="noopener"
               >
-                <q-tooltip>Support on Patreon</q-tooltip>
+                <q-tooltip anchor="top middle" self="bottom middle">Support on Patreon</q-tooltip>
               </q-btn>
               <q-btn
                 round
@@ -155,7 +155,7 @@
                 target="_blank"
                 rel="noopener"
               >
-                <q-tooltip>Sponsor this project on GitHub</q-tooltip>
+                <q-tooltip anchor="top middle" self="bottom middle">Sponsor this project on GitHub</q-tooltip>
               </q-btn>
               <q-btn
                 round
@@ -168,7 +168,7 @@
                 target="_blank"
                 rel="noopener"
               >
-                <q-tooltip>Buy Josh a Ko-fi</q-tooltip>
+                <q-tooltip anchor="top middle" self="bottom middle">Buy Josh a Ko-fi</q-tooltip>
               </q-btn>
             </div>
           </div>
