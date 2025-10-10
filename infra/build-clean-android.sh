@@ -193,6 +193,48 @@ fi
 echo "Running 'npm ci' with cache at: $CACHE_DIR"
 npm ci --cache "$CACHE_DIR" --prefer-offline
 
+# Before building, set Android versionName to the git short sha and versionCode to YYYYMMDD.
+# versionName is the user-facing string (we set it to the short sha).
+# versionCode must be an integer and will be set to the date in YYYYMMDD format.
+APP_BUILD_GRADLE="packages/frontend/src-capacitor/android/app/build.gradle"
+
+# Compute git short sha (try repository first, then env var fallback)
+GIT_SHORT_SHA=""
+if command -v git >/dev/null 2>&1 && [ -d .git ]; then
+    GIT_SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || true)
+fi
+# Allow CI to supply a short commit via env if git metadata isn't present
+GIT_SHORT_SHA=${GIT_SHORT_SHA:-${GIT_COMMIT_SHORT:-}}
+
+# Final fallback: empty string will be handled below (we'll set "unknown" if still empty)
+if [ -z "$GIT_SHORT_SHA" ]; then
+    if [ -n "${GIT_COMMIT_SHORT:-}" ]; then
+        GIT_SHORT_SHA="$GIT_COMMIT_SHORT"
+    else
+        # As a last resort, use timestamp-based pseudo-sha so versionName isn't empty
+        GIT_SHORT_SHA=$(date +%s | sha1sum | cut -c1-7)
+    fi
+fi
+
+# Compute numeric version code as YYYYMMDD
+VERSION_CODE=$(date +"%Y%m%d")
+
+if [ -f "$APP_BUILD_GRADLE" ]; then
+    echo "Patching $APP_BUILD_GRADLE: setting versionName=\"$GIT_SHORT_SHA\" and versionCode=$VERSION_CODE"
+
+    # Replace versionCode line (preserve indentation by writing a fixed 8-space indent like the file)
+    # Use a portable sed invocation; create a small backup then remove it.
+    sed -E -i.bak "s/^[[:space:]]*versionCode[[:space:]]+.*/        versionCode $VERSION_CODE/" "$APP_BUILD_GRADLE" || true
+
+    # Replace versionName line, ensure the value is quoted
+    sed -E -i.bak "s/^[[:space:]]*versionName[[:space:]]+.*/        versionName \"$GIT_SHORT_SHA\"/" "$APP_BUILD_GRADLE" || true
+
+    # Clean up sed backup file
+    rm -f "${APP_BUILD_GRADLE}.bak" || true
+else
+    echo "WARN: $APP_BUILD_GRADLE not found; skipping automatic version bump" >&2
+fi
+
 # Run android build
 echo "Running 'npm run build:android'"
 npm run build:android
