@@ -10,7 +10,7 @@
           ref="headerUserMenu"
           v-if="enableLogin"
           display-mode="hamburger"
-          class="header-hamburger lt-md"
+          class="header-hamburger"
         />
         <HeaderSearch class="top-bar-search" />
       </div>
