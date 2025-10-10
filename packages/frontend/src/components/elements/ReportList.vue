@@ -69,24 +69,6 @@ const getReviewScoreTooltip = (reviewScore: string) => {
 }
 
 /**
- * Issue visibility helpers
- */
-const getIssueVisibilityIcon = (issue?: { state?: string } | undefined) => {
-  const open = issue?.state === 'open'
-  return open ? 'visibility' : 'visibility_off'
-}
-const getIssueVisibilityColor = (issue?: { state?: string } | undefined) => {
-  const open = issue?.state === 'open'
-  return open ? 'positive' : 'negative'
-}
-const getIssueVisibilityTooltip = (issue?: { state?: string } | undefined) => {
-  const open = issue?.state === 'open'
-  return open
-    ? 'Open issue — visible in public reports'
-    : 'Closed issue — this report is closed and not visible to the public'
-}
-
-/**
  * Filter labels that should be shown as chips in the user reports list
  * (only labels that start with the configured prefixes).
  */
@@ -94,10 +76,43 @@ const getFilteredLabels = (report: HomeReport) => {
   const prefixes = ['invalid:', 'note:', 'community:']
   const labels = report.issue?.labels
   if (!labels || !Array.isArray(labels)) return []
-  return labels.filter(l => {
-    const name = (l.name || '').toLowerCase()
-    return prefixes.some(p => name.startsWith(p))
-  })
+
+  // Map specific label names (lowercased) to human-friendly strings.
+  const nameMap: Record<string, string> = {
+    'invalid:report-inaccurate': 'Inaccurate',
+    'invalid:template-incomplete': 'Incomplete',
+    'note:ocr-generated-content': 'Unreviewed OCR Content',
+    'community:clarification-requested': 'Community Clarification Requested',
+    'community:config-review-suggested': 'Community Review Suggested',
+    'community:improvements-suggested': 'Community Improvements Suggested',
+    'community:spelling-check-suggested': 'Community Spell Check Suggested',
+    'community:verification-suggested': 'Community Verification Suggested',
+  }
+
+  // Filter by prefixes and return transformed copies of the labels so we don't mutate originals.
+  return labels
+    .filter(l => {
+      const name = (l.name || '').toLowerCase()
+      return prefixes.some(p => name.startsWith(p))
+    })
+    .map(l => {
+      const key = (l.name || '').toLowerCase()
+      const mapped = nameMap[key]
+
+      // Determine a simple icon based on the label prefix.
+      // invalid: -> error, note: -> info, community: -> chat
+      let icon = ''
+      if (key.startsWith('invalid:')) {
+        icon = 'bug_report'
+      } else if (key.startsWith('note:')) {
+        icon = 'info'
+      } else if (key.startsWith('community:')) {
+        icon = 'chat'
+      }
+
+      // Return a shallow copy with the mapped name and inferred icon (if any).
+      return { ...l, name: mapped ? mapped : l.name, icon }
+    })
 }
 
 const getReportUrl = (report: HomeReport) => {
@@ -264,10 +279,11 @@ const editReport = (report: HomeReport) => {
           </q-item-label>
         </q-item-section>
 
-        <q-item-section side top class="gt-xs">
+        <q-item-section side top class="report-item-section-chips">
           <template v-if="!editMode">
             <!-- User chip -->
             <q-chip
+              class="report-item-user-chip"
               size="sm"
               color="brown"
               text-color="white">
@@ -282,34 +298,43 @@ const editReport = (report: HomeReport) => {
             <!-- Issue visibility chip -->
             <q-chip
               v-if="editMode"
+              class="report-item-visibility-chip"
               size="sm"
-              class="q-ml-sm"
-              :color="getIssueVisibilityColor(report.issue)"
+              :color="report.issue?.state === 'open' ? 'positive' : 'negative'"
               text-color="white"
             >
               <q-avatar
-                :icon="getIssueVisibilityIcon(report.issue)"
-                :color="getIssueVisibilityColor(report.issue)"
+                :icon="report.issue?.state === 'open' ? 'visibility' : 'visibility_off'"
+                :color="report.issue?.state === 'open' ? 'positive' : 'negative'"
                 text-color="white"
               />
-              <span v-if="report.issue?.state">{{ report.issue?.state === 'open' ? 'Visible' : 'Closed' }}</span>
+              <span v-if="report.issue?.state">
+                {{ report.issue?.state === 'open' ? 'Visible' : 'Closed' }}
+              </span>
               <q-tooltip v-if="report.issue?.state" anchor="center left" self="center right" :offset="[10, 10]">
-                {{ getIssueVisibilityTooltip(report.issue) }}
+                {{
+                  report.issue?.state === 'open'
+                    ? 'Open issue — visible in public reports'
+                    : 'Closed issue — this report is closed and not visible to the public'
+                }}
               </q-tooltip>
             </q-chip>
 
             <!-- Label chips (filtered prefixes) -->
-            <q-chip
-              v-for="label in getFilteredLabels(report)" :key="label.id"
-              size="sm"
-              class="q-ml-sm"
-              :style="{ 'background-color': `#${label.color}`, color: 'black' }"
-            >
-              {{ label.name }}
-              <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
-                {{ label.description || '' }}
-              </q-tooltip>
-            </q-chip>
+            <div class="report-item-label-chips-wrapper">
+              <q-chip
+                class="report-item-label-chip"
+                v-for="label in getFilteredLabels(report)" :key="label.id"
+                size="sm"
+                :style="{ 'background-color': `#${label.color}`, color: 'black' }"
+              >
+                <q-avatar v-if="label.icon" :icon="label.icon" text-color="white" color="black" />
+                {{ label.name }}
+                <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
+                  {{ label.description || '' }}
+                </q-tooltip>
+              </q-chip>
+            </div>
           </template>
 
           <!--Review score chip -->
@@ -327,7 +352,7 @@ const editReport = (report: HomeReport) => {
           </q-chip>
         </q-item-section>
 
-        <q-item-section v-if="editMode" side top>
+        <q-item-section v-if="editMode" side top class="report-item-section-edit-button">
           <q-btn-dropdown
             flat dense rounded
             color="secondary"
@@ -381,9 +406,15 @@ const editReport = (report: HomeReport) => {
   transform: translateY(-1px);
 }
 
+.report-item-section-chips,
+.report-item-section-edit-button {
+  padding: 0;
+}
+
 .game-info-section {
   display: flex;
   flex-direction: column;
+  height: 150px;
 }
 
 .game-poster {
@@ -393,8 +424,8 @@ const editReport = (report: HomeReport) => {
 }
 
 .device-image-wrapper {
-  margin-left: 2px;
-  margin-bottom: 24px;
+  margin-left: 90px;
+  margin-bottom: 2px;
 }
 
 .device-image-wrapper-mobile {
@@ -402,18 +433,66 @@ const editReport = (report: HomeReport) => {
   margin-bottom: 24px;
 }
 
-/* -sm- */
-@media (min-width: 600px) {
+.report-item-label-chips-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.report-item-label-chip {
+  flex: 0 0 auto;
+  margin: 2px 0;
+  display: inline-flex;
+}
+
+@media (max-width: 599.99px) {
+  .report-item {
+    padding-bottom: 40px;
+  }
+
+  .report-item-visibility-chip {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .report-item-user-chip {
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+  }
+
+  .report-item-label-chips-wrapper {
+    position: absolute;
+    bottom: 3px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1px;
+    pointer-events: none;
+  }
+
+  .report-item-label-chips-wrapper .report-item-label-chip {
+    flex: 0 0 auto;
+    margin: 0;
+    pointer-events: auto;
+  }
+
   .device-image-wrapper {
-    margin-left: 90px;
-    margin-bottom: 2px;
+    margin-left: 2px;
+    margin-bottom: 24px;
   }
 }
 
-/* -md- */
-@media (min-width: 1024px) {
+@media (max-width: 1023.99px) {
   .game-info-section {
-    height: 150px;
+    height: inherit;
   }
 }
 </style>
