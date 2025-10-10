@@ -6,6 +6,8 @@ import { useAuthStore } from 'stores/auth-store'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useNotifications } from 'src/composables/useNotifications'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import MobileProgressNotifications from 'components/elements/MobileProgressNotifications.vue'
+import { mobileProgressState } from 'src/composables/useProgressNotifications'
 
 // Modern user dropdown combining authentication controls and notifications.
 
@@ -30,6 +32,10 @@ const userHandle = computed(() => `@${authStore.user?.login || 'github'}`)
 const userInitials = computed(() => {
   const login = authStore.user?.login || ''
   return login.slice(0, 2).toUpperCase() || 'GH'
+})
+
+const hasProgress = computed(() => {
+  return mobileProgressState.value && mobileProgressState.value.length > 0
 })
 
 const isMobileMenuOpen = ref(false)
@@ -91,6 +97,18 @@ defineExpose({
             <img v-if="avatarUrl" :src="avatarUrl" alt="GitHub avatar">
             <span v-else>{{ userInitials }}</span>
           </q-avatar>
+
+          <!-- Progress badge -->
+          <q-badge
+            v-if="hasProgress && $q.platform.isMobileUi"
+            class="header-progress-badge"
+            color="transparent"
+            floating rounded
+          >
+            <q-icon name="autorenew" color="warning" class="header-progress-icon" />
+          </q-badge>
+
+          <!-- Has notifications badge -->
           <q-badge
             v-if="isLoggedIn && hasNotifications"
             class="q-ml-sm"
@@ -159,6 +177,7 @@ defineExpose({
                 <q-separator dark />
 
                 <NotificationCenter />
+                <MobileProgressNotifications />
 
                 <q-separator dark spaced />
               </template>
@@ -179,6 +198,17 @@ defineExpose({
         aria-label="Open menu"
         @click="openMobileMenu"
       >
+        <!-- Progress badge -->
+        <q-badge
+          v-if="hasProgress && $q.platform.isMobileUi"
+          class="header-progress-badge"
+          color="transparent"
+          floating rounded
+        >
+          <q-icon name="autorenew" color="warning" class="header-progress-icon" />
+        </q-badge>
+
+        <!-- Has notifications badge -->
         <q-badge
           v-if="isLoggedIn && hasNotifications"
           class="q-ml-sm"
@@ -249,6 +279,7 @@ defineExpose({
                 <q-separator dark />
 
                 <NotificationCenter />
+                <MobileProgressNotifications />
               </template>
 
 
@@ -303,6 +334,28 @@ defineExpose({
 
 .header-user-menu__dialog-trigger {
   min-width: 0;
+}
+
+.header-progress-badge {
+  transform: translate(-8px, 16px);
+  z-index: 100;
+}
+
+.header-progress-icon {
+  color: white;
+  font-size: 20px;
+  font-weight: bolder;
+  display: inline-block;
+  animation: header-progress-spin 1s linear infinite;
+}
+
+@keyframes header-progress-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header-user-menu__dialog-card {
