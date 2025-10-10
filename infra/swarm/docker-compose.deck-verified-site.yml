@@ -20,6 +20,9 @@
 #   REPLICAS_API=2
 #   REPLICAS_WEB=2
 #   REPLICAS_WEB_SSR=1
+#   #@ Resource Limits
+#   #-  - Container Memory Limits -
+#   API_MEMLIMIT=150M
 #   #@ Traefik Config
 #   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
 #   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
@@ -175,7 +178,7 @@ services:
         order: start-first
       resources:
         limits:
-          memory: 150M
+          memory: ${API_MEMLIMIT:-150M}
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_API:?}
