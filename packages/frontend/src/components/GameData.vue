@@ -213,6 +213,11 @@ watch([appId], async ([newAppId]) => {
   }
 }, { immediate: true })
 
+const hasReports = computed(() => {
+  const gd = gameData.value
+  return !!(gd && Array.isArray(gd.reports) && gd.reports.length > 0)
+})
+
 /** SSR-stable, pure computed reports pipeline */
 const filteredReports = computed<ExtendedGameReport[]>(() => {
   const gd = gameData.value
@@ -629,7 +634,7 @@ watch(reportFormDialogOpen, (open) => {
           <!-- END PAGE TEXT -->
         </div>
       </div>
-      <div class="col-xs-12 col-md-8 q-pr-lg-sm q-pa-md-sm q-pa-xs-none self-start">
+      <div class="col-xs-12 col-md-8 self-start q-pr-lg-sm q-px-md-sm q-px-xs-none">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="isLoading">
             <div class="game-data-filters row q-mb-md justify-between items-center">
@@ -740,155 +745,155 @@ watch(reportFormDialogOpen, (open) => {
             </q-list>
           </div>
           <div v-else-if="gameData">
-            <div v-if="filteredReports.length > 0">
-              <div class="game-data-filters row justify-between items-center"
-                   :class="(!$q.platform.isMobileUi) ? 'q-mb-md' : ''">
-                <div v-if="$q.screen.lt.md && $q.platform.isMobileUi" class="col-12">
-                  <div class="row no-wrap items-center q-col-gutter-sm">
-                    <div class="col-6" style="max-width:100px">
-                      <SecondaryButton
-                        v-if="!hasActiveFilters"
-                        color="primary"
-                        icon="filter_alt"
-                        label="Filter"
-                        full-width
-                        dense
-                        size="sm"
-                        @click="filterDialogOpen = true" />
-                      <PrimaryButton
-                        v-else
-                        color="primary"
-                        icon="filter_alt"
-                        label="Filter"
-                        full-width
-                        dense
-                        size="sm"
-                        @click="filterDialogOpen = true" />
-                    </div>
-                    <q-space />
-                    <div class="col-6" style="max-width:100px">
-                      <SecondaryButton
-                        v-if="!hasActiveSort"
-                        color="primary"
-                        icon="sort"
-                        label="Sort"
-                        full-width
-                        dense
-                        size="sm"
-                        @click="sortDialogOpen = true" />
-                      <PrimaryButton
-                        v-else
-                        color="primary"
-                        icon="sort"
-                        label="Sort"
-                        full-width
-                        dense
-                        size="sm"
-                        @click="sortDialogOpen = true" />
-                    </div>
+            <div v-if="hasReports"
+                 class="game-data-filters row justify-between items-center"
+                 :class="(!$q.platform.isMobileUi) ? 'q-mb-md' : ''">
+              <div v-if="$q.screen.lt.md && $q.platform.isMobileUi" class="col-12">
+                <div class="row no-wrap items-center q-col-gutter-sm">
+                  <div class="col-6" style="max-width:100px">
+                    <SecondaryButton
+                      v-if="!hasActiveFilters"
+                      color="primary"
+                      icon="filter_alt"
+                      label="Filter"
+                      full-width
+                      dense
+                      size="sm"
+                      @click="filterDialogOpen = true" />
+                    <PrimaryButton
+                      v-else
+                      color="primary"
+                      icon="filter_alt"
+                      label="Filter"
+                      full-width
+                      dense
+                      size="sm"
+                      @click="filterDialogOpen = true" />
                   </div>
-
-                  <q-dialog
-                    v-model="filterDialogOpen"
-                    transition-show="scale"
-                    transition-hide="scale">
-                    <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
-                      <q-card-section class="text-subtitle1 text-weight-medium">
-                        Filters
-                      </q-card-section>
-                      <q-card-section class="q-gutter-md">
-                        <q-select v-model="selectedDevice" label="Device"
-                                  dense outlined emit-value map-options
-                                  :options="deviceOptions" />
-                        <q-select v-model="selectedLauncher" label="Launcher"
-                                  dense outlined emit-value map-options
-                                  :options="launcherOptions" />
-                      </q-card-section>
-                      <q-card-actions align="between">
-                        <q-btn flat color="primary" label="Clear"
-                               @click="selectedDevice = 'all'; selectedLauncher = 'all'" />
-                        <q-btn flat color="primary" label="Done" v-close-popup />
-                      </q-card-actions>
-                    </q-card>
-                  </q-dialog>
-                  <q-dialog
-                    v-model="sortDialogOpen"
-                    transition-show="scale"
-                    transition-hide="scale">
-                    <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
-                      <q-card-section class="text-subtitle1 text-weight-medium">
-                        Sort
-                      </q-card-section>
-                      <q-list bordered separator>
-                        <q-item clickable v-ripple @click="toggleSortOrder('updated')">
-                          <q-item-section>Last Updated</q-item-section>
-                          <q-item-section side>
-                            <q-icon
-                              :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
-                              :color="(sortOption === 'updated' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
-                          </q-item-section>
-                        </q-item>
-                        <q-item clickable v-ripple @click="toggleSortOrder('reactions')">
-                          <q-item-section>Most Liked</q-item-section>
-                          <q-item-section side>
-                            <q-icon
-                              :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
-                              :color="(sortOption === 'reactions' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
-                          </q-item-section>
-                        </q-item>
-                      </q-list>
-                      <q-card-actions align="between">
-                        <q-btn flat color="primary" label="Clear" @click="clearSort" />
-                        <q-btn flat color="primary" label="Done" v-close-popup />
-                      </q-card-actions>
-                    </q-card>
-                  </q-dialog>
+                  <q-space />
+                  <div class="col-6" style="max-width:100px">
+                    <SecondaryButton
+                      v-if="!hasActiveSort"
+                      color="primary"
+                      icon="sort"
+                      label="Sort"
+                      full-width
+                      dense
+                      size="sm"
+                      @click="sortDialogOpen = true" />
+                    <PrimaryButton
+                      v-else
+                      color="primary"
+                      icon="sort"
+                      label="Sort"
+                      full-width
+                      dense
+                      size="sm"
+                      @click="sortDialogOpen = true" />
+                  </div>
                 </div>
-                <template v-else>
-                  <!-- Filters (Top Left) -->
-                  <div class="filters col-xs-12 col-md-8">
-                    <q-select v-model="selectedDevice" label="Device"
-                              dense outlined
-                              class="filter-select q-my-xs-sm q-mr-xs"
-                              :options="deviceOptions" emit-value map-options />
-                    <q-select v-model="selectedLauncher" label="Launcher"
-                              dense outlined
-                              class="filter-select q-my-xs-sm q-ml-xs"
-                              :options="launcherOptions" emit-value map-options />
-                  </div>
 
-                  <!-- Sorting (Top Right) -->
-                  <div class="sorting col-md-shrink" :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
-                    <!-- Sort by Updated -->
-                    <q-btn dense round flat @click="toggleSortOrder('updated')"
-                           :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
-                      <q-icon name="event" />
-                      <q-icon
-                        :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
-                        :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
-                      <q-tooltip>Sort by Last Updated</q-tooltip>
-                    </q-btn>
-                    <!-- Sort by Most Liked -->
-                    <q-btn dense round flat @click="toggleSortOrder('reactions')"
-                           :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
-                      <q-icon name="thumb_up" />
-                      <q-icon
-                        :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
-                        :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
-                      <q-tooltip v-if="sortOption !== 'reactions' || sortOrder === 'off'">
-                        Sort by Most Liked
-                      </q-tooltip>
-                      <q-tooltip v-else-if="sortOrder === 'asc'">
-                        Sorting by Most Liked Ascending
-                      </q-tooltip>
-                      <q-tooltip v-else-if="sortOrder === 'desc'">
-                        Sorting by Most Liked Descending
-                      </q-tooltip>
-                    </q-btn>
-                  </div>
-                </template>
+                <q-dialog
+                  v-model="filterDialogOpen"
+                  transition-show="scale"
+                  transition-hide="scale">
+                  <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
+                    <q-card-section class="text-subtitle1 text-weight-medium">
+                      Filters
+                    </q-card-section>
+                    <q-card-section class="q-gutter-md">
+                      <q-select v-model="selectedDevice" label="Device"
+                                dense outlined emit-value map-options
+                                :options="deviceOptions" />
+                      <q-select v-model="selectedLauncher" label="Launcher"
+                                dense outlined emit-value map-options
+                                :options="launcherOptions" />
+                    </q-card-section>
+                    <q-card-actions align="between">
+                      <q-btn flat color="primary" label="Clear"
+                             @click="selectedDevice = 'all'; selectedLauncher = 'all'" />
+                      <q-btn flat color="primary" label="Done" v-close-popup />
+                    </q-card-actions>
+                  </q-card>
+                </q-dialog>
+                <q-dialog
+                  v-model="sortDialogOpen"
+                  transition-show="scale"
+                  transition-hide="scale">
+                  <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
+                    <q-card-section class="text-subtitle1 text-weight-medium">
+                      Sort
+                    </q-card-section>
+                    <q-list bordered separator>
+                      <q-item clickable v-ripple @click="toggleSortOrder('updated')">
+                        <q-item-section>Last Updated</q-item-section>
+                        <q-item-section side>
+                          <q-icon
+                            :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
+                            :color="(sortOption === 'updated' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
+                        </q-item-section>
+                      </q-item>
+                      <q-item clickable v-ripple @click="toggleSortOrder('reactions')">
+                        <q-item-section>Most Liked</q-item-section>
+                        <q-item-section side>
+                          <q-icon
+                            :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
+                            :color="(sortOption === 'reactions' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                    <q-card-actions align="between">
+                      <q-btn flat color="primary" label="Clear" @click="clearSort" />
+                      <q-btn flat color="primary" label="Done" v-close-popup />
+                    </q-card-actions>
+                  </q-card>
+                </q-dialog>
               </div>
+              <template v-else>
+                <!-- Filters (Top Left) -->
+                <div class="filters col-xs-12 col-md-8">
+                  <q-select v-model="selectedDevice" label="Device"
+                            dense outlined
+                            class="filter-select q-my-xs-sm q-mr-xs"
+                            :options="deviceOptions" emit-value map-options />
+                  <q-select v-model="selectedLauncher" label="Launcher"
+                            dense outlined
+                            class="filter-select q-my-xs-sm q-ml-xs"
+                            :options="launcherOptions" emit-value map-options />
+                </div>
 
+                <!-- Sorting (Top Right) -->
+                <div class="sorting col-md-shrink" :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
+                  <!-- Sort by Updated -->
+                  <q-btn dense round flat @click="toggleSortOrder('updated')"
+                         :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
+                    <q-icon name="event" />
+                    <q-icon
+                      :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
+                      :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
+                    <q-tooltip>Sort by Last Updated</q-tooltip>
+                  </q-btn>
+                  <!-- Sort by Most Liked -->
+                  <q-btn dense round flat @click="toggleSortOrder('reactions')"
+                         :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
+                    <q-icon name="thumb_up" />
+                    <q-icon
+                      :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
+                      :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
+                    <q-tooltip v-if="sortOption !== 'reactions' || sortOrder === 'off'">
+                      Sort by Most Liked
+                    </q-tooltip>
+                    <q-tooltip v-else-if="sortOrder === 'asc'">
+                      Sorting by Most Liked Ascending
+                    </q-tooltip>
+                    <q-tooltip v-else-if="sortOrder === 'desc'">
+                      Sorting by Most Liked Descending
+                    </q-tooltip>
+                  </q-btn>
+                </div>
+              </template>
+            </div>
+            <div v-if="filteredReports.length > 0">
               <q-list separator>
                 <q-item
                   v-for="report in filteredReports" :key="report.id"
