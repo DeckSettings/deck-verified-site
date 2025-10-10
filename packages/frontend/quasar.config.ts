@@ -22,6 +22,7 @@ export default defineConfig((ctx) => {
       'i18n',
       'axios',
       'auth',
+      'notify-defaults',
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

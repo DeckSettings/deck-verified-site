@@ -246,7 +246,6 @@ export const useNotificationStore = defineStore('notifications', () => {
       caption: notification.body,
       icon: notification.icon,
       timeout: 2000,
-      position: 'bottom',
     }
     const color = toastColorForVariant(notification.variant)
     if (color) {
