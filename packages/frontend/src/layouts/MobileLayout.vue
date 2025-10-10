@@ -23,24 +23,12 @@
     <div class="bottom-nav" ref="bottomNav">
       <q-tabs
         v-model="activeTab"
-        class="text-white small-tabs"
+        class="text-white small-tabs q-px-sm"
         active-color="primary"
         indicator-color="transparent"
         dense
         justify="between"
       >
-        <q-btn
-          flat
-          dense
-          round
-          color="white"
-          icon="menu"
-          style="padding-left:16px;"
-          aria-label="Open menu"
-          @click="openMenu"
-        >
-        </q-btn>
-
         <q-route-tab name="home" icon="home" label="Home"
                      to="/" exact />
         <q-route-tab name="recent" icon="update" label="Recent"
@@ -64,10 +52,6 @@ import HeaderUserMenu from 'components/HeaderUserMenu.vue'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 
 const headerUserMenu = ref<InstanceType<typeof HeaderUserMenu> | null>(null)
-
-const openMenu = () => {
-  headerUserMenu.value?.openMobileMenu()
-}
 
 const { enableLogin } = useFeatureFlags()
 const route = useRoute()
