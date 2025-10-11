@@ -311,7 +311,7 @@ const editReport = (report: HomeReport) => {
               <span v-if="report.issue?.state">
                 {{ report.issue?.state === 'open' ? 'Visible' : 'Closed' }}
               </span>
-              <q-tooltip v-if="report.issue?.state" anchor="center left" self="center right" :offset="[10, 10]">
+              <q-tooltip v-if="report.issue?.state" anchor="bottom middle" self="top middle">
                 {{
                   report.issue?.state === 'open'
                     ? 'Open issue — visible in public reports'
@@ -330,7 +330,7 @@ const editReport = (report: HomeReport) => {
               >
                 <q-avatar v-if="label.icon" :icon="label.icon" text-color="white" color="black" />
                 {{ label.name }}
-                <q-tooltip anchor="center left" self="center right" :offset="[10, 10]">
+                <q-tooltip anchor="top middle" self="bottom middle">
                   {{ label.description || '' }}
                 </q-tooltip>
               </q-chip>
