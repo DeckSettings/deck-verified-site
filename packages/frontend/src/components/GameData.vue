@@ -19,6 +19,7 @@ import type {
   ExternalGameReview,
   GameRatingsSummary,
   GamePriceSummary,
+  SteamDeckCompatibilitySummary,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
@@ -185,9 +186,9 @@ const protonTier = computed<string | null>(() => {
   const tier = ratingsSummary.value?.protonDb?.tier
   return tier ? String(tier).trim().toLowerCase() : null
 })
-const steamCompatCode = computed<number | null>(() => {
-  const code = ratingsSummary.value?.steamDeckCompatibility?.compatibilityCode
-  return code ? code : null
+const steamCompat = computed<SteamDeckCompatibilitySummary | null>(() => {
+  const compat = ratingsSummary.value?.steamDeckCompatibility
+  return compat ? compat : null
 })
 watch([appId], async ([newAppId]) => {
   if (!newAppId) {
@@ -485,8 +486,13 @@ useMeta(() => {
 
             <!-- compatibility badges (top-left) -->
             <div class="game-banner-badges absolute-top-left column q-gutter-xs">
-              <ProtonBadge class="q-mb-none" v-if="protonTier" :tier="protonTier" />
-              <SteamCompatBadge class="q-mt-none" v-if="steamCompatCode" :compatibility-code="steamCompatCode" />
+              <ProtonBadge v-if="protonTier" class="q-mb-none"
+                           :app-id="appId"
+                           :game-name="gameName"
+                           :tier="protonTier" />
+              <SteamCompatBadge v-if="steamCompat" class="q-mt-none"
+                                :game-name="gameName"
+                                :steam-deck-compatibility="steamCompat" />
             </div>
 
             <!-- price badges (top-right) -->

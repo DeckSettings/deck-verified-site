@@ -1,68 +1,80 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { QChip, QTooltip } from 'quasar'
-
-/* Import SVG assets as URLs so they can be used with <img>.
-   Using `?url` returns a string path which avoids requiring SVG-to-Vue compilation
-   and sidesteps component typing issues. */
+import { computed, ref } from 'vue'
+import { QChip, QTooltip, QDialog, QCard, QCardSection, QCardActions } from 'quasar'
 import VerifiedIconUrl from 'src/assets/icons/steamdeck-compat-verified.svg?url'
 import PlayableIconUrl from 'src/assets/icons/steamdeck-compat-playable.svg?url'
 import UnsupportedIconUrl from 'src/assets/icons/steamdeck-compat-unsupported.svg?url'
 import UnknownIconUrl from 'src/assets/icons/steamdeck-compat-unknown.svg?url'
+import type { SteamDeckCompatibilitySummary } from '../../../../shared/src/game'
+import { simSteamdeck } from 'quasar-extras-svg-icons/simple-icons-v14'
+import SecondaryButton from 'components/elements/SecondaryButton.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
-/**
- * SteamCompatBadge
- *
- * Displays a small badge indicating Steam Deck compatibility status.
- * - Accepts a numeric `compatibilityCode` (3=Verified, 2=Playable, 1=Unplayable, 0/other=Unknown)
- * - Shows a small SVG icon on the left and a white label on a transparent black chip.
- *
- * This component uses Quasar `q-chip` and inline styles (no external CSS required).
- */
 const props = defineProps<{
-  compatibilityCode?: number | null
+  steamDeckCompatibility?: SteamDeckCompatibilitySummary | null,
+  gameName?: string,
 }>()
 
-// Map numeric codes to label, icon URL and icon color.
-// Note: iconUrl values are strings (or undefined) suitable for <img :src="...">.
 type CompatEntry = {
   label: string;
-  iconUrl?: string | undefined
+  iconUrl?: string | undefined;
+  colour?: string | undefined
 }
-
 const COMPAT_MAP: Record<number, CompatEntry> = {
-  3: { label: 'Verified', iconUrl: VerifiedIconUrl },
-  2: { label: 'Playable', iconUrl: PlayableIconUrl },
-  1: { label: 'Unsupported', iconUrl: UnsupportedIconUrl },
-  0: { label: 'Unknown', iconUrl: UnknownIconUrl },
+  3: { label: 'Verified', iconUrl: VerifiedIconUrl, colour: '#59bf40' },
+  2: { label: 'Playable', iconUrl: PlayableIconUrl, colour: '#ffc82c' },
+  1: { label: 'Unsupported', iconUrl: UnsupportedIconUrl, colour: '#dcdedf' },
+  0: { label: 'Unknown', iconUrl: UnknownIconUrl, colour: '#dcdedf' },
 }
 
-// Default fallback entry
-const FALLBACK: CompatEntry = { label: 'Unknown', iconUrl: undefined }
+const compatibilityCode = computed(() => {
+  return props.steamDeckCompatibility?.compatibilityCode ?? 0
+})
 
 const chosen = computed(() => {
-  const code = (typeof props.compatibilityCode === 'number') ? props.compatibilityCode : 0
-  return COMPAT_MAP[code] ?? FALLBACK
+  const code = compatibilityCode.value ?? 0
+  return COMPAT_MAP[code] ?? { label: 'Unknown', iconUrl: undefined }
 })
+
+const descriptionCompat = (code: number) => {
+  return COMPAT_MAP[code - 1]?.iconUrl ?? undefined
+}
 
 const label = computed(() => chosen.value.label)
 const iconUrl = computed(() => chosen.value.iconUrl)
+const colour = computed(() => chosen.value.colour)
 
-// Chip styling: transparent black background, white text, 3px radius
+
+const compatibilityItems = computed(() => {
+  // Ensure we always return an array (empty array when no items present)
+  return props.steamDeckCompatibility?.compatibilityItems ?? []
+})
+
 const chipStyle = computed(() => ({
   backgroundColor: 'rgba(0,0,0,0.75)',
 }))
 
+const infoDialog = ref(false)
+
+function openInfo() {
+  infoDialog.value = true
+}
+
+function closeInfo() {
+  infoDialog.value = false
+}
 </script>
 
 <template>
   <q-chip
     dense square
+    clickable
     :style="chipStyle"
     class="badge-chip"
     text-color="white"
     tabindex="-1"
-    :aria-label="`Steam Deck compatibility: ${label}`"
+    @click="openInfo"
+    :aria-label="`Steam Deck compatibility: ${label} — click for details`"
   >
     <q-avatar size="20px" class="badge-chip-icon">
       <q-img :src="iconUrl" />
@@ -70,8 +82,97 @@ const chipStyle = computed(() => ({
     <div class="badge-chip-text">
       {{ label }}
     </div>
-    <q-tooltip v-if="label">Steam Deck: {{ label }}</q-tooltip>
+    <q-tooltip v-if="label">Steam Deck: {{ label }} — click for details</q-tooltip>
   </q-chip>
+
+  <q-dialog v-model="infoDialog"
+            backdrop-filter="blur(2px)"
+            transition-show="scale"
+            transition-hide="scale">
+    <q-card flat bordered class="q-px-md" style="min-width:320px; max-width:720px;">
+      <q-card-section class="text-h6">About Steam Deck compatibility</q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <!-- TOP DESCRIPTION SECTION -->
+        <div>
+          <p>
+            Steam Deck's compatibility program ( Verified / Playable / Unsupported ) indicates how well a title works on
+            the
+            Steam Deck hardware and SteamOS.
+          </p>
+
+          <p>
+            This badge shows the summary rating for the game:
+          </p>
+
+          <ul>
+            <li><strong>Verified</strong>: Works great on the Steam Deck without modification.</li>
+            <li><strong>Playable</strong>: Playable but may require tweaks or have minor issues.</li>
+            <li><strong>Unsupported</strong>: Not supported / significant problems.</li>
+            <li><strong>Unknown</strong>: No compatibility data available.</li>
+          </ul>
+        </div>
+
+        <q-separator dark spaced />
+
+        <!-- TEST RESULTS SECTION -->
+        <div v-if="compatibilityItems && compatibilityItems.length" class="q-mt-md">
+          <p>
+            Valve’s testing indicates that
+            <span :class="{'text-bold':gameName}">{{ gameName ?? 'this game' }}</span>
+            is
+            <span :style="`color:${colour}`">{{ label }}</span>
+            on Steam Deck.
+          </p>
+          <ul class="q-pl-xs">
+            <li
+              v-for="item in compatibilityItems"
+              :key="`${item.code}-${item.description}`"
+              class="row items-start"
+              style="align-items:flex-start;"
+            >
+              <q-img
+                v-if="typeof item.code === 'number'"
+                :src="descriptionCompat(item.code)"
+                style="width:20px; height:20px; margin-right:8px; flex: 0 0 20px;"
+              />
+              <div style="flex: 1;">{{ item.description }}</div>
+            </li>
+          </ul>
+        </div>
+        <div v-else class="q-mt-md">
+          <p class="text-caption">
+            No additional compatibility details are available for this game.
+          </p>
+        </div>
+
+        <q-separator dark spaced />
+
+        <!-- EXT LINKS SECTION -->
+        <div class="q-mt-md">
+          <p class="text-caption q-mt-md">
+            For details on Valve's Deck Verified program, see the official page:
+          </p>
+          <SecondaryButton
+            :icon="simSteamdeck"
+            label="Steam Deck: Deck Verified"
+            href="https://www.steamdeck.com/en/verified"
+            target="_blank" rel="noopener">
+            <q-tooltip>Open Steam Deck Website</q-tooltip>
+          </SecondaryButton>
+        </div>
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <PrimaryButton
+          label="Close"
+          color="grey"
+          icon="close"
+          @click="closeInfo"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <style scoped>

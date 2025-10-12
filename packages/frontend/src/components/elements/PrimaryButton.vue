@@ -22,9 +22,13 @@ const props = withDefaults(defineProps<{
 })
 
 const btnStyle = computed(() => {
-  if (props.color === 'grey') return { '--btn-base': `grey` } as Record<string, string>
+  if (props.color?.includes('grey')) return { '--btn-base': `grey` } as Record<string, string>
   const cssVar = `--q-${props.color}`
   return { '--btn-base': `var(${cssVar})` } as Record<string, string>
+})
+const btnColour = computed(() => {
+  if (props.color?.includes('grey')) return 'grey-8'
+  return props.color
 })
 const computedClass = computed(() => {
   const classes = ['dv-primary-btn', 'q-my-sm', 'q-mx-xs'] as string[]
@@ -47,7 +51,7 @@ const emit = defineEmits<{ (e: 'click'): void }>()
     :target="target"
     :disable="disable"
     :loading="loading"
-    :color="color"
+    :color="btnColour"
     :icon-right="iconRight"
     :class="computedClass"
     :style="btnStyle"
