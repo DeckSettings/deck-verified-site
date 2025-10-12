@@ -25,6 +25,7 @@ const reportStore = useReportsStore()
 const isLoading = ref(true)
 const listTitle = computed(() => {
   if (props.reportSelection === 'popular') return 'Most Popular Reports (most likes)'
+  if (props.reportSelection === 'recentlyCreated') return 'Recently Created Reports'
   if (props.reportSelection === 'recentlyUpdated') return 'Recently Updated Reports'
   if (props.reportSelection === 'views') return 'Most Viewed (Past 7 days)'
   return 'Undefined List Title'
@@ -34,7 +35,8 @@ const skeletonItems = computed(() => Array.from({ length: props.count }, (_, ind
 
 const reportsList = computed(() => {
   if (props.reportSelection === 'popular') return reportStore.popular as HomeReport[]
-  if (props.reportSelection === 'recentlyUpdated') return reportStore.recent as HomeReport[]
+  if (props.reportSelection === 'recentlyCreated') return reportStore.recentlyCreated as HomeReport[]
+  if (props.reportSelection === 'recentlyUpdated') return reportStore.recentlyUpdated as HomeReport[]
   return [] as HomeReport[]
 })
 
@@ -72,8 +74,10 @@ async function loadReports() {
 
     if (props.reportSelection === 'popular') {
       await reportStore.loadPopular(props.count)
+    } else if (props.reportSelection === 'recentlyCreated') {
+      await reportStore.loadRecentlyCreated(props.count)
     } else if (props.reportSelection === 'recentlyUpdated') {
-      await reportStore.loadRecent(props.count)
+      await reportStore.loadRecentlyUpdated(props.count)
     } else if (props.reportSelection === 'views') {
       await reportStore.loadViews(props.count)
     }

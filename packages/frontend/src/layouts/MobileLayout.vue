@@ -32,7 +32,7 @@
         <q-route-tab name="home" icon="home" label="Home"
                      to="/" exact />
         <q-route-tab name="recent" icon="update" label="Recent"
-                     :to="{ name: 'reports-page', params: { type: 'recent' } }" exact />
+                     :to="{ name: 'reports-page', params: { type: 'recentlyCreated' } }" exact />
         <q-route-tab name="popular" icon="thumb_up" label="Popular"
                      :to="{ name: 'reports-page', params: { type: 'popular' } }" exact />
         <q-route-tab name="views" icon="bar_chart" label="Views"
@@ -68,7 +68,7 @@ provide('mobileBottomNavHeight', bottomNavOffset)
 
 const activeTab = computed(() => {
   if (route.name === 'home') return 'home'
-  if (route.name === 'reports-page' && route.params.type === 'recent') return 'recent'
+  if (route.name === 'reports-page' && route.params.type === 'recentlyCreated') return 'recentlyCreated'
   if (route.name === 'reports-page' && route.params.type === 'views') return 'views'
   if (route.name === 'reports-page' && route.params.type === 'popular') return 'popular'
   if (route.name === 'submit-report') return 'submit'

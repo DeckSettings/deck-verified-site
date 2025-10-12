@@ -19,7 +19,7 @@ defineOptions({
     if (process.env.SERVER) {
       // SSR: block so bots get full HTML
       await s.loadPopular()
-      await s.loadRecent()
+      await s.loadRecentlyCreated()
       await s.loadViews()
     }
   },
@@ -134,7 +134,7 @@ useMeta(() => {
         section-title="reports">
         <div class="row">
           <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
-            <HomeReportsList reportSelection="recentlyUpdated" />
+            <HomeReportsList reportSelection="recentlyCreated" />
           </div>
           <div class="col-xs-12 col-md-6 q-pt-md q-pa-md-sm q-px-lg-md">
             <HomeReportsList reportSelection="views" />

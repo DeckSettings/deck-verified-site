@@ -424,11 +424,16 @@ export const getAggregatedMetrics = async (
 /**
  * Caches recent game reports from GitHub in Redis.
  */
-export const redisCacheRecentGameReports = async (data: GameReport[], count: number = 5): Promise<void> => {
+export const redisCacheRecentGameReports = async (
+  data: GameReport[],
+  count: number = 5,
+  sort: 'updated' | 'created' = 'updated',
+): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub recent game reports.')
   }
-  const redisKey = `github_game_reports_recent:${count}`
+  const validatedSort = sort === 'created' ? 'created' : 'updated'
+  const redisKey = `github_game_reports_recent:${count}:${validatedSort}`
   const cacheTime = config.defaultCacheTime
   await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
   logger.info(`Cached GitHub recent game reports for ${cacheTime} seconds with key ${redisKey}`)
@@ -439,8 +444,12 @@ export const redisCacheRecentGameReports = async (data: GameReport[], count: num
  *
  * @returns {Promise<GameReport[] | null>} - Returns cached data or null if no cache exists.
  */
-export const redisLookupRecentGameReports = async (count: number = 5): Promise<GameReport[] | null> => {
-  const redisKey = `github_game_reports_recent:${count}`
+export const redisLookupRecentGameReports = async (
+  count: number = 5,
+  sort: 'updated' | 'created' = 'updated',
+): Promise<GameReport[] | null> => {
+  const validatedSort = sort === 'created' ? 'created' : 'updated'
+  const redisKey = `github_game_reports_recent:${count}:${validatedSort}`
   try {
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)

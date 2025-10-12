@@ -198,10 +198,11 @@ export const fetchGameRatingsSummary = async (params: MarketQueryParams): Promis
  * Fetch the most recent community reports.
  *
  * @param count - Number of reports to fetch (default: 5).
+ * @param sort - Which field to sort by on the backend ('updated' or 'created'). Defaults to 'updated'.
  * @returns An array of simplified `HomeReport` objects. Returns an empty array on error.
  */
-export const fetchRecentReports = async (count: number = 5): Promise<HomeReport[]> => {
-  const url = apiUrl(`/deck-verified/api/v1/recent_reports?count=${count}`)
+export const fetchRecentReports = async (count: number = 5, sort: 'updated' | 'created' = 'updated'): Promise<HomeReport[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/recent_reports?count=${count}&sortby=${sort}`)
 
   try {
     console.debug('Fetching recent reports from backend')

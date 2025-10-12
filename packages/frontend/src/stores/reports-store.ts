@@ -13,8 +13,10 @@ export const useReportsStore = defineStore('reports', {
   state: () => ({
     popular: [] as HomeReport[],
     popularLastFetch: null as number | null,
-    recent: [] as HomeReport[],
-    recentLastFetch: null as number | null,
+    recentlyCreated: [] as HomeReport[],
+    recentlyCreatedLastFetch: null as number | null,
+    recentlyUpdated: [] as HomeReport[],
+    recentlyUpdatedLastFetch: null as number | null,
     views: [] as GameDetailsRequestMetricResult[],
   }),
   actions: {
@@ -29,16 +31,27 @@ export const useReportsStore = defineStore('reports', {
       this.popular = reports
       this.popularLastFetch = now
     },
-    async loadRecent(count: number = 5) {
+    async loadRecentlyCreated(count: number = 5) {
       const now = Date.now()
-      if (this.recentLastFetch && (now - this.recentLastFetch < CACHE_DURATION) && this.recent.length >= count) {
+      if (this.recentlyCreatedLastFetch && (now - this.recentlyCreatedLastFetch < CACHE_DURATION) && this.recentlyCreated.length >= count) {
         console.debug('Serving recent reports from store cache')
         return
       }
 
-      const reports = await fetchRecentReports(count)
-      this.recent = reports
-      this.recentLastFetch = now
+      const reports = await fetchRecentReports(count, 'created')
+      this.recentlyCreated = reports
+      this.recentlyCreatedLastFetch = now
+    },
+    async loadRecentlyUpdated(count: number = 5) {
+      const now = Date.now()
+      if (this.recentlyUpdatedLastFetch && (now - this.recentlyUpdatedLastFetch < CACHE_DURATION) && this.recentlyUpdated.length >= count) {
+        console.debug('Serving recent reports from store cache')
+        return
+      }
+
+      const reports = await fetchRecentReports(count, 'updated')
+      this.recentlyUpdated = reports
+      this.recentlyUpdatedLastFetch = now
     },
     async loadViews(count: number = 5) {
       const metrics = await fetchTopGameDetailsRequestMetrics(7, 1, 99999, count)

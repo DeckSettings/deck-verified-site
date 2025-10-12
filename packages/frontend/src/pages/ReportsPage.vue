@@ -19,10 +19,10 @@ const handleRefresh = async (done: () => void) => {
 <template>
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="q-pa-md">
-      <div v-if="reportType === 'recent'">
+      <div v-if="reportType === 'recentlyCreated'">
         <HomeReportsList
-          :key="`recent-${refreshVersion}`"
-          reportSelection="recentlyUpdated"
+          :key="`recentlyCreated-${refreshVersion}`"
+          reportSelection="recentlyCreated"
           :count="20" />
       </div>
       <div v-else-if="reportType === 'views'">

@@ -135,7 +135,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
           </div>
           <div>
             <ReportList
-              :key="`recent-${refreshVersion}`"
+              :key="`recentlyCreated-${refreshVersion}`"
               :reports-list="filteredReports"
               :edit-mode="true"
               @edit-report="editReport" />

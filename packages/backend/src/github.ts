@@ -438,29 +438,33 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
  * If not cached, it fetches the reports from GitHub, parses the data into GameReport format,
  * and caches the results in Redis for future use.
  */
-export const fetchRecentReports = async (count: number = 5): Promise<GameReport[]> => {
+export const fetchRecentReports = async (
+  count: number = 5,
+  sort: 'updated' | 'created' = 'updated',
+): Promise<GameReport[]> => {
+  const validatedSort = sort === 'created' ? 'created' : 'updated'
   try {
-    const cachedData = await redisLookupRecentGameReports(count)
+    const cachedData = await redisLookupRecentGameReports(count, validatedSort)
     if (cachedData) {
       logger.info('Serving recent reports from Redis cache')
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, 'open', null, 'updated', 'desc', count)
+    const reports = await fetchReports(undefined, 'open', null, validatedSort, 'desc', count)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       // Store the transformed data in the Redis cache
-      await redisCacheRecentGameReports(returnData, count)
+      await redisCacheRecentGameReports(returnData, count, validatedSort)
       return returnData
     }
 
     logger.info('No reports found.')
     return []
   } catch (error) {
-    logger.error('Error fetching popular reports:', error)
+    logger.error('Error fetching recent reports:', error)
 
     // Cache an empty response for a short period of time
-    await redisCacheRecentGameReports([], count)
+    await redisCacheRecentGameReports([], count, validatedSort)
     return []
   }
 }

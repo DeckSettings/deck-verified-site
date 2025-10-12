@@ -655,7 +655,8 @@ app.get('/deck-verified/api/v1/images/plugin/:pluginName/avatar.jpg', async (req
 app.get('/deck-verified/api/v1/recent_reports', async (req: Request, res: Response) => {
   try {
     const count = parseInt(req.query.count as string, 10) || 5
-    const reports = await fetchRecentReports(count)
+    const sortParam = req.query.sortby === 'created' ? 'created' : 'updated'
+    const reports = await fetchRecentReports(count, sortParam)
     if (reports && reports?.length > 0) {
       return res.json(reports)
     }
