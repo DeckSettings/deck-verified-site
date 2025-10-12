@@ -124,7 +124,6 @@ const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: stri
                   class="gt-sm"
                   icon="open_in_new"
                   label="View Reports"
-                  target="_blank"
                   :to="getGameDataUrl(metricResult)"
                 />
               </div>

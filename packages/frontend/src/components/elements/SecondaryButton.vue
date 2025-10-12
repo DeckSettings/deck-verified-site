@@ -13,13 +13,14 @@ const props = withDefaults(defineProps<{
   disable?: boolean
   loading?: boolean
   fullWidth?: boolean
-  color?: 'primary' | 'secondary' | 'accent' | 'positive' | 'negative' | 'info' | 'warning' | 'dark'
+  color?: 'primary' | 'secondary' | 'accent' | 'positive' | 'negative' | 'info' | 'warning' | 'dark' | 'grey'
 }>(), {
   color: 'primary',
   fullWidth: false,
 })
 
 const btnStyle = computed(() => {
+  if (props.color === 'grey') return { '--btn-base': `grey` } as Record<string, string>
   const cssVar = `--q-${props.color}`
   return { '--btn-base': `var(${cssVar})` } as Record<string, string>
 })

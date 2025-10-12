@@ -17,6 +17,7 @@ import ZoomableImage from 'components/elements/ZoomableImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import AdmonitionBanner from 'components/elements/AdmonitionBanner.vue'
 import LasOfUsGraphicSettingsImage from '../assets/Last-of-Us-Part-1-Graphics-Settings.jpg'
+import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 
 const props = defineProps({
   gameName: {
@@ -62,6 +63,8 @@ const props = defineProps({
 
 const $q = useQuasar()
 
+const { monitorIssue } = useGithubActionsMonitor()
+
 const reportForm = ref()
 const formData = ref<GameReportForm | null>(null)
 const formValues = ref<Record<string, string | number | null>>({})
@@ -77,10 +80,7 @@ const isLoggedIn = computed(() => authStore.isLoggedIn)
 const accessToken = computed(() => authStore.accessToken)
 const { createProgressNotification } = useProgressNotifications()
 const emit = defineEmits<{
-  (
-    event: 'submitted',
-    payload: { issueNumber: number; issueUrl: string; createdAt: string },
-  ): void
+  (event: 'cancel'): void
 }>()
 const PROGRESS_STAGE_CONFIG = {
   uploadingImages: {
@@ -486,9 +486,8 @@ const validateForm = (): boolean => {
   return true
 }
 
-// Custom dialog related (for non-authenticated submission):
 const confirmDialog = ref(false)
-const pendingBaseUrl = ref('')
+const confirmDialogMode = ref('')
 
 // Image uploading helpers and state management
 const SINGLE_IMAGE_MAX_BYTES = 1 * 1024 * 1024
@@ -660,13 +659,6 @@ watch(isLoggedIn, (logged) => {
 
 const submitForm = async () => {
   dismissProgress()
-
-  // First trigger QForm validation styling:
-  if (!reportForm.value.validate() || !validateForm()) {
-    // QForm.validate() will mark invalid fields with error styling.
-    return
-  }
-
   // If using screenshot mode, ensure images are valid
   if (enableLogin && isLoggedIn.value && !manualInputMode.value) {
     const err = validateImageList(inGameImages.value, { max: MAX_IN_GAME_IMAGES })
@@ -839,13 +831,17 @@ const submitForm = async () => {
       // if (responseUrl) window.open(responseUrl, '_blank', 'noopener,noreferrer')
       finishProgress()
       if (typeof js?.number === 'number' && typeof js?.created_at === 'string' && responseUrl) {
-        emit('submitted', {
+        void monitorIssue({
           issueNumber: js.number,
           issueUrl: responseUrl,
           createdAt: js.created_at,
         })
       }
-      return
+
+      // Close dialog
+      if (props.inDialog) {
+        emit('cancel')
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       $q.notify({
@@ -855,41 +851,93 @@ const submitForm = async () => {
       dismissProgress()
       return
     }
+  } else {
+    // Title placholder
+    const title = `(DON'T EDIT THIS TITLE) - Review the generated form below. When you are happy, click "Create".`
+
+    // Fallback: open a confirm dialog that redirects to GitHub with pre-filled body
+    let baseUrl =
+      'https://github.com/DeckSettings/game-reports-steamos/issues/new?template=none&assignees=&labels=&projects=&title=' +
+      encodeURIComponent(title)
+    baseUrl += '&body=' + encodeURIComponent(reportMarkdown)
+
+    // console.log(reportMarkdown)
+    // console.log('Redirecting to:', baseUrl)
+    // window.open(baseUrl, '_blank')
+
+    // Instead of immediately opening GitHub, store the URL and open our custom dialog.
+    window.open(baseUrl, '_blank', 'noopener,noreferrer')
+    finishProgress(1500)
+
+    // Close dialog
+    if (props.inDialog) {
+      emit('cancel')
+    }
   }
-
-  // Title placholder
-  const title = `(DON'T EDIT THIS TITLE) - Review the generated form below. When you are happy, click "Create".`
-
-  // Fallback: open a confirm dialog that redirects to GitHub with pre-filled body
-  let baseUrl =
-    'https://github.com/DeckSettings/game-reports-steamos/issues/new?template=none&assignees=&labels=&projects=&title=' +
-    encodeURIComponent(title)
-  baseUrl += '&body=' + encodeURIComponent(reportMarkdown)
-
-  // console.log(reportMarkdown)
-  // console.log('Redirecting to:', baseUrl)
-  // window.open(baseUrl, '_blank')
-
-  // Instead of immediately opening GitHub, store the URL and open our custom dialog.
-  pendingBaseUrl.value = baseUrl
-  confirmDialog.value = true
-  finishProgress(1500)
 }
 
-// Called when the user clicks "Login to GitHub" in the dialog.
-const onConfirmDialogLogin = () => {
+const confirmDialogContinue = async () => {
+  const mode = confirmDialogMode.value
+  if (mode === 'redirectSubmit' || mode === 'directSubmit') {
+    confirmDialog.value = false
+    confirmDialogMode.value = ''
+    // Give the UI a moment to close the dialog (avoid doubled dialogs on some platforms)
+    await nextTick()
+    await submitForm()
+    return
+  }
+
+  if (mode === 'clear') {
+    clearForm()
+    confirmDialog.value = false
+    confirmDialogMode.value = ''
+    return
+  }
+
+  if (mode === 'cancel') {
+    clearFormState()
+    confirmDialog.value = false
+    confirmDialogMode.value = ''
+    // Important, if this is a dialog, we need to TX the close signal back up to the parent
+    if (props.inDialog) {
+      emit('cancel')
+    }
+    return
+  }
+
+  confirmDialog.value = false
+  confirmDialogMode.value = ''
+}
+const confirmDialogCancel = () => {
+  confirmDialogMode.value = ''
+  confirmDialog.value = false
+}
+const confirmDialogOpenGitHubLogin = () => {
   window.open('https://github.com/login', '_blank', 'noopener,noreferrer')
 }
 
-// Called when the user clicks "Continue" in the dialog.
-const onConfirmDialogContinue = () => {
-  window.open(pendingBaseUrl.value, '_blank', 'noopener,noreferrer')
-  confirmDialog.value = false
+const formClearClick = () => {
+  confirmDialogMode.value = 'clear'
+  confirmDialog.value = true
 }
+const formCancelClick = () => {
+  confirmDialogMode.value = 'cancel'
+  confirmDialog.value = true
+}
+const formCheckAndSubmit = async () => {
+  // First trigger QForm validation styling:
+  if (!reportForm.value.validate() || !validateForm()) {
+    // QForm.validate() will mark invalid fields with error styling.
+    return
+  }
 
-// Called when the user clicks "Cancel" in the dialog.
-const onConfirmDialogCancel = () => {
-  confirmDialog.value = false
+  if (enableLogin && isLoggedIn.value) {
+    confirmDialog.value = true
+    confirmDialogMode.value = 'directSubmit'
+  } else {
+    confirmDialog.value = true
+    confirmDialogMode.value = 'redirectSubmit'
+  }
 }
 
 onMounted(async () => {
@@ -932,10 +980,10 @@ watch(formValues, () => {
 <template>
   <q-card class="report-card"
           :class="!inDialog ? 'fullscreen' : ''"
-          :style="!inDialog ? 'margin-top:58px;' : ''">
+          :style="!inDialog ? 'margin-top:58px;' : 'max-width: 1180px;'">
     <q-card-section class="report-header">
       <div class="header-content">
-        <div class="header-info">
+        <div v-if="gameName" class="header-info">
           <q-img
             v-if="gameBanner"
             class="header-image"
@@ -954,7 +1002,7 @@ watch(formValues, () => {
             <div v-if="appId" class="header-subtitle">App ID: {{ appId }}</div>
           </div>
         </div>
-        <div class="header-actions">
+        <div class="header-actions" :class="!gameName ? 'header-actions-full-width' : ''">
           <div v-if="showCancelButton" class="header-action header-action--cancel">
             <PrimaryButton
               class="header-btn"
@@ -963,8 +1011,7 @@ watch(formValues, () => {
               icon="close"
               full-width
               :dense="$q.screen.lt.sm"
-              @click="clearFormState"
-              v-close-popup
+              @click="formCancelClick"
             />
           </div>
           <div v-if="showClearButton" class="header-action header-action--cancel">
@@ -975,10 +1022,10 @@ watch(formValues, () => {
               icon="clear_all"
               full-width
               :dense="$q.screen.lt.sm"
-              @click="clearForm"
+              @click="formClearClick"
             />
           </div>
-          <div class="header-action header-action--submit lt-md">
+          <div class="header-action header-action--submit" :class="!$q.platform.isMobileUi ? 'lt-md' : ''">
             <PrimaryButton
               class="header-btn"
               label="Submit On GitHub"
@@ -987,7 +1034,7 @@ watch(formValues, () => {
               icon-right="open_in_new"
               full-width
               :dense="$q.screen.lt.sm"
-              @click="submitForm"
+              @click="formCheckAndSubmit"
             />
           </div>
         </div>
@@ -1011,7 +1058,7 @@ watch(formValues, () => {
           </template>
         </q-banner>
 
-        <q-form ref="reportForm" @submit.prevent="submitForm">
+        <q-form ref="reportForm" @submit.prevent="formCheckAndSubmit">
           <div v-for="(section, sIndex) in getSections()" :key="sIndex" class="form-section">
             <div class="section-layout">
               <aside class="section-aside"
@@ -1330,6 +1377,7 @@ watch(formValues, () => {
     <q-card-actions
       align="right"
       class="q-pa-md-md gt-sm"
+      v-if="!$q.platform.isMobileUi"
     >
       <div class="header-action header-action--submit">
         <PrimaryButton
@@ -1339,72 +1387,156 @@ watch(formValues, () => {
           icon-right="open_in_new"
           label="Submit On GitHub"
           full-width
-          @click="submitForm"
+          @click="formCheckAndSubmit"
         />
       </div>
     </q-card-actions>
   </q-card>
 
-  <q-dialog v-model="confirmDialog">
-    <q-card>
+  <q-dialog v-model="confirmDialog" backdrop-filter="blur(2px) grayscale(100%)">
+    <q-card flat bordered>
       <q-card-section>
-        <div class="text-h6">Confirm Submission</div>
-      </q-card-section>
-      <q-card-section>
-        <p>
-          You are about to submit this form to GitHub.
-        </p>
-        <p>
-          Before proceeding, please ensure you are signed into GitHub on this browser.
-          If you're not, click the button below to log in.
-        </p>
-        <div class="q-mx-xl q-my-md">
-          <q-btn
-            dense
-            glossy
-            class="full-width"
-            color="primary"
-            label="Login to GitHub"
-            icon="fab fa-github"
-            icon-right="open_in_new"
-            @click="onConfirmDialogLogin"
-          />
+        <div class="text-h6">
+          {{ confirmDialogMode === 'directSubmit' ? 'Confirm Submission' : (confirmDialogMode === 'clear' ? 'Confirm Clear' : (confirmDialogMode === 'cancel' ? 'Confirm' : 'Confirm Submission'))
+          }}
         </div>
-        <p>
-          Otherwise, click <strong>"Continue to GitHub"</strong> below to proceed.
-          When you do, a new window will open, taking you to the GitHub Issues page with your
-          report details pre-filled.
-        </p>
-        <p>
-          <strong>Important:</strong>
-        </p>
-        <ul>
-          <li>
-            Your form will remain open in this window. This way, if any details need to be adjusted,
-            you won't lose your work.
-          </li>
-          <li>
-            Any empty fields will be set to <em>"_No response_"</em> in the issue body.
-          </li>
-        </ul>
-        <p>
-          Please review your information carefully on GitHub, then click the
-          <q-btn
-            dense
-            size="xs"
-            :ripple="false"
-            color="positive"
-            icon-right="keyboard_return"
-            label="Create"
-            class="q-ma-none cursor-inherit" />
-          &nbsp;<strong>"Create"</strong> button.
-          Note that it may take up to an hour for your report to appear on our website, as reports are imported on an
-          hourly schedule.
-        </p>
       </q-card-section>
+
+      <q-card-section>
+        <!-- GITHUB API SUBMIT CONFIRMATION -->
+        <template v-if="confirmDialogMode === 'directSubmit'">
+          <p>
+            You are about to submit this report directly to GitHub using your authenticated account.
+          </p>
+          <p>
+            When you confirm, this app will create or update an issue on the project's GitHub repository using your
+            GitHub token.
+            The report will be submitted under your GitHub username, and automated workflows will validate it, process
+            any uploaded images, and apply relevant search tags and labels.
+          </p>
+          <p>
+            You retain ownership of this report and can edit or update it at any time through GitHub or the <strong>My
+            Reports</strong> section in the user menu.
+            Once your submission is processed, you will receive a notification in the user menu within 1 to 2 minutes
+            confirming whether it was successfully validated.
+            If any changes are needed, you can make them either on GitHub or from the <strong>My Reports</strong>
+            section.
+          </p>
+        </template>
+
+        <!-- REDIRECT SUBMIT CONFIRMATION -->
+        <template v-else-if="confirmDialogMode === 'redirectSubmit'">
+          <p>
+            You are about to submit this form to GitHub.
+          </p>
+          <p>
+            Before proceeding, please ensure you are signed into GitHub on this browser.
+            If you're not, click the button below to log in.
+          </p>
+          <div class="q-mx-xl q-my-md">
+            <q-btn
+              dense
+              glossy
+              class="full-width"
+              color="primary"
+              label="Login to GitHub"
+              icon="fab fa-github"
+              icon-right="open_in_new"
+              @click="confirmDialogOpenGitHubLogin"
+            />
+          </div>
+          <p>
+            Otherwise, click <strong>"Continue to GitHub"</strong> below to proceed.
+            When you do, a new window will open, taking you to the GitHub Issues page with your
+            report details pre-filled.
+          </p>
+          <p>
+            <strong>Important:</strong>
+          </p>
+          <ul>
+            <li>
+              Your form will remain open in this window. This way, if any details need to be adjusted,
+              you won't lose your work.
+            </li>
+            <li>
+              Any empty fields will be set to <em>"_No response_"</em> in the issue body.
+            </li>
+          </ul>
+          <p>
+            Please review your information carefully on GitHub, then click the
+            <q-btn
+              dense
+              size="xs"
+              :ripple="false"
+              color="positive"
+              icon-right="keyboard_return"
+              label="Create"
+              class="q-ma-none cursor-inherit" />
+            &nbsp;<strong>"Create"</strong> button.
+            Note that it may take up to an hour for your report to appear on our website, as reports are imported on an
+            hourly schedule.
+          </p>
+        </template>
+
+        <!-- CLEAR CONFIRMATION -->
+        <template v-else-if="confirmDialogMode === 'clear'">
+          <p>
+            Are you sure you want to clear the current form? This will remove all unsaved changes.
+          </p>
+          <AdmonitionBanner type="warning" class="q-mt-sm q-mb-md">
+            This action cannot be undone.
+          </AdmonitionBanner>
+        </template>
+
+        <!-- CANCEL CONFIRMATION -->
+        <template v-else-if="confirmDialogMode === 'cancel'">
+          <p>
+            Are you sure you want to cancel and remove any saved draft for this form?
+          </p>
+          <AdmonitionBanner type="warning" class="q-mt-sm q-mb-md">
+            This will clear any saved draft data for this report.
+          </AdmonitionBanner>
+        </template>
+      </q-card-section>
+
+      <q-card-actions align="left">
+      </q-card-actions>
+
       <q-card-actions align="right">
-        <q-btn glossy label="Cancel" color="negative" icon="close" @click="onConfirmDialogCancel" />
-        <q-btn glossy label="Continue to GitHub" color="positive" icon="open_in_new" @click="onConfirmDialogContinue" />
+        <PrimaryButton
+          label="Cancel"
+          color="grey"
+          icon="close"
+          @click="confirmDialogCancel"
+        />
+        <PrimaryButton
+          v-if="confirmDialogMode === 'redirectSubmit'"
+          label="Continue to GitHub"
+          color="positive"
+          icon="open_in_new"
+          @click="confirmDialogContinue"
+        />
+        <PrimaryButton
+          v-else-if="confirmDialogMode === 'directSubmit'"
+          label="Confirm & Submit"
+          color="positive"
+          icon="send"
+          @click="confirmDialogContinue"
+        />
+        <PrimaryButton
+          v-else-if="confirmDialogMode === 'clear'"
+          icon="check"
+          label="Yes, Clear Form"
+          color="warning"
+          @click="confirmDialogContinue"
+        />
+        <PrimaryButton
+          v-else-if="confirmDialogMode === 'cancel'"
+          icon="check"
+          label="Yes, Clear & Close Form"
+          color="negative"
+          @click="confirmDialogContinue"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -1414,7 +1546,6 @@ watch(formValues, () => {
 <style scoped>
 .report-card {
   width: 100%;
-  max-width: 1180px;
   height: 92vh;
   max-height: 96vh;
   display: flex;
@@ -1489,6 +1620,12 @@ watch(formValues, () => {
   min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.header-actions-full-width {
+  width: 100%;
+  flex-direction: row;
+  justify-content: space-between;
 }
 
 .header-action {

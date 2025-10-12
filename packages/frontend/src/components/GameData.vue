@@ -29,7 +29,6 @@ import { useMeta } from 'quasar'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import ProtonBadge from 'components/elements/ProtonBadge.vue'
-import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 import SteamCompatBadge from 'components/elements/SteamCompatBadge.vue'
 import PriceBadge from 'components/elements/PriceBadge.vue'
 import PageHeader from 'components/elements/PageHeader.vue'
@@ -75,8 +74,6 @@ const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const dialogAutoOpened = ref(false)
-const pendingMonitorPayload = ref<{ issueNumber: number; issueUrl: string; createdAt: string } | null>(null)
-const { monitorIssue } = useGithubActionsMonitor()
 
 const includeExternalReports = ref(route.query.include_external === 'true')
 const sdhqLink = ref('')
@@ -440,19 +437,6 @@ useMeta(() => {
     },
   }
 })
-
-const handleReportSubmitted = (payload: { issueNumber: number; issueUrl: string; createdAt: string }) => {
-  pendingMonitorPayload.value = payload
-  closeDialog()
-}
-
-watch(reportFormDialogOpen, (open) => {
-  if (!open && pendingMonitorPayload.value) {
-    const payload = pendingMonitorPayload.value
-    pendingMonitorPayload.value = null
-    void monitorIssue(payload)
-  }
-})
 </script>
 
 <template>
@@ -585,6 +569,7 @@ watch(reportFormDialogOpen, (open) => {
                            label="Submit Report"
                            @click="openDialog" />
             <q-dialog class="q-ma-none q-pa-none report-dialog"
+                      backdrop-filter="blur(2px)"
                       full-height
                       :full-width="$q.screen.lt.md"
                       :maximized="$q.screen.lt.md"
@@ -595,7 +580,8 @@ watch(reportFormDialogOpen, (open) => {
                           :game-banner="gameBanner ? gameBanner : ''"
                           :game-background="gameBackground ? gameBackground : ''"
                           :existing-report="highestRatedGameReport? highestRatedGameReport : {}"
-                          @submitted="handleReportSubmitted" />
+                          @cancel="closeDialog"
+              />
             </q-dialog>
           </div>
           <!-- END SUBMIT REPORT BUTTON -->
@@ -795,9 +781,10 @@ watch(reportFormDialogOpen, (open) => {
 
                 <q-dialog
                   v-model="filterDialogOpen"
+                  backdrop-filter="blur(2px)"
                   transition-show="scale"
                   transition-hide="scale">
-                  <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
+                  <q-card flat bordered class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
                     <q-card-section class="text-subtitle1 text-weight-medium">
                       Filters
                     </q-card-section>
@@ -810,17 +797,19 @@ watch(reportFormDialogOpen, (open) => {
                                 :options="launcherOptions" />
                     </q-card-section>
                     <q-card-actions align="between">
-                      <q-btn flat color="primary" label="Clear"
-                             @click="selectedDevice = 'all'; selectedLauncher = 'all'" />
-                      <q-btn flat color="primary" label="Done" v-close-popup />
+                      <SecondaryButton dense color="primary" label="Clear"
+                                       @click="selectedDevice = 'all'; selectedLauncher = 'all'" />
+                      <primaryButton dense color="primary" label="Apply" icon="filter_alt"
+                                     v-close-popup />
                     </q-card-actions>
                   </q-card>
                 </q-dialog>
                 <q-dialog
                   v-model="sortDialogOpen"
+                  backdrop-filter="blur(2px)"
                   transition-show="scale"
                   transition-hide="scale">
-                  <q-card class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
+                  <q-card flat bordered class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
                     <q-card-section class="text-subtitle1 text-weight-medium">
                       Sort
                     </q-card-section>
@@ -843,8 +832,10 @@ watch(reportFormDialogOpen, (open) => {
                       </q-item>
                     </q-list>
                     <q-card-actions align="between">
-                      <q-btn flat color="primary" label="Clear" @click="clearSort" />
-                      <q-btn flat color="primary" label="Done" v-close-popup />
+                      <SecondaryButton dense color="primary" label="Clear"
+                                       @click="clearSort" />
+                      <primaryButton dense color="primary" label="Apply" icon="segment"
+                                     v-close-popup />
                     </q-card-actions>
                   </q-card>
                 </q-dialog>

@@ -222,6 +222,7 @@ defineExpose({
 
       <q-dialog
         v-model="isMobileMenuOpen"
+        backdrop-filter="blur(2px)"
         maximized
         position="left"
         class="header-user-menu__dialog-dialog"

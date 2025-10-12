@@ -6,14 +6,12 @@ import type { UserGameReport, HomeReport } from 'src/utils/api'
 import ReportForm from 'src/components/ReportForm.vue'
 import ReportList from 'components/elements/ReportList.vue'
 import { QAjaxBar } from 'quasar'
-import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
 import PageHeader from 'components/elements/PageHeader.vue'
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
 const authStore = useAuthStore()
 const userReportsStore = useUserReportsStore()
-const { monitorIssue } = useGithubActionsMonitor()
 
 const reports = computed(() => userReportsStore.reports)
 const isLoading = computed(() => userReportsStore.isLoading)
@@ -84,20 +82,6 @@ const editReport = (issueNumber: number) => {
   }
 }
 
-const pendingMonitorPayload = ref<{ issueNumber: number; issueUrl: string; createdAt: string } | null>(null)
-const handleReportSubmitted = (payload: { issueNumber: number; issueUrl: string; createdAt: string }) => {
-  pendingMonitorPayload.value = payload
-  reportFormDialogOpen.value = false
-}
-
-watch(reportFormDialogOpen, (open) => {
-  if (!open && pendingMonitorPayload.value) {
-    const payload = pendingMonitorPayload.value
-    pendingMonitorPayload.value = null
-    void monitorIssue(payload)
-  }
-})
-
 const refreshVersion = ref(0)
 const handleRefresh = async (done: () => void) => {
   fetchReports().finally(async () => {
@@ -165,6 +149,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
         </template>
         <q-dialog
           v-model="reportFormDialogOpen"
+          backdrop-filter="blur(2px)"
           full-height
           :full-width="$q.screen.lt.md"
           :maximized="$q.screen.lt.md"
@@ -176,7 +161,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
             :issue-number="selectedReport.issue.number"
             :existing-report="selectedReport.parsedReport"
             :game-banner="''"
-            @submitted="handleReportSubmitted"
+            @cancel="reportFormDialogOpen = false"
           />
         </q-dialog>
       </div>

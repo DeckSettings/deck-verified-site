@@ -121,6 +121,7 @@ useMeta(() => {
             @click="openDialog"
           />
           <q-dialog class="q-ma-none q-pa-none report-dialog"
+                    backdrop-filter="blur(2px)"
                     full-height
                     :full-width="$q.screen.lt.md"
                     :maximized="$q.screen.lt.md"
@@ -130,7 +131,9 @@ useMeta(() => {
                         :app-id="''"
                         :game-banner="''"
                         :game-background="''"
-                        :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}" />
+                        :existing-report="{game_display_settings: '- **DISPLAY RESOLUTION:** 1280x800'}"
+                        @cancel="closeDialog"
+            />
           </q-dialog>
         </div>
       </div>

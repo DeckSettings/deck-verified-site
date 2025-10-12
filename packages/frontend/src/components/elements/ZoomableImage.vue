@@ -36,8 +36,9 @@ onMounted(async () => {
     />
   </div>
   <q-dialog
-    full-width
     v-model="open"
+    backdrop-filter="blur(2px)"
+    full-width
     transition-show="scale"
     transition-hide="scale"
     @hide="open = false">

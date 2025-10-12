@@ -577,7 +577,7 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
 })
 
 /**
- * Get the most recent reports from the GitHub repository.
+ * A simple health check endpoint
  *
  * @returns {object[]} 200 - Service is healthy.
  * @returns {object} 500 - Internal server error.
