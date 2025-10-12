@@ -798,9 +798,10 @@ const submitForm = async () => {
 
       const method = isEditMode ? 'PATCH' : 'POST'
 
+      const isMobileUi = $q && $q.platform && $q.platform.isMobileUi === true
       const title = isEditMode
-        ? (isInGameImageMode ? '(Report updated with images from Deck Verified website)' : '(Report updated from Deck Verified Website)')
-        : (isInGameImageMode ? '(Report submitted with images from Deck Verified website)' : '(Report submitted from Deck Verified Website)')
+        ? (isInGameImageMode ? `(Report updated with images from Deck Verified ${isMobileUi ? 'app' : 'website'})` : `(Report updated from Deck Verified ${isMobileUi ? 'app' : 'website'})`)
+        : (isInGameImageMode ? `(Report submitted with images from Deck Verified ${isMobileUi ? 'app' : 'website'})` : `(Report submitted from Deck Verified ${isMobileUi ? 'app' : 'website'})`)
 
       const body = {
         title,
