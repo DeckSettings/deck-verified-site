@@ -309,13 +309,13 @@ const editReport = (report: HomeReport) => {
                 text-color="white"
               />
               <span v-if="report.issue?.state">
-                {{ report.issue?.state === 'open' ? 'Visible' : 'Closed' }}
+                {{ report.issue?.state === 'open' ? 'Open' : 'Closed' }}
               </span>
               <q-tooltip v-if="report.issue?.state" anchor="bottom middle" self="top middle">
                 {{
                   report.issue?.state === 'open'
-                    ? 'Open issue — visible in public reports'
-                    : 'Closed issue — this report is closed and not visible to the public'
+                    ? 'Open issue — visible in website, app and Decky plugin'
+                    : 'Closed issue — this report is closed and not visible on the website, app or Decky plugin'
                 }}
               </q-tooltip>
             </q-chip>
