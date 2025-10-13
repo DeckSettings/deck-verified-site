@@ -14,7 +14,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['edit-report'])
+const emit = defineEmits(['edit-report', 'update-report-state'])
 
 const getReviewScoreIcon = (reviewScore: string) => {
   switch (reviewScore) {
@@ -126,6 +126,12 @@ const getReportUrl = (report: HomeReport) => {
 const editReport = (report: HomeReport) => {
   if (report.issue?.number) {
     emit('edit-report', report.issue.number)
+  }
+}
+
+const updateReportState = (report: HomeReport, state: 'open' | 'closed') => {
+  if (report.issue?.number) {
+    emit('update-report-state', { issueNumber: report.issue.number, state })
   }
 }
 </script>
@@ -326,6 +332,7 @@ const editReport = (report: HomeReport) => {
             }"
             >
               <q-list>
+
                 <q-item clickable v-close-popup @click="editReport(report)">
                   <q-item-section avatar>
                     <q-avatar icon="edit" color="primary" text-color="white" />
@@ -334,6 +341,29 @@ const editReport = (report: HomeReport) => {
                     <q-item-label>Edit</q-item-label>
                   </q-item-section>
                 </q-item>
+
+                <q-item v-if="report.issue?.state === 'open'" clickable v-close-popup
+                        @click="updateReportState(report, 'closed')">
+                  <q-item-section avatar>
+                    <q-avatar icon="visibility_off" color="negative" text-color="white" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Close Report</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item v-if="report.issue?.state === 'closed'" clickable v-close-popup
+                        @click="updateReportState(report, 'open')">
+                  <q-item-section avatar>
+                    <q-avatar icon="visibility" color="positive" text-color="white" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Re-Open Report</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-separator v-if="report.issue?.state" dark spaced />
+
                 <q-item clickable v-close-popup :href="report.issue?.html_url" target="_blank" rel="noopener">
                   <q-item-section avatar>
                     <q-avatar icon="fab fa-github" color="primary" text-color="white" />

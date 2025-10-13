@@ -5,10 +5,12 @@ import { useUserReportsStore } from 'src/stores/user-reports-store'
 import type { UserGameReport, HomeReport } from 'src/utils/api'
 import ReportForm from 'src/components/ReportForm.vue'
 import ReportList from 'components/elements/ReportList.vue'
-import { QAjaxBar } from 'quasar'
+import { QAjaxBar, useQuasar } from 'quasar'
 import PageHeader from 'components/elements/PageHeader.vue'
+import { updateIssueState } from 'src/utils/gh-api'
 
 const ajaxBar = ref<QAjaxBar | null>(null)
+const $q = useQuasar()
 
 const authStore = useAuthStore()
 const userReportsStore = useUserReportsStore()
@@ -82,6 +84,36 @@ const editReport = (issueNumber: number) => {
   }
 }
 
+const handleUpdateReportState = async ({ issueNumber, state }: { issueNumber: number, state: 'open' | 'closed' }) => {
+  if (!authStore.isLoggedIn || !authStore.accessToken || !authStore.dvToken) {
+    return
+  }
+
+  const report = reports.value.find(r => r.issue?.number === issueNumber)
+  if (!report) {
+    $q.notify({ type: 'negative', message: 'ERROR! Could not find report details to update.' })
+    return
+  }
+  const ajax = ajaxBar.value
+  if (ajax) ajax.start()
+  try {
+    await updateIssueState(issueNumber, state)
+    $q.notify({
+      type: 'positive',
+      message: `Report successfully ${state === 'open' ? 're-opened' : 'closed'}.`,
+    })
+    await fetchReports()
+  } catch (error) {
+    console.error('Failed to update report state:', error)
+    $q.notify({
+      type: 'negative',
+      message: `Failed to ${state === 'open' ? 're-open' : 'close'} report. Please try again.`,
+    })
+  } finally {
+    if (ajax) ajax.stop()
+  }
+}
+
 const refreshVersion = ref(0)
 const handleRefresh = async (done: () => void) => {
   fetchReports().finally(async () => {
@@ -138,7 +170,8 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
               :key="`recentlyCreated-${refreshVersion}`"
               :reports-list="filteredReports"
               :edit-mode="true"
-              @edit-report="editReport" />
+              @edit-report="editReport"
+              @update-report-state="handleUpdateReportState" />
             <div v-if="isLoading" class="flex flex-center q-mt-md">
               <q-spinner-dots color="primary" size="40px" />
             </div>
