@@ -89,12 +89,12 @@ function closeInfo() {
             backdrop-filter="blur(2px)"
             transition-show="scale"
             transition-hide="scale">
-    <q-card flat bordered class="q-px-md" style="min-width:320px; max-width:720px;">
+    <q-card flat bordered class="q-px-xs q-px-sm-md" style="min-width:200px; max-width:720px;">
       <q-card-section class="text-h6">About Steam Deck compatibility</q-card-section>
 
       <q-card-section class="q-pt-none">
         <!-- TOP DESCRIPTION SECTION -->
-        <div>
+        <div class="text-body2">
           <p>
             Steam Deck's compatibility program ( Verified / Playable / Unsupported ) indicates how well a title works on
             the
@@ -105,7 +105,7 @@ function closeInfo() {
             This badge shows the summary rating for the game:
           </p>
 
-          <ul>
+          <ul class="q-pl-md">
             <li><strong>Verified</strong>: Works great on the Steam Deck without modification.</li>
             <li><strong>Playable</strong>: Playable but may require tweaks or have minor issues.</li>
             <li><strong>Unsupported</strong>: Not supported / significant problems.</li>
@@ -116,7 +116,7 @@ function closeInfo() {
         <q-separator dark spaced />
 
         <!-- TEST RESULTS SECTION -->
-        <div v-if="compatibilityItems && compatibilityItems.length" class="q-mt-md">
+        <div v-if="compatibilityItems && compatibilityItems.length" class="text-body2 q-mt-md">
           <p>
             Valve’s testing indicates that
             <span :class="{'text-bold':gameName}">{{ gameName ?? 'this game' }}</span>
@@ -149,11 +149,12 @@ function closeInfo() {
         <q-separator dark spaced />
 
         <!-- EXT LINKS SECTION -->
-        <div class="q-mt-md">
+        <div class="text-body2 q-mt-md">
           <p class="text-caption q-mt-md">
             For details on Valve's Deck Verified program, see the official page:
           </p>
           <SecondaryButton
+            :size="$q.screen.gt.sm ? 'md' : 'sm'"
             :icon="simSteamdeck"
             label="Steam Deck: Deck Verified"
             href="https://www.steamdeck.com/en/verified"

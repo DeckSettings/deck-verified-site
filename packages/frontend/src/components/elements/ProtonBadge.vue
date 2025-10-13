@@ -125,14 +125,14 @@ function closeInfo() {
             backdrop-filter="blur(2px)"
             transition-show="scale"
             transition-hide="scale">
-    <q-card flat bordered class="q-px-md" style="min-width: 320px; max-width: 640px;">
+    <q-card flat bordered class="q-px-xs q-px-sm-md" style="min-width: 200px; max-width: 640px;">
       <q-card-section>
         <div class="text-h6">About Proton & ProtonDB</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
         <!-- TOP DESCRIPTION SECTION -->
-        <div>
+        <div class="text-body2">
           <p>
             Proton is a compatibility layer (based on Wine and other components) that lets many Windows games run on
             Linux
@@ -146,7 +146,7 @@ function closeInfo() {
             users have reported:
           </p>
 
-          <ul>
+          <ul class="q-pl-md">
             <li>
               <span class="text-bold" :style="`color:${TIER_COLOR_MAP['native']?.bg};`">Native</span>:
               {{ TIER_DESCRIPTION_MAP['native'] }}
@@ -177,7 +177,7 @@ function closeInfo() {
         <q-separator dark spaced />
 
         <!-- TEST RESULTS SECTION -->
-        <div class="q-mt-md">
+        <div class="text-body2 q-mt-md">
           <p>
             The ProtonDB community reporting has given
             <span :class="{'text-bold':gameName}">{{ gameName ?? 'this game' }}</span>
@@ -192,12 +192,13 @@ function closeInfo() {
         <q-separator dark spaced />
 
         <!-- EXT LINKS SECTION -->
-        <div class="q-mt-md">
+        <div class="text-body2 q-mt-md">
           <p class="text-caption">
             For detailed reports and user-submitted tips{{ appId ? ' for this game' : '' }}, visit ProtonDB at the link
             below.
           </p>
           <SecondaryButton
+            :size="$q.screen.gt.sm ? 'md' : 'sm'"
             :icon="simProtondb"
             :label="(appId && gameName) ? `ProtonDB: ${gameName}` : 'ProtonDB'"
             :href="appId ? `https://www.protondb.com/app/${appId}?device=steamDeck` : 'https://www.protondb.com/'"
