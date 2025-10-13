@@ -123,7 +123,7 @@ watch(reportsStatsList, async () => {
     <q-card-section class="home-reports-header">
       <h4 class="text-h6 q-ma-none">{{ listTitle }}</h4>
     </q-card-section>
-    <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
+    <q-card-section class="q-pt-none q-px-sm-sm q-px-xs" :class="{ 'no-padding': $q.platform.is.mobile }">
       <div v-if="isLoading" class="q-pa-md-md">
         <q-list padding>
           <q-item
@@ -136,8 +136,8 @@ watch(reportsStatsList, async () => {
               <q-skeleton
                 type="rect"
                 animation="wave"
-                :width="$q.platform.is.mobile ? '80px' : '100px'"
-                :height="$q.platform.is.mobile ? '120px' : '150px'"
+                width="100px"
+                height="150px"
                 class="skeleton-poster"
               />
             </q-item-section>

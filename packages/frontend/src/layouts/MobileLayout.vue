@@ -31,7 +31,7 @@
       >
         <q-route-tab name="home" icon="home" label="Home"
                      to="/" exact />
-        <q-route-tab name="recent" icon="update" label="Recent"
+        <q-route-tab name="recentlyCreated" icon="update" label="Recent"
                      :to="{ name: 'reports-page', params: { type: 'recentlyCreated' } }" exact />
         <q-route-tab name="popular" icon="thumb_up" label="Popular"
                      :to="{ name: 'reports-page', params: { type: 'popular' } }" exact />
