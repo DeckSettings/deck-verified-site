@@ -229,6 +229,8 @@ services:
       DV_AUTH_JWT_SECRET: ${DV_AUTH_JWT_SECRET:-}
       # -- Blogger API key (optional, used for generating blog posts)
       BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
+      # -- IsThereAnyDeal API key (optional, used for checking game prices)
+      ISTHEREANYDEAL_API_KEY: ${ISTHEREANYDEAL_API_KEY:-}
       # -- Cache Config
       REDIS_HOST: redis
       REDIS_PORT: 6379
