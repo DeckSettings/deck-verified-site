@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import type { HomeReport } from 'src/utils/api'
 import type { PropType } from 'vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import { QCard, QCardActions, QCardSection } from 'quasar'
+import AdmonitionBanner from 'components/elements/AdmonitionBanner.vue'
 
 const props = defineProps({
   reportsList: {
@@ -14,7 +18,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['edit-report', 'update-report-state'])
+const emit = defineEmits(['edit-report', 'update-report-state', 'delete-report'])
 
 const getReviewScoreIcon = (reviewScore: string) => {
   switch (reviewScore) {
@@ -133,6 +137,29 @@ const updateReportState = (report: HomeReport, state: 'open' | 'closed') => {
   if (report.issue?.number) {
     emit('update-report-state', { issueNumber: report.issue.number, state })
   }
+}
+
+const deleteDialogOpen = ref(false)
+const deleteTargetIssueNumber = ref<number | null>(null)
+const deleteTargetTitle = ref<string>('')
+
+const openDeleteDialog = (report: HomeReport) => {
+  deleteTargetIssueNumber.value = report.issue?.number ?? null
+  deleteTargetTitle.value = report.data?.game_name ?? report.issue?.title ?? ''
+  deleteDialogOpen.value = true
+}
+
+const closeDeleteDialog = () => {
+  deleteDialogOpen.value = false
+  deleteTargetIssueNumber.value = null
+  deleteTargetTitle.value = ''
+}
+
+const confirmDelete = () => {
+  if (deleteTargetIssueNumber.value) {
+    emit('delete-report', deleteTargetIssueNumber.value)
+  }
+  closeDeleteDialog()
 }
 </script>
 
@@ -338,7 +365,7 @@ const updateReportState = (report: HomeReport, state: 'open' | 'closed') => {
                     <q-avatar icon="edit" color="primary" text-color="white" />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label>Edit</q-item-label>
+                    <q-item-label>Edit Report</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -362,6 +389,16 @@ const updateReportState = (report: HomeReport, state: 'open' | 'closed') => {
                   </q-item-section>
                 </q-item>
 
+                <q-item v-if="report.issue?.state === 'closed'" clickable v-close-popup
+                        @click="openDeleteDialog(report)">
+                  <q-item-section avatar>
+                    <q-avatar icon="delete" color="negative" text-color="white" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Delete Report</q-item-label>
+                  </q-item-section>
+                </q-item>
+
                 <q-separator v-if="report.issue?.state" dark spaced />
 
                 <q-item clickable v-close-popup :href="report.issue?.html_url" target="_blank" rel="noopener">
@@ -381,6 +418,56 @@ const updateReportState = (report: HomeReport, state: 'open' | 'closed') => {
       </template>
 
     </q-list>
+
+    <q-dialog v-model="deleteDialogOpen" persistent>
+      <q-card flat bordered class="q-px-xs q-px-sm-md" style="min-width: 200px; max-width: 640px;">
+        <q-card-section>
+          <div class="text-h6">Delete Report</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="text-body2 ">
+            <p>
+              <strong>Report:</strong> {{ deleteTargetTitle }}
+            </p>
+          </div>
+
+          <q-separator dark spaced />
+
+          <div class="text-body2 q-mt-md">
+            <p>
+              This report is currently marked as <strong>Closed</strong>. Closed reports are hidden from the website and
+              Decky plugin search results, but remain stored safely on GitHub.
+            </p>
+            <p>
+              You can keep it closed if you simply want to hide it, or continue to permanently delete it below.
+            </p>
+            <AdmonitionBanner type="caution" class="q-mt-sm q-mb-md">
+              Deleting a report is permanent and cannot be undone.
+            </AdmonitionBanner>
+            <p>
+              If you are sure, click <strong>Delete Report</strong>.
+            </p>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <PrimaryButton
+            label="Close"
+            color="grey"
+            icon="close"
+            @click="closeDeleteDialog"
+          />
+          <PrimaryButton
+            label="Delete Report"
+            color="negative"
+            icon="delete"
+            @click="confirmDelete"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </div>
 </template>
 

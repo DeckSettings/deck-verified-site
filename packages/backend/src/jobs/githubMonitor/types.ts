@@ -10,4 +10,6 @@ export interface GithubMonitorJobData {
     name: string
   }
   githubToken: string
+  workflowType?: 'validation' | 'operations' | string
+  operation?: string | null
 }

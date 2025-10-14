@@ -209,7 +209,6 @@ function closeInfo() {
       </q-card-section>
 
       <q-card-actions align="right">
-
         <PrimaryButton
           label="Close"
           color="grey"

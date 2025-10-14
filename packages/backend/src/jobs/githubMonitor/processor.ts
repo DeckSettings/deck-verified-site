@@ -104,11 +104,15 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
   let appId: number | null = null
   let gameName: string | null = null
 
+  const workflowType = payload.workflowType ?? 'validation'
+  const operation = payload.operation ?? null
+  const workflowLabel = workflowType === 'operations' ? 'operations' : 'validation'
+
   await updateProgress(payload, {
     status: 'queued',
     icon: 'hourglass_top',
     title: 'Waiting for GitHub Actions…',
-    message: 'Monitoring GitHub validation for your report.',
+    message: 'Monitoring GitHub actions for your report.',
     progress: 'indeterminate',
     done: false,
     variant: 'info',
@@ -120,7 +124,6 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
     const workflowRun = await waitForWorkflowRun({
       githubToken: payload.githubToken,
       repo,
-      issueCreatedAt: payload.createdAt,
       issueNumber: payload.issueNumber,
     })
 
@@ -128,16 +131,16 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
       await updateProgress(payload, {
         status: 'warning',
         icon: 'schedule',
-        title: 'Validation pending',
-        message: 'Unable to locate the validation workflow run. Please check GitHub shortly.',
+        title: `${workflowLabel.charAt(0).toUpperCase() + workflowLabel.slice(1)} pending`,
+        message: `Unable to locate the ${workflowLabel} workflow run. Please check GitHub shortly.`,
         progress: 100,
         done: true,
         variant: 'warning',
       })
       await sendNotification(payload.userId, {
         icon: 'warning',
-        title: 'Validation Pending',
-        body: 'Unable to locate the validation workflow run. Please check back on GitHub shortly.',
+        title: `${workflowLabel.charAt(0).toUpperCase() + workflowLabel.slice(1)} Pending`,
+        body: `Unable to locate the ${workflowLabel} workflow run. Please check back on GitHub shortly.`,
         variant: 'warning',
         link: payload.issueUrl,
         linkTooltip: 'Open report on GitHub',
@@ -160,8 +163,8 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
     await updateProgress(payload, {
       status: 'running',
       icon: 'download',
-      title: 'Fetching validation results…',
-      message: 'Checking issue labels for validation feedback.',
+      title: workflowType === 'validation' ? 'Fetching validation results…' : 'Fetching workflow results…',
+      message: workflowType === 'validation' ? 'Checking issue labels for validation feedback.' : `Checking ${workflowLabel} workflow results.`,
       progress: 'indeterminate',
       done: false,
       variant: 'info',
@@ -186,6 +189,21 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
     }
 
     if (!issue) {
+      // Check if the issue was deleted and we are monitoring for this
+      if (workflowType === 'operations' && operation === 'delete') {
+        await updateProgress(payload, {
+          status: 'completed',
+          icon: 'check_circle',
+          title: 'Delete complete',
+          message: 'Your report was permanently deleted via GitHub Actions.',
+          progress: 100,
+          done: true,
+          variant: 'positive',
+        })
+        return
+      }
+
+      // Report an error fetching the issue details
       await updateProgress(payload, {
         status: 'warning',
         icon: 'help_outline',
@@ -206,69 +224,94 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
       return
     }
 
-    const invalidFound = await processInvalidLabels({
-      userId: payload.userId,
-      issue,
-      issueUrl: payload.issueUrl,
-      githubToken: payload.githubToken,
-      onProgress: async (message, variant, done) => {
-        await updateProgress(payload, {
-          status: done ? 'warning' : 'running',
-          icon: 'warning',
-          title: done ? 'Validation issues detected' : 'Validation issue spotted',
-          message,
-          progress: done ? 100 : 'indeterminate',
-          done: Boolean(done),
-          variant: variant ?? 'warning',
-        })
-      },
-    })
-
-    await processNoteLabels({
-      userId: payload.userId,
-      issue,
-      issueUrl: payload.issueUrl,
-      githubToken: payload.githubToken,
-      onProgress: async (message) => {
-        await updateProgress(payload, {
-          status: 'running',
-          icon: 'info',
-          title: 'Validation notes added',
-          message,
-          progress: 'indeterminate',
-          done: false,
-          variant: 'info',
-        })
-      },
-    })
-
-    if (!invalidFound) {
-      await updateProgress(payload, {
-        status: 'completed',
-        icon: 'check_circle',
-        title: 'Validation complete',
-        message: 'Your report passed validation and should appear soon.',
-        progress: 100,
-        done: true,
-        variant: 'positive',
-      })
-      await sendNotification(payload.userId, {
-        icon: 'check_circle',
-        title: 'Report Submitted',
-        body: 'Your report passed validation and should appear soon.',
-        variant: 'positive',
-        link: payload.issueUrl,
-        linkTooltip: 'Open report on GitHub',
+    if (workflowType === 'validation') {
+      const invalidFound = await processInvalidLabels({
+        userId: payload.userId,
+        issue,
+        issueUrl: payload.issueUrl,
+        githubToken: payload.githubToken,
+        onProgress: async (message, variant, done) => {
+          await updateProgress(payload, {
+            status: done ? 'warning' : 'running',
+            icon: 'warning',
+            title: done ? 'Validation issues detected' : 'Validation issue spotted',
+            message,
+            progress: done ? 100 : 'indeterminate',
+            done: Boolean(done),
+            variant: variant ?? 'warning',
+          })
+        },
       })
 
-      // Force a refresh of the game data from GitHub
-      if (appId || gameName) {
-        try {
-          logger.info(`Forcing cache refresh for game: appId=${appId}, gameName=${gameName}`)
-          await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
-        } catch (error) {
-          logger.error('Failed to force refresh game data after report submission', error)
+      await processNoteLabels({
+        userId: payload.userId,
+        issue,
+        issueUrl: payload.issueUrl,
+        githubToken: payload.githubToken,
+        onProgress: async (message) => {
+          await updateProgress(payload, {
+            status: 'running',
+            icon: 'info',
+            title: 'Validation notes added',
+            message,
+            progress: 'indeterminate',
+            done: false,
+            variant: 'info',
+          })
+        },
+      })
+
+      if (!invalidFound) {
+        await updateProgress(payload, {
+          status: 'completed',
+          icon: 'check_circle',
+          title: 'Validation complete',
+          message: 'Your report passed validation and should appear soon.',
+          progress: 100,
+          done: true,
+          variant: 'positive',
+        })
+        await sendNotification(payload.userId, {
+          icon: 'check_circle',
+          title: 'Report Submitted',
+          body: 'Your report passed validation and should appear soon.',
+          variant: 'positive',
+          link: payload.issueUrl,
+          linkTooltip: 'Open report on GitHub',
+        })
+
+        // Force a refresh of the game data from GitHub
+        if (appId || gameName) {
+          try {
+            logger.info(`Forcing cache refresh for game: appId=${appId}, gameName=${gameName}`)
+            await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+          } catch (error) {
+            logger.error('Failed to force refresh game data after report submission', error)
+          }
         }
+      }
+    } else if (workflowType === 'operations') {
+      // Handle operations workflows. For now, support the 'delete' operation.
+      if (operation === 'delete') {
+        // If the issue was missing (handled earlier), we already returned success. Here the issue exists,
+        // which means the delete workflow completed but the issue is still present.
+        await updateProgress(payload, {
+          status: 'warning',
+          icon: 'error',
+          title: 'Delete check complete',
+          message: 'The delete workflow ran but the report still exists on GitHub. Please review the issue.',
+          progress: 100,
+          done: true,
+          variant: 'warning',
+        })
+        await sendNotification(payload.userId, {
+          icon: 'warning',
+          title: 'Delete Check',
+          body: 'The delete workflow ran but the report still exists on GitHub. Please review the issue.',
+          variant: 'warning',
+          link: payload.issueUrl,
+          linkTooltip: 'Open report on GitHub',
+        })
       }
     }
   } catch (error) {
@@ -297,25 +340,25 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
 
 // --- Polling and Processing Helpers --- //
 
-const waitForWorkflowRun = async ({ githubToken, repo, issueCreatedAt, issueNumber }: {
+const waitForWorkflowRun = async ({ githubToken, repo, issueNumber }: {
   githubToken: string
   repo: { owner: string; name: string }
-  issueCreatedAt: string
   issueNumber: number
 }): Promise<GithubWorkflowRun | null> => {
-  const issueCreatedMs = Date.parse(issueCreatedAt)
   for (let attempt = 0; attempt < MAX_RUN_SEARCH_ATTEMPTS; attempt += 1) {
     try {
+      // Fetch recent workflow runs (no event filter) and match either 'issues' or 'issue_comment'
       const response = await fetch(
-        `${buildApiUrl(repo.owner, repo.name, '/actions/runs')}?event=issues&per_page=20`,
+        `${buildApiUrl(repo.owner, repo.name, '/actions/runs')}?per_page=20`,
         { headers: buildHeaders(githubToken) },
       )
       if (!response.ok) throw new Error(`Failed to fetch workflow runs (${response.status})`)
       const responsePayload = await response.json() as GithubWorkflowRunsResponse
       const run = responsePayload.workflow_runs.find((candidate) => {
-        if (!candidate || candidate.event !== 'issues' || Date.parse(candidate.created_at) < issueCreatedMs - 2000) {
-          return false
-        }
+        if (!candidate) return false
+        // Filter out runs not triggered by issue creation or issue comments
+        if (candidate.event !== 'issues' && candidate.event !== 'issue_comment') return false
+        // Filter runs which have the issue number in 'trigger_issue_number' in the run name
         if (typeof candidate.name !== 'string') return false
         const parsed = parseLogfmt(candidate.name)
         return Number(parsed.trigger_issue_number) === issueNumber

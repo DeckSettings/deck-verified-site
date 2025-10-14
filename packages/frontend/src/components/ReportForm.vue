@@ -17,7 +17,7 @@ import ZoomableImage from 'components/elements/ZoomableImage.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import AdmonitionBanner from 'components/elements/AdmonitionBanner.vue'
 import LasOfUsGraphicSettingsImage from '../assets/Last-of-Us-Part-1-Graphics-Settings.jpg'
-import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
+import { createIssue, updateIssue } from 'src/utils/gh-api'
 
 const props = defineProps({
   gameName: {
@@ -63,7 +63,6 @@ const props = defineProps({
 
 const $q = useQuasar()
 
-const { monitorIssue } = useGithubActionsMonitor()
 
 const reportForm = ref()
 const formData = ref<GameReportForm | null>(null)
@@ -784,59 +783,20 @@ const submitForm = async () => {
       updateProgressStage('submittingGithub')
 
       const isEditMode = !!props.issueNumber
-      const url = isEditMode
-        ? `https://api.github.com/repos/DeckSettings/game-reports-steamos/issues/${props.issueNumber}`
-        : 'https://api.github.com/repos/DeckSettings/game-reports-steamos/issues'
-
-      const method = isEditMode ? 'PATCH' : 'POST'
 
       const isMobileUi = $q && $q.platform && $q.platform.isMobileUi === true
       const title = isEditMode
         ? (isInGameImageMode ? `(Report updated with images from Deck Verified ${isMobileUi ? 'app' : 'website'})` : `(Report updated from Deck Verified ${isMobileUi ? 'app' : 'website'})`)
         : (isInGameImageMode ? `(Report submitted with images from Deck Verified ${isMobileUi ? 'app' : 'website'})` : `(Report submitted from Deck Verified ${isMobileUi ? 'app' : 'website'})`)
 
-      const body = {
-        title,
-        body: reportMarkdown,
+      if (isEditMode) {
+        await updateIssue(props.issueNumber as number, title, reportMarkdown)
+      } else {
+        await createIssue(title, reportMarkdown)
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${accessToken.value}`,
-          'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const raw = await response.text()
-      if (!response.ok) {
-        let detail = raw
-        try {
-          const parsed = JSON.parse(raw) as { message?: string }
-          if (parsed?.message) detail = parsed.message
-        } catch {
-          // ignore parse errors
-        }
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('GitHub rejected the request. Please confirm you are signed in and have granted the required permissions.')
-        }
-        throw new Error(detail || `GitHub issue creation/update failed (${response.status})`)
-      }
-
-      const js = JSON.parse(raw)
-      const responseUrl: string | undefined = js?.html_url
       $q.notify({ type: 'positive', message: `Issue ${isEditMode ? 'updated' : 'created'} successfully on GitHub.` })
-      // if (responseUrl) window.open(responseUrl, '_blank', 'noopener,noreferrer')
       finishProgress()
-      if (typeof js?.number === 'number' && typeof js?.created_at === 'string' && responseUrl) {
-        void monitorIssue({
-          issueNumber: js.number,
-          issueUrl: responseUrl,
-          createdAt: js.created_at,
-        })
-      }
 
       // Close dialog
       if (props.inDialog) {

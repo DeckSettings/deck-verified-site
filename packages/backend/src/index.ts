@@ -329,6 +329,9 @@ app.post('/deck-verified/api/tasks', dvAuth, express.json(), async (req: Request
     const createdAt = typeof payload?.createdAt === 'string' ? payload.createdAt : null
     const repositoryInput = payload?.repository
 
+    let workflowType = typeof payload?.workflowType === 'string' ? payload.workflowType : 'validation'
+    let operation: string | null = typeof payload?.operation === 'string' ? payload.operation : null
+
     if (!Number.isFinite(issueNumber) || !issueUrl || !createdAt) {
       res.status(400).json({ error: 'invalid_monitor_payload' })
       return
@@ -352,6 +355,8 @@ app.post('/deck-verified/api/tasks', dvAuth, express.json(), async (req: Request
       createdAt,
       repository: repositoryPayload,
       githubToken,
+      workflowType,
+      operation,
     }
 
     await githubMonitorQueue.add('github-monitor-job', jobPayload, {

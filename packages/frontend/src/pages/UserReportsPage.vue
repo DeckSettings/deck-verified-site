@@ -7,7 +7,7 @@ import ReportForm from 'src/components/ReportForm.vue'
 import ReportList from 'components/elements/ReportList.vue'
 import { QAjaxBar, useQuasar } from 'quasar'
 import PageHeader from 'components/elements/PageHeader.vue'
-import { updateIssueState } from 'src/utils/gh-api'
+import { updateIssueState, deleteIssue } from 'src/utils/gh-api'
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 const $q = useQuasar()
@@ -114,6 +114,42 @@ const handleUpdateReportState = async ({ issueNumber, state }: { issueNumber: nu
   }
 }
 
+const handleDeleteReport = async (issueNumber: number) => {
+  if (!authStore.isLoggedIn || !authStore.accessToken || !authStore.dvToken) {
+    return
+  }
+
+  const report = reports.value.find(r => r.issue?.number === issueNumber)
+  if (!report) {
+    $q.notify({ type: 'negative', message: 'ERROR! Could not find report details to delete.' })
+    return
+  }
+
+  if (report.issue?.state !== 'closed') {
+    $q.notify({ type: 'negative', message: 'Report must be closed before it can be deleted.' })
+    return
+  }
+
+  const ajax = ajaxBar.value
+  if (ajax) ajax.start()
+  try {
+    await deleteIssue(issueNumber)
+    $q.notify({
+      type: 'positive',
+      message: 'The report has been marked to be permanently deleted.',
+    })
+    await fetchReports()
+  } catch (error) {
+    console.error('Failed to delete report:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to delete report. Please try again.',
+    })
+  } finally {
+    if (ajax) ajax.stop()
+  }
+}
+
 const refreshVersion = ref(0)
 const handleRefresh = async (done: () => void) => {
   fetchReports().finally(async () => {
@@ -171,7 +207,8 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
               :reports-list="filteredReports"
               :edit-mode="true"
               @edit-report="editReport"
-              @update-report-state="handleUpdateReportState" />
+              @update-report-state="handleUpdateReportState"
+              @delete-report="handleDeleteReport" />
             <div v-if="isLoading" class="flex flex-center q-mt-md">
               <q-spinner-dots color="primary" size="40px" />
             </div>

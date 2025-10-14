@@ -12,6 +12,8 @@ interface MonitorOptions {
     owner: string
     name: string
   }
+  workflowType?: 'validation' | 'operations' | string
+  operation?: string | null
 }
 
 const createTaskId = (): string => {
@@ -40,7 +42,13 @@ export const useGithubActionsMonitor = () => {
       return
     }
 
+    // Ensure options.workflowType defaults to 'validation'
     const taskId = createTaskId()
+    const effectiveOptions = {
+      ...options,
+      workflowType: options.workflowType ?? 'validation',
+      operation: options.operation ?? null,
+    }
 
     try {
       const response = await fetchService(apiUrl('/deck-verified/api/tasks'), {
@@ -53,7 +61,7 @@ export const useGithubActionsMonitor = () => {
         body: JSON.stringify({
           taskId,
           taskType: 'github:actions:monitor',
-          payload: options,
+          payload: effectiveOptions,
         }),
       })
 
