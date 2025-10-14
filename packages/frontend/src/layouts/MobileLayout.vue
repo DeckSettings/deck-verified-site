@@ -96,13 +96,6 @@ const layoutStyle = computed(() => ({
 </script>
 
 <style scoped>
-.mobile-layout {
-  --safe-area-inset-top: env(safe-area-inset-top);
-  --safe-area-inset-bottom: env(safe-area-inset-bottom);
-  --top-bar-height: 60px;
-  --bottom-nav-height: 50px;
-}
-
 .top-bar {
   position: fixed;
   top: 0;
@@ -112,8 +105,6 @@ const layoutStyle = computed(() => ({
   background: color-mix(in srgb, var(--q-dark) 70%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding-top: var(--safe-area-inset-top);
-  height: calc(var(--top-bar-height) + var(--safe-area-inset-top));
   border-bottom: 1px solid color-mix(in srgb, white 12%, transparent);
 }
 
@@ -121,7 +112,7 @@ const layoutStyle = computed(() => ({
   display: flex;
   align-items: center;
   padding: 0 16px;
-  height: var(--top-bar-height);
+  height: 60px;
   gap: 16px;
 }
 
@@ -138,13 +129,11 @@ const layoutStyle = computed(() => ({
   background: color-mix(in srgb, var(--q-dark) 70%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding-bottom: var(--safe-area-inset-bottom);
-  height: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom));
   border-top: 1px solid color-mix(in srgb, white 12%, transparent);
 }
 
 .q-tabs {
-  height: var(--bottom-nav-height);
+  height: 60px;
 }
 
 .small-tabs :deep(.q-tab) {
