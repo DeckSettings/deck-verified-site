@@ -164,7 +164,7 @@ const confirmDelete = () => {
 </script>
 
 <template>
-  <div class="q-pa-md-md">
+  <div class="q-pa-none">
     <q-list padding>
       <template v-for="(report, idx) in reportsList"
                 :key="report.id ?? report.data.app_id ?? report.data.game_name">

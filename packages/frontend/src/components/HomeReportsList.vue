@@ -119,8 +119,8 @@ watch(reportsStatsList, async () => {
     size="5px"
     skip-hijack
   />
-  <q-card class="home-reports-card text-white">
-    <q-card-section class="home-reports-header">
+  <q-card class="reports-card text-white q-pa-xs">
+    <q-card-section class="row items-center justify-between">
       <h4 class="text-h6 q-ma-none">{{ listTitle }}</h4>
     </q-card-section>
     <q-card-section class="q-pt-none q-px-sm-sm q-px-xs" :class="{ 'no-padding': $q.platform.is.mobile }">
@@ -198,23 +198,6 @@ watch(reportsStatsList, async () => {
 </template>
 
 <style scoped>
-.home-reports-card {
-  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
-  border: 1px solid color-mix(in srgb, white 10%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-radius: 3px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-  z-index: 1000;
-}
-
-.home-reports-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .skeleton-poster {
   border-radius: 12px;
 }

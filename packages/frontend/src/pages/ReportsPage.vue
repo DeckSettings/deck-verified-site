@@ -18,7 +18,8 @@ const handleRefresh = async (done: () => void) => {
 
 <template>
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
-    <q-page class="q-pa-md">
+    <q-page class="bg-dark text-white"
+            :class="{'q-pb-xl q-pa-md':!$q.platform.isMobileUi}">
       <div v-if="reportType === 'recentlyCreated'">
         <HomeReportsList
           :key="`recentlyCreated-${refreshVersion}`"

@@ -41,8 +41,8 @@ export default defineComponent({
 </script>
 
 <template>
-  <q-card class="home-reports-card text-white">
-    <q-card-section class="home-reports-header">
+  <q-card class="reports-card text-white">
+    <q-card-section class="row items-center justify-center">
       <div class="text-h6 text-center">{{ listTitle }}</div>
     </q-card-section>
     <q-card-section class="q-pt-none" :class="{ 'no-padding': $q.platform.is.mobile }">
@@ -52,19 +52,5 @@ export default defineComponent({
 </template>
 
 <style scoped>
-.home-reports-card {
-  background: color-mix(in srgb, var(--q-dark) 60%, transparent);
-  border: 1px solid color-mix(in srgb, white 10%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
 
-.home-reports-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 </style>

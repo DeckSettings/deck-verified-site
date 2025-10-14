@@ -168,7 +168,8 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
 <template>
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
-    <q-page class="bg-dark text-white q-pb-xl" :padding="!$q.platform.isMobileUi">
+    <q-page class="bg-dark text-white"
+            :class="{'q-pb-xl q-pa-md':!$q.platform.isMobileUi}">
       <q-ajax-bar
         ref="ajaxBar"
         :position="$q.platform.isMobileUi ? 'top' : 'bottom'"
@@ -176,7 +177,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
         size="5px"
         skip-hijack
       />
-      <PageHeader title="My Reports" :show-nav-back-button="true" />
+      <PageHeader v-if="!$q.platform.isMobileUi" title="My Reports" :show-nav-back-button="true" />
       <div class="page-content-container">
         <template v-if="!authStore.isLoggedIn">
           <q-card>
@@ -188,34 +189,38 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
           </q-card>
         </template>
         <template v-else>
-          <div>
-            <q-input
-              v-model="searchTerm"
-              filled
-              dense
-              placeholder="Filter by game name or summary"
-              class="q-mb-md q-mt-none q-mt-sm-lg"
-            >
-              <template v-slot:append>
-                <q-icon name="filter_alt" />
-              </template>
-            </q-input>
-          </div>
-          <div>
-            <ReportList
-              :key="`recentlyCreated-${refreshVersion}`"
-              :reports-list="filteredReports"
-              :edit-mode="true"
-              @edit-report="editReport"
-              @update-report-state="handleUpdateReportState"
-              @delete-report="handleDeleteReport" />
-            <div v-if="isLoading" class="flex flex-center q-mt-md">
-              <q-spinner-dots color="primary" size="40px" />
-            </div>
-            <div v-if="!isLoading && filteredReports.length === 0" class="flex flex-center q-mt-md">
-              <p>No reports found.</p>
-            </div>
-          </div>
+          <q-card class="reports-card text-white q-pa-xs">
+            <q-card-section v-if="$q.platform.isMobileUi" class="row items-center justify-between">
+              <h4 class="text-h6 q-ma-none">My Reports</h4>
+            </q-card-section>
+            <q-card-section class="q-mb-sm q-mt-sm q-pt-none q-px-sm-sm q-px-xs" :class="{ 'no-padding': $q.platform.is.mobile }">
+              <q-input
+                v-model="searchTerm"
+                filled
+                dense
+                placeholder="Filter by game name or summary"
+              >
+                <template v-slot:append>
+                  <q-icon name="filter_alt" />
+                </template>
+              </q-input>
+            </q-card-section>
+            <q-card-section class="q-pt-none q-px-sm-sm q-px-xs" :class="{ 'no-padding': $q.platform.is.mobile }">
+              <ReportList
+                :key="`recentlyCreated-${refreshVersion}`"
+                :reports-list="filteredReports"
+                :edit-mode="true"
+                @edit-report="editReport"
+                @update-report-state="handleUpdateReportState"
+                @delete-report="handleDeleteReport" />
+              <div v-if="isLoading" class="flex flex-center q-mt-md">
+                <q-spinner-dots color="primary" size="40px" />
+              </div>
+              <div v-if="!isLoading && filteredReports.length === 0" class="flex flex-center q-mt-md">
+                <p>No reports found.</p>
+              </div>
+            </q-card-section>
+          </q-card>
         </template>
         <q-dialog
           v-model="reportFormDialogOpen"
@@ -238,3 +243,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
     </q-page>
   </q-pull-to-refresh>
 </template>
+
+<style scoped>
+
+</style>
