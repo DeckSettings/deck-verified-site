@@ -7,7 +7,7 @@ import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import { QCard, QCardActions, QCardSection } from 'quasar'
 import AdmonitionBanner from 'components/elements/AdmonitionBanner.vue'
 
-const props = defineProps({
+defineProps({
   reportsList: {
     type: Array as PropType<HomeReport[]>,
     required: true,
@@ -120,7 +120,6 @@ const getFilteredLabels = (report: HomeReport) => {
 }
 
 const getReportUrl = (report: HomeReport) => {
-  if (props.editMode) return ''
   const base = report.data.app_id
     ? `/app/${report.data.app_id}`
     : `/game/${encodeURIComponent(report.data.game_name)}`
@@ -173,7 +172,7 @@ const confirmDelete = () => {
           :class="{ 'q-pl-md': $q.platform.is.mobile }"
           :v-ripple="!editMode"
           :clickable="!editMode"
-          :to="getReportUrl(report)"
+          :to="editMode ? '' : getReportUrl(report)"
         >
           <q-item-section top avatar class="game-poster-section q-pa-none q-pr-sm q-pr-sm-md">
             <div>
@@ -400,6 +399,15 @@ const confirmDelete = () => {
                 </q-item>
 
                 <q-separator v-if="report.issue?.state" dark spaced />
+
+                <q-item v-if="report.issue?.state === 'open'" clickable :to="getReportUrl(report)">
+                  <q-item-section avatar>
+                    <q-avatar icon="chrome_reader_mode" color="primary" text-color="white" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Open Report Page</q-item-label>
+                  </q-item-section>
+                </q-item>
 
                 <q-item clickable v-close-popup :href="report.issue?.html_url" target="_blank" rel="noopener">
                   <q-item-section avatar>

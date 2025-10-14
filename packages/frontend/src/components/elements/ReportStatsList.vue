@@ -122,7 +122,7 @@ const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: stri
               <div class="col-auto self-start">
                 <SecondaryButton
                   class="gt-sm"
-                  icon="open_in_new"
+                  icon="chrome_reader_mode"
                   label="View Reports"
                   :to="getGameDataUrl(metricResult)"
                 />
