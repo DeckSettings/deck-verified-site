@@ -247,9 +247,11 @@ useMeta(() => ({
           <div class="section-header">
             <h3 class="text-h5 q-mb-xs">Install the Deck Settings Plugin</h3>
             <p class="text-body2 q-mb-none">
-              Pick the installation flow that suits you. The Decky Store path is fast and curated,
-              while the manual method always delivers the newest features direct from GitHub
-              releases—perfect if you want updates before they land in the store.
+              Pick the installation flow that suits you.
+              The <strong>Decky Store</strong> version is the easiest to set up and provides a stable release, ideal for
+              most users.
+              The <strong>manual install</strong> offers the newest features directly from GitHub releases, perfect for
+              early adopters who want the latest updates first before they land in the store.
             </p>
           </div>
 
@@ -286,18 +288,18 @@ useMeta(() => ({
                   v-for="(step, index) in deckyStoreSteps"
                   :key="step.title"
                   class="install-step">
-                <q-item-section>
-                  <q-item-label>
-                    <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
-                  </q-item-label>
-                  <q-item-label class="step-description">
-                    <div v-html="step.description" />
-                  </q-item-label>
-                  <q-img
-                    v-for="(stepImage, imageIndex) in step.images"
-                    :key="`${step.title}-${imageIndex}`"
-                    :src="stepImage.src"
-                    :alt="stepImage.alt"
+                  <q-item-section>
+                    <q-item-label>
+                      <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
+                    </q-item-label>
+                    <q-item-label class="step-description">
+                      <div v-html="step.description" />
+                    </q-item-label>
+                    <q-img
+                      v-for="(stepImage, imageIndex) in step.images"
+                      :key="`${step.title}-${imageIndex}`"
+                      :src="stepImage.src"
+                      :alt="stepImage.alt"
                       class="q-mt-sm screenshot"
                     />
                   </q-item-section>
@@ -320,18 +322,18 @@ useMeta(() => ({
                   v-for="(step, index) in manualSteps"
                   :key="step.title"
                   class="install-step">
-                <q-item-section>
-                  <q-item-label>
-                    <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
-                  </q-item-label>
-                  <q-item-label class="step-description">
-                    <div v-html="step.description" />
-                  </q-item-label>
-                  <q-img
-                    v-for="(stepImage, imageIndex) in step.images"
-                    :key="`${step.title}-${imageIndex}`"
-                    :src="stepImage.src"
-                    :alt="stepImage.alt"
+                  <q-item-section>
+                    <q-item-label>
+                      <span class="text-primary">Step {{ index + 1 }}:</span> {{ step.title }}
+                    </q-item-label>
+                    <q-item-label class="step-description">
+                      <div v-html="step.description" />
+                    </q-item-label>
+                    <q-img
+                      v-for="(stepImage, imageIndex) in step.images"
+                      :key="`${step.title}-${imageIndex}`"
+                      :src="stepImage.src"
+                      :alt="stepImage.alt"
                       class="q-mt-sm screenshot"
                     />
                   </q-item-section>
@@ -374,8 +376,9 @@ useMeta(() => ({
             class="faq-item"
           >
             <p class="q-mx-sm q-my-md">
-              Yes. Reports, screenshots, and embedded videos are pulled from Deck Verified and community-hosted
-              resources. Cached content may appear offline, but fresh data requires connectivity.
+              Yes. Reports, screenshots, and embedded videos are pulled from the Deck Settings GitHub project and
+              community-hosted resources. Cached data of previously viewed content may appear offline, but fresh data
+              requires connectivity.
             </p>
           </q-expansion-item>
           <q-expansion-item
@@ -386,7 +389,7 @@ useMeta(() => ({
             class="faq-item"
           >
             <p class="q-mx-sm q-my-md">
-              Use the GitHub repository issues page to report bugs, request features, or contribute translations. Pull
+              Use the GitHub repository issues page to report bugs, request features, or contribute guides. Pull
               requests are welcome.
             </p>
             <ul>
