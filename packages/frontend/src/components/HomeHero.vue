@@ -49,7 +49,7 @@ onUnmounted(() => {
   <div ref="contentContainer" class="page-content-container row items-center q-pa-xs-md q-pa-sm-xl full-width">
     <div class="hero-text-wrapper col-xs-12 col-md-6 q-pt-md q-px-md q-pb-none">
       <h1 class="hero-title text-h3 q-mb-lg q-mt-none">
-        Steam Deck Game Settings & Performance Reports
+        Handheld Game Settings & Performance Reports
       </h1>
       <p class="hero-description text-body1">
         <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimise performance on
@@ -96,8 +96,8 @@ onUnmounted(() => {
           color="secondary"
           :size="$q.screen.lt.sm ? 'md': 'lg'"
           icon="tune"
-          label="Browse Steam Deck Settings"
-          :to="{ name: 'steam-deck-settings' }"
+          label="Browse Games With Reports"
+          :to="{ name: 'games-with-reports' }"
         />
       </div>
     </div>

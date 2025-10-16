@@ -230,7 +230,7 @@ useMeta(() => ({
                   <q-icon name="launch" color="primary" />
                 </q-item-section>
                 <q-item-section>
-                  Decky Loader installation guide (Steam Deck, Windows handhelds, Linux desktops)
+                  Decky Loader installation guide
                 </q-item-section>
               </q-item>
             </q-list>

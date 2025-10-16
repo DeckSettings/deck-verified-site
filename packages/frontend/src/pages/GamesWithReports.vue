@@ -54,7 +54,7 @@ onBeforeUnmount(() => {
 /*METADATA*/
 const metaTitle = ref('Steam Deck Game Settings (Community Reports)')
 const metaDescription = ref('Browse Steam Deck game settings and community performance reports. Find graphics presets, FPS targets, and battery life tips for top PC games on Steam Deck, ROG Ally, and Legion Go, and other handhelds.')
-const metaLink = ref('https://deckverified.games/steam-deck-settings')
+const metaLink = ref('https://deckverified.games/games-with-reports')
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('https://deckverified.games/hero-image.png')
 const metaAlt = ref('Steam Deck game settings reports')
@@ -125,8 +125,8 @@ useMeta(() => {
     <div class="background-container"
          :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
     <PageHeader
-      title="Steam Deck Game Settings"
-      subtitle="Community-tested graphics settings and performance targets for popular PC games on Steam Deck."
+      title="Games With Reports"
+      subtitle="Community-tested graphics settings and performance targets for popular PC games on handhelds."
       :show-nav-back-button="true"
     >
       <div class="row items-center justify-end flex-wrap q-col-gutter-md q-row-gutter-sm">

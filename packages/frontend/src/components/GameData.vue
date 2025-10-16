@@ -613,7 +613,7 @@ useMeta(() => {
               <p>
                 Have your own tested setup? Click <em>Submit Report</em> to share your
                 configuration and help others discover the best way to play
-                {{ gameName || 'this game' }} on Steam Deck.
+                {{ gameName || 'this game' }} on your preferred handheld.
               </p>
             </div>
             <div v-if="gameReportsSummary">
@@ -1249,7 +1249,7 @@ useMeta(() => {
                 <p>
                   Dialed in a great setup? Tap the <em>Submit Report</em> button above to share
                   your configuration and help fellow players discover the best way to enjoy
-                  {{ gameName || 'this game' }} on Steam Deck.
+                  {{ gameName || 'this game' }} on your preferred handheld.
                 </p>
               </div>
               <div v-if="gameReportsSummary" class="mobile-reports-insight__summary q-mt-lg">
