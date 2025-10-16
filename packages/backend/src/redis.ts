@@ -150,6 +150,45 @@ export const acquireRedisLock = async (
   }
 }
 
+/**
+ * Caches a generic object in Redis against a given cache key.
+ */
+export const redisCacheExtData = async (
+  data: string,
+  key: string,
+  cacheTime: number,
+): Promise<void> => {
+  if (data === undefined || data === null) {
+    throw new Error('The data key is required for caching the data.')
+  }
+  if (!key) {
+    throw new Error('A key is required to cache the data.')
+  }
+  if (!cacheTime) {
+    throw new Error('A cache time is required to cache the data.')
+  }
+  const redisKey = `ext_data:${escapeRedisKey(key)}`
+  await ensureRedisConnection()
+  await redisClient.set(redisKey, data, { EX: cacheTime })
+}
+
+/**
+ * Retrieves a generic cached object for a given cache key.
+ */
+export const redisLookupExtData = async (key: string): Promise<string | null> => {
+  if (!key) {
+    throw new Error('A key is required to lookup the data.')
+  }
+  const redisKey = `ext_data:${escapeRedisKey(key)}`
+  await ensureRedisConnection()
+  const cachedData = await redisClient.get(redisKey)
+  if (cachedData) {
+    logger.info(`Retrieved the external data for "${key}" from Redis cache`)
+    return cachedData
+  }
+  return null
+}
+
 export const setTaskProgress = async (
   userId: string,
   taskId: string,
@@ -613,7 +652,7 @@ export const redisLookupHardwareInfo = async (): Promise<HardwareInfo[] | null> 
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved GitHub hardware info from Redis cache`)
+      logger.info('Retrieved GitHub hardware info from Redis cache')
       return JSON.parse(cachedData)
     }
   } catch (error) {
@@ -645,7 +684,7 @@ export const redisLookupGameReportTemplate = async (): Promise<GitHubIssueTempla
     // Attempt to fetch from Redis cache
     const cachedData = await redisClient.get(redisKey)
     if (cachedData) {
-      logger.info(`Retrieved GitHub game report template from Redis cache`)
+      logger.info('Retrieved GitHub game report template from Redis cache')
       return JSON.parse(cachedData)
     }
   } catch (error) {
@@ -777,90 +816,6 @@ export const redisLookupSteamSearchSuggestions = async (
     }
   } catch (error) {
     logger.error('Redis error while fetching cached suggestions:', error)
-  }
-  return null
-}
-
-/**
- * Caches an object of SDHQ Game Review in Redis.
- * The cached data is stored for 2 days to improve search performance and reduce API calls.
- */
-export const redisCacheSDHQReview = async (
-  data: SDHQReview[],
-  appId: string,
-  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
-): Promise<void> => {
-  if (!data) {
-    throw new Error('Data is required for caching SDHQ review.')
-  }
-  if (!appId) {
-    throw new Error('An AppID is required to cache SDHQ review.')
-  }
-
-  const redisKey = `sdhq_review:${escapeRedisKey(appId)}`
-  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
-  logger.info(`Cached SDHQ review for ${cacheTime} seconds with key ${redisKey}`)
-}
-
-/**
- * Retrieves a cached object of SDHQ Game Review for a given App ID.
- */
-export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[] | null> => {
-  if (!appId) {
-    throw new Error('An AppID is required to lookup SDHQ review.')
-  }
-
-  const redisKey = `sdhq_review:${escapeRedisKey(appId)}`
-  try {
-    const cachedData = await redisClient.get(redisKey)
-    if (cachedData) {
-      logger.info(`Retrieved SDHQ review for "${appId}" from Redis cache`)
-      return JSON.parse(cachedData) as SDHQReview[]
-    }
-  } catch (error) {
-    logger.error('Redis error while fetching cached SDHQ review:', error)
-  }
-  return null
-}
-
-/**
- * Caches an object of SDG Video Review in Redis.
- * The cached data is stored for 2 days to improve search performance and reduce API calls.
- */
-export const redisCacheSDGReview = async (
-  data: SDGVideoReview[],
-  appId: string,
-  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
-): Promise<void> => {
-  if (!data) {
-    throw new Error('Data is required for caching SDG review.')
-  }
-  if (!appId) {
-    throw new Error('An AppID is required to cache SDG review.')
-  }
-
-  const redisKey = `sdg_review:${escapeRedisKey(appId)}`
-  await redisClient.set(redisKey, JSON.stringify(data), { EX: cacheTime })
-  logger.info(`Cached SDG review for ${cacheTime} seconds with key ${redisKey}`)
-}
-
-/**
- * Retrieves a cached object of SDG Video Review for a given App ID.
- */
-export const redisLookupSDGReview = async (appId: string): Promise<SDGVideoReview[] | null> => {
-  if (!appId) {
-    throw new Error('An AppID is required to lookup SDG review.')
-  }
-
-  const redisKey = `sdg_review:${escapeRedisKey(appId)}`
-  try {
-    const cachedData = await redisClient.get(redisKey)
-    if (cachedData) {
-      logger.info(`Retrieved SDG review for "${appId}" from Redis cache`)
-      return JSON.parse(cachedData) as SDGVideoReview[]
-    }
-  } catch (error) {
-    logger.error('Redis error while fetching cached SDG review:', error)
   }
   return null
 }

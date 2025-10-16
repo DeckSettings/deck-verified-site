@@ -30,8 +30,6 @@ import {
 import {
   fetchJosh5Avatar,
   generateImageLinksFromAppId,
-  generateSDGReviewData,
-  fetchBlogReviewSummary,
   generateGameRatingsSummary,
 } from './helpers'
 import type {
@@ -58,6 +56,7 @@ import { initScheduledTasks } from './jobs/scheduler'
 import { generateIsThereAnyDealPriceSummary } from './external/itad'
 import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './external/steam'
 import { generateSDHQReviewData } from './external/sdhq'
+import { fetchBlogReviewSummary } from './external/bloggerapi'
 import { parseReportBody } from './helpers'
 
 const delay = (ms: number) => new Promise((resolve) => {
@@ -1025,20 +1024,13 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
     // Add additional external source data based on appId
     if (includeExternal && discoveredAppId !== null) {
-      const [sdhqReviews, sdgVideoReviews] = await Promise.all([
+      const [sdhqReviews] = await Promise.all([
         generateSDHQReviewData(discoveredAppId.toString()),
-        generateSDGReviewData(discoveredAppId.toString()),
       ])
       if (sdhqReviews.length > 0) {
         returnData.external_reviews = [
           ...(returnData.external_reviews || []),
           ...sdhqReviews,
-        ]
-      }
-      if (sdgVideoReviews.length > 0) {
-        returnData.external_reviews = [
-          ...(returnData.external_reviews || []),
-          ...sdgVideoReviews,
         ]
       }
     }

@@ -1,6 +1,10 @@
 import { ExternalGameReview, ExternalGameReviewReportData, SDHQReview } from '../../../shared/src/game'
 import { fetchHardwareInfo } from '../github'
-import { redisCacheSDHQReview, redisLookupSDHQReview } from '../redis'
+import {
+  acquireRedisLock,
+  redisCacheExtData,
+  redisLookupExtData,
+} from '../redis'
 import logger from '../logger'
 import {
   calculatedBatteryLife, convertRatingToStars,
@@ -10,6 +14,52 @@ import {
   limitStringTo100Characters, numberValueFromString, parseGameSettingsToMarkdown,
 } from '../helpers'
 
+const SDHQ_REDIS_PREFIX = 'sdhq_review'
+
+/**
+ * Caches an object of SDHQ Game Review in Redis.
+ * The cached data is stored for 2 days to improve search performance and reduce API calls.
+ */
+export const redisCacheSDHQReview = async (
+  data: SDHQReview[],
+  appId: string,
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching SDHQ review.')
+  }
+  if (!appId) {
+    throw new Error('An AppID is required to cache SDHQ review.')
+  }
+  const redisKey = `${SDHQ_REDIS_PREFIX}:${appId}`
+  try {
+    const cacheData = JSON.stringify(data)
+    await redisCacheExtData(cacheData, redisKey, cacheTime)
+    logger.info(`Cached SDHQ review for ${cacheTime} seconds with key ${redisKey}`)
+  } catch (error) {
+    logger.error(`Redis error while caching SDHQ review for key "${redisKey}":`, error)
+  }
+}
+
+/**
+ * Retrieves a cached object of SDHQ Game Review for a given App ID.
+ */
+export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[] | null> => {
+  if (!appId) {
+    throw new Error('An AppID is required to lookup SDHQ review.')
+  }
+  const redisKey = `${SDHQ_REDIS_PREFIX}:${appId}`
+  try {
+    const cachedData = await redisLookupExtData(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved SDHQ review for "${appId}" from Redis cache`)
+      return JSON.parse(cachedData) as SDHQReview[]
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached SDHQ review:', error)
+  }
+  return null
+}
 
 /**
  * Fetches SDHQ review data for the given App ID.
@@ -20,37 +70,45 @@ export const fetchSDHQReview = async (appId: string): Promise<SDHQReview[]> => {
     return cachedData
   }
 
-  const url = `https://steamdeckhq.com/wp-json/wp/v2/game-reviews/?meta_key=steam_app_id&meta_value=${appId}`
-  try {
-    logger.info(`Fetching SDHQ review data for appId ${appId} from SDHQ API...`)
-    const response = await fetch(url)
+  // Acquire short lock to dedupe background work
+  const gotLock = await acquireRedisLock(`${SDHQ_REDIS_PREFIX}:${appId}`, 120)
+  if (gotLock) {
+    // Fire-and-forget background fetch. Avoid unhandled rejection noise.
+    ;(async () => {
+      try {
+        const url = `https://steamdeckhq.com/wp-json/wp/v2/game-reviews/?meta_key=steam_app_id&meta_value=${appId}`
+        logger.info(`(BG TASK) Fetching SDHQ review data for appId ${appId} from SDHQ API...`)
+        const response = await fetch(url)
 
-    // Check if response is ok (status 200)
-    if (!response.ok) {
-      const errorBody = await response.text()
-      logger.error(`SDHQ game review PI request failed with status ${response.status}: ${errorBody}`)
-      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
-      return []
-    }
+        // Check if response is ok (status 200)
+        if (!response.ok) {
+          const errorBody = await response.text()
+          logger.error(`(BG TASK) SDHQ game review API request failed with status ${response.status}: ${errorBody}`)
+          await redisCacheSDHQReview([], appId, 3600) // Cache error/negative response for 1 hour
+          return
+        }
 
-    const data: SDHQReview[] = await response.json()
+        const data: SDHQReview[] = await response.json()
 
-    if (data.length > 0) {
-
-      // Cache results, then return them
-      await redisCacheSDHQReview(data, appId)
-
-      return data
-    } else {
-      logger.warn(`No SDHQ game data found for appId ${appId}`)
-      await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
-      return []
-    }
-  } catch (error) {
-    logger.error(`Failed to fetch SDHQ game data for appId ${appId}:`, error)
+        if (Array.isArray(data) && data.length > 0) {
+          // Cache results for normal TTL
+          await redisCacheSDHQReview(data, appId)
+          logger.info(`(BG TASK) Cached SDHQ review data for appId ${appId}.`)
+        } else {
+          logger.warn(`(BG TASK) No SDHQ game data found for appId ${appId}`)
+          await redisCacheSDHQReview([], appId, 3600) // Cache negative result for 1 hour
+        }
+      } catch (error) {
+        logger.error(`(BG TASK) Failed to fetch SDHQ game data for appId ${appId}:`, error)
+        await redisCacheSDHQReview([], appId, 3600) // Cache negative result for 1 hour
+      }
+    })().catch(async (err) => {
+      logger.error(`(BG TASK) SDHQ background task rejected for appId ${appId}:`, err)
+      await redisCacheSDHQReview([], appId, 3600)
+    })
   }
 
-  await redisCacheSDHQReview([], appId, 3600) // Cache error response for 1 hour
+  // Return immediately on miss. The next request will likely hit the cache.
   return []
 }
 
