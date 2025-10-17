@@ -14,7 +14,7 @@ services:
     networks:
       - private-net
     ports:
-      - "6379:6379/tcp"
+      - '6379:6379/tcp'
     environment:
       REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?Missing Redis Password} --protected-mode yes
     volumes:
@@ -26,12 +26,12 @@ services:
     build:
       context: .
       dockerfile: ./packages/backend/docker/Dockerfile
-    user: "1000:1000"
+    user: '1000:1000'
     #command: npm run watch:backend
     #command: npm run serve-no-tasks
     command: npm run serve
     ports:
-      - "9022:9022"
+      - '9022:9022'
     depends_on:
       - redis
     networks:
@@ -52,7 +52,17 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Missing Redis Password}
     healthcheck:
-      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9022/deck-verified/api/v1/health"]
+      test:
+        [
+          'CMD',
+          'wget',
+          '--header=User-Agent: Compose-HealthChecker/1.0',
+          '--spider',
+          '--no-verbose',
+          '--tries=1',
+          '--timeout=3',
+          'http://localhost:9022/deck-verified/api/v1/health',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -72,9 +82,19 @@ services:
     networks:
       - private-net
     ports:
-      - "3000:3000"
+      - '3000:3000'
     healthcheck:
-      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:3000/health"]
+      test:
+        [
+          'CMD',
+          'wget',
+          '--header=User-Agent: Compose-HealthChecker/1.0',
+          '--spider',
+          '--no-verbose',
+          '--tries=1',
+          '--timeout=3',
+          'http://localhost:3000/health',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -90,14 +110,24 @@ services:
       context: .
       dockerfile: ./packages/frontend/docker/Dockerfile
     ports:
-      - "9021:9021"
+      - '9021:9021'
     depends_on:
       - api
       - web-ssr
     networks:
       - private-net
     healthcheck:
-      test: ["CMD", "wget", "--header=User-Agent: Compose-HealthChecker/1.0", "--spider", "--no-verbose", "--tries=1", "--timeout=3", "http://localhost:9021/deck-verified/health"]
+      test:
+        [
+          'CMD',
+          'wget',
+          '--header=User-Agent: Compose-HealthChecker/1.0',
+          '--spider',
+          '--no-verbose',
+          '--tries=1',
+          '--timeout=3',
+          'http://localhost:9021/deck-verified/health',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
