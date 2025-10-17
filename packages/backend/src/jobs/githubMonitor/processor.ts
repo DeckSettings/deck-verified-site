@@ -1,15 +1,13 @@
 import type { Job } from 'bullmq'
 import logger from '../../logger'
 import { appendNotification } from '../../notifications'
-import {
-  fetchIssueLabels,
-  fetchProjectsByAppIdOrGameName,
-  fetchReportBodySchema,
-  fetchHardwareInfo,
-} from '../../github'
+import { fetchHardwareInfo } from '../../external/decksettings/hw_info'
+import { fetchRepoIssueLabels } from '../../external/decksettings/repo_issue_labels'
 import { setTaskProgress } from '../../redis'
 import { parseReportBody } from '../../helpers'
 import type { GithubMonitorJobData } from './types'
+import { fetchReportBodySchema } from '../../external/decksettings/report_body_schema'
+import { fetchProjectsByAppIdOrGameName } from '../../external/decksettings/projects'
 
 // --- Constants and Types --- //
 
@@ -443,7 +441,7 @@ const processInvalidLabels = async ({ userId, issue, issueUrl, githubToken, onPr
 
   let labelDescriptions: Record<string, string> = {}
   try {
-    const allLabels = await fetchIssueLabels(githubToken)
+    const allLabels = await fetchRepoIssueLabels(githubToken)
     labelDescriptions = allLabels.reduce<Record<string, string>>((acc, label) => {
       if (label.name && label.description) {
         acc[label.name] = label.description
@@ -491,7 +489,7 @@ const processNoteLabels = async ({ userId, issue, issueUrl, githubToken, onProgr
 
   let labelDescriptions: Record<string, string> = {}
   try {
-    const allLabels = await fetchIssueLabels(githubToken)
+    const allLabels = await fetchRepoIssueLabels(githubToken)
     labelDescriptions = allLabels.reduce<Record<string, string>>((acc, label) => {
       if (label.name && label.description) {
         acc[label.name] = label.description

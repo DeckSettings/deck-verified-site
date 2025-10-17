@@ -5,13 +5,7 @@ import {
   SteamStoreAppDetails,
   SteamSuggestApp,
 } from '../../../shared/src/game'
-import {
-  redisCacheSteamStoreDetails,
-  redisCacheSteamSearchSuggestions,
-  redisLookupSteamStoreDetails,
-  redisLookupSteamSearchSuggestions,
-  storeGameInRedis,
-} from '../redis'
+import { storeGameInRedis, redisCacheExtData, redisLookupExtData } from '../redis'
 import logger from '../logger'
 import { generateImageLinksFromAppId, parseAppIdNumber, toIsoDateString } from '../helpers'
 
@@ -27,6 +21,27 @@ interface AjaxCompatResponse {
     search_id?: string | null;
   };
 }
+
+export interface MaxSteamAppIdCache {
+  maxAppId: number
+  name: string
+  totalApps: number
+  fetchedAt: string
+}
+
+export const IGNORE_GAME_NAME_REGEX: RegExp[] = [
+  /^Proton\s\d+\.\d+$/,
+  /^Steam Linux Runtime \d+\.\d+\s\(.*\)$/,
+]
+export const IGNORE_APP_IDS = [
+  2180100, // Proton Hotfix
+  1493710, // Proton Experimental
+  1070560, // Steam Linux Runtime
+  1070560, // "Steam Linux Runtime 1.0 (scout)"
+  1391110, // "Steam Linux Runtime 2.0 (soldier)"
+  1628350, // "Steam Linux Runtime 3.0 (sniper)"
+  228980, // "Steamworks Common Redistributables"
+]
 
 const STEAM_STRINGS_MAP: Record<string, string> = {
   'SteamDeckVerified_TestResult_DefaultControllerConfigFullyFunctional': 'All functionality is accessible when using the default controller configuration',
@@ -132,6 +147,118 @@ export const STEAM_DECK_VERIFIED_TEST_RESULT_MAP: Record<string, string> = (() =
   }
   return out
 })()
+
+
+const STEAM_REDIS_PREFIX = 'steam'
+
+export const redisCacheSteamStoreDetails = async (
+  data: unknown,
+  key: string,
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
+): Promise<void> => {
+  if (data === undefined || data === null) {
+    throw new Error('Data is required for caching Steam app details.')
+  }
+  if (!key) {
+    throw new Error('A lookup key is required to cache Steam data.')
+  }
+  const redisKey = `${STEAM_REDIS_PREFIX}:app_details:${key}`
+  try {
+    await redisCacheExtData(JSON.stringify(data), redisKey, cacheTime)
+    logger.info(`Cached Steam app details for ${cacheTime} seconds with key ${redisKey}`)
+  } catch (error) {
+    logger.error(`Redis error while caching Steam app details for key "${redisKey}":`, error)
+  }
+}
+
+export const redisLookupSteamStoreDetails = async (key: string): Promise<unknown | null> => {
+  if (!key) {
+    throw new Error('A lookup key is required to lookup Steam data.')
+  }
+  const redisKey = `${STEAM_REDIS_PREFIX}:app_details:${key}`
+  try {
+    const cachedData = await redisLookupExtData(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved Steam app details for "${key}" from Redis cache`)
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached Steam app details:', error)
+  }
+  return null
+}
+
+/* Suggestions cache */
+
+export const redisCacheSteamSearchSuggestions = async (
+  data: any[],
+  searchTerm: string,
+  cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching a Steam suggestion list.')
+  }
+  if (!searchTerm) {
+    throw new Error('A search term is required to cache a Steam suggestion list.')
+  }
+  const redisKey = `${STEAM_REDIS_PREFIX}:game_suggestions:${searchTerm}`
+  try {
+    await redisCacheExtData(JSON.stringify(data), redisKey, cacheTime)
+    logger.info(`Cached Steam suggestion list for ${cacheTime} seconds with key ${redisKey}`)
+  } catch (error) {
+    logger.error(`Redis error while caching Steam suggestion list for key "${redisKey}":`, error)
+  }
+}
+
+export const redisLookupSteamSearchSuggestions = async (
+  searchTerm: string,
+): Promise<any[] | null> => {
+  if (!searchTerm) {
+    throw new Error('A search term is required.')
+  }
+  const redisKey = `${STEAM_REDIS_PREFIX}:game_suggestions:${searchTerm}`
+  try {
+    const cachedData = await redisLookupExtData(redisKey)
+    if (cachedData) {
+      logger.info(`Retrieved Steam suggestion list for search term "${searchTerm}" from Redis cache`)
+      return JSON.parse(cachedData) as any[]
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached suggestions:', error)
+  }
+  return null
+}
+
+export const redisCacheMaxSteamAppId = async (
+  data: MaxSteamAppIdCache,
+  cacheTime: number = 60 * 60 * 24 * 2, // 2 days
+): Promise<void> => {
+  if (!data) {
+    throw new Error('Data is required for caching max Steam app id.')
+  }
+  const redisKey = `${STEAM_REDIS_PREFIX}:max_app_id`
+  try {
+    await redisCacheExtData(JSON.stringify(data), redisKey, cacheTime)
+    logger.info(`Cached max Steam AppId for ${cacheTime} seconds with key ${redisKey}`)
+  } catch (error) {
+    logger.error(`Redis error while caching max Steam AppId for key "${redisKey}":`, error)
+  }
+}
+
+export const redisLookupMaxSteamAppId = async (): Promise<MaxSteamAppIdCache | null> => {
+  const redisKey = `${STEAM_REDIS_PREFIX}:max_app_id`
+  try {
+    const cachedData = await redisLookupExtData(redisKey)
+    if (cachedData) {
+      logger.info('Retrieved cached max Steam AppId from Redis')
+      return JSON.parse(cachedData) as MaxSteamAppIdCache
+    }
+  } catch (error) {
+    logger.error('Redis error while fetching cached max Steam AppId:', error)
+  }
+  return null
+}
+
 
 /**
  * Fetches detailed information for a game from the Steam API by its App ID.
@@ -295,6 +422,60 @@ export const fetchSteamDeckCompatibility = async (
     logger.error(`Failed to fetch Deck compat for appId ${appId}: ${String(err)}`)
     await redisCacheSteamStoreDetails({}, cacheKey, 3600)
     return {}
+  }
+}
+
+export const getMaxSteamAppId = async (): Promise<MaxSteamAppIdCache> => {
+  // Try cache first
+  const cached = await redisLookupMaxSteamAppId()
+  if (cached) return cached
+
+  const endpoint = 'https://api.steampowered.com/ISteamApps/GetAppList/v2/'
+  const timeoutMs = 30_000
+  // Abort after timeout
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(new Error('Request timed out')), timeoutMs)
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'GET',
+      signal: ctrl.signal,
+      // Browsers auto-handle compression; Node 18+ fetch does too.
+      headers: { 'Accept': 'application/json' },
+    })
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '')
+      throw new Error(`GetAppList failed: ${resp.status} ${resp.statusText} ${body ? `- ${body.slice(0, 200)}` : ''}`)
+    }
+    const json = await resp.json()
+    const apps = json?.applist?.apps
+    if (!Array.isArray(apps) || apps.length === 0) {
+      throw new Error('Unexpected response shape: missing applist.apps')
+    }
+    let maxId = 0
+    let maxName = ''
+    for (let i = 0; i < apps.length; i++) {
+      const a = apps[i]
+      // Be defensive about data shape
+      const id = typeof a?.appid === 'number' ? a.appid : Number(a?.appid)
+      if (Number.isFinite(id) && id > maxId) {
+        maxId = id
+        maxName = typeof a?.name === 'string' ? a.name : ''
+      }
+    }
+
+    const payload: MaxSteamAppIdCache = {
+      maxAppId: maxId,
+      name: maxName,
+      totalApps: apps.length,
+      fetchedAt: new Date().toISOString(),
+    }
+
+    // Cache result for a week
+    await redisCacheMaxSteamAppId(payload)
+
+    return payload
+  } finally {
+    clearTimeout(t)
   }
 }
 

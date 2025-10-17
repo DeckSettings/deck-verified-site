@@ -22,12 +22,6 @@ import {
   getTaskProgress,
 } from './redis'
 import {
-  fetchIssueLabels, fetchPopularReports,
-  fetchProjectsByAppIdOrGameName, fetchRecentReports,
-  fetchGameReportTemplate, fetchHardwareInfo,
-  fetchReportBodySchema, fetchReports,
-} from './github'
-import {
   fetchJosh5Avatar,
   generateImageLinksFromAppId,
   generateGameRatingsSummary,
@@ -50,14 +44,26 @@ import {
   removeNotification,
   sanitizeNotificationInput,
 } from './notifications'
+import { parseReportBody } from './helpers'
 import { githubMonitorQueue } from './jobs'
 import { initializeWorkers } from './jobs/worker'
 import { initScheduledTasks } from './jobs/scheduler'
 import { generateIsThereAnyDealPriceSummary } from './external/itad'
-import { fetchSteamGameSuggestions, fetchSteamStoreGameDetails } from './external/steam'
+import {
+  fetchSteamGameSuggestions,
+  fetchSteamStoreGameDetails,
+  getMaxSteamAppId,
+  IGNORE_APP_IDS,
+  IGNORE_GAME_NAME_REGEX,
+} from './external/steam'
 import { generateSDHQReviewData } from './external/sdhq'
 import { fetchBlogReviewSummary } from './external/bloggerapi'
-import { parseReportBody } from './helpers'
+import { fetchRepoIssueLabels } from './external/decksettings/repo_issue_labels'
+import { fetchReportBodySchema } from './external/decksettings/report_body_schema'
+import { fetchPopularReports, fetchRecentReports, fetchReports } from './external/decksettings/reports'
+import { fetchProjectsByAppIdOrGameName } from './external/decksettings/projects'
+import { fetchHardwareInfo } from './external/decksettings/hw_info'
+import { fetchGameReportTemplate } from './external/decksettings/game_report_template'
 
 const delay = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms)
@@ -509,7 +515,10 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
       return
     }
 
-    const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
+    const [schema, hardwareInfo] = await Promise.all([
+      fetchReportBodySchema(),
+      fetchHardwareInfo(),
+    ])
 
     const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
       m.banner == null ||
@@ -917,7 +926,50 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   let discoveredAppId: number | null = appId ? Number(appId) : null
   let discoveredGameName: string | null = gameName
 
-  // TODO: Create a list here of AppIDs that we do not return anything for. Things like Proton, Steam Linux Runtime, etc.
+
+  if (discoveredAppId) {
+    // Validate AppID against a the largest known AppID from Steam's store API
+    const largestApp = await getMaxSteamAppId()
+    if (largestApp && Number.isFinite(largestApp.maxAppId)) {
+      const maxAppId = largestApp.maxAppId
+      const allowedMax = Number(maxAppId) + 10000 // Add a bit of headroom...
+      if (Number(discoveredAppId) > allowedMax) {
+        logger.info(`Ignoring request - Not a valid Steam App ID: ${discoveredAppId}. Highest AppID on record is ${maxAppId}`)
+        return res.status(204).json({})
+      }
+    } else {
+      // If we cannot validate the largest AppID, skip this check and carry on
+      logger.warn('Unable to validate Steam max App ID from upstream; skipping max AppID check')
+    }
+
+    // Filter App IDs we intentionally do not return results for (e.g., Proton, Steam Linux Runtime).
+    // Use the IGNORE_APP_IDS list from the Steam module.
+    try {
+      if (Array.isArray(IGNORE_APP_IDS) && IGNORE_APP_IDS.includes(Number(discoveredAppId))) {
+        logger.info(`Ignoring request - Steam AppID '${discoveredAppId}' is in our list of ignored AppIDs`)
+        return res.status(204).json({})
+      }
+    } catch (err) {
+      // If anything goes wrong with this check, log and continue (do not fail the whole request)
+      logger.error('Error while checking IGNORE_APP_IDS for discoveredAppId', err)
+    }
+  }
+
+  // Apply game name ignore rules (e.g., "Proton...", "Steam Linux Runtime...")
+  if (discoveredGameName) {
+    try {
+      if (Array.isArray(IGNORE_GAME_NAME_REGEX)) {
+        for (const rx of IGNORE_GAME_NAME_REGEX) {
+          if (rx.test(discoveredGameName)) {
+            logger.info(`Ignoring request - Game Name '${discoveredGameName}' matched list of ignored names`)
+            return res.status(204).json({})
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('Error while checking IGNORE_GAME_NAME_REGEX for discoveredGameName', err)
+    }
+  }
 
   try {
     // First, try GitHub project data.
@@ -1135,7 +1187,7 @@ app.get('/deck-verified/api/v1/game_ratings', async (req: Request, res: Response
  */
 app.get('/deck-verified/api/v1/issue_labels', async (_req: Request, res: Response) => {
   try {
-    const labels = await fetchIssueLabels()
+    const labels = await fetchRepoIssueLabels()
     if (!labels) {
       return res.status(204).json([])
     }
@@ -1346,23 +1398,25 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
  */
 app.get('/deck-verified/api/v1/report_form', async (_req: Request, res: Response) => {
   try {
-    const template = await fetchGameReportTemplate()
+    const [template, schema, hardware] = await Promise.all([
+      fetchGameReportTemplate(),
+      fetchReportBodySchema(),
+      fetchHardwareInfo(),
+    ])
     if (!template) {
       return res.status(204).json({})
     }
-    const hardware = await fetchHardwareInfo()
-    if (!hardware) {
+    if (!schema) {
       return res.status(204).json({})
     }
-    const schema = await fetchReportBodySchema()
-    if (!schema) {
+    if (!hardware) {
       return res.status(204).json({})
     }
 
     const reportFormDetails: GameReportForm = {
-      template: template,
-      hardware: hardware,
-      schema: schema,
+      template,
+      hardware,
+      schema,
     }
 
     return res.json(reportFormDetails)

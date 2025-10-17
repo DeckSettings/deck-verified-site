@@ -1,5 +1,4 @@
 import { ExternalGameReview, ExternalGameReviewReportData, SDHQReview } from '../../../shared/src/game'
-import { fetchHardwareInfo } from '../github'
 import {
   acquireRedisLock,
   redisCacheExtData,
@@ -13,6 +12,7 @@ import {
   extractYouTubeVideoIds,
   limitStringTo100Characters, numberValueFromString, parseGameSettingsToMarkdown,
 } from '../helpers'
+import { fetchHardwareInfo } from './decksettings/hw_info'
 
 const SDHQ_REDIS_PREFIX = 'sdhq_review'
 
@@ -20,7 +20,7 @@ const SDHQ_REDIS_PREFIX = 'sdhq_review'
  * Caches an object of SDHQ Game Review in Redis.
  * The cached data is stored for 2 days to improve search performance and reduce API calls.
  */
-export const redisCacheSDHQReview = async (
+const redisCacheSDHQReview = async (
   data: SDHQReview[],
   appId: string,
   cacheTime: number = 60 * 60 * 24 * 2, // Default to 2 days
@@ -44,7 +44,7 @@ export const redisCacheSDHQReview = async (
 /**
  * Retrieves a cached object of SDHQ Game Review for a given App ID.
  */
-export const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[] | null> => {
+const redisLookupSDHQReview = async (appId: string): Promise<SDHQReview[] | null> => {
   if (!appId) {
     throw new Error('An AppID is required to lookup SDHQ review.')
   }

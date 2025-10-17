@@ -15,7 +15,7 @@ import {
   exchangeGitHubCodeForTokens,
   fetchGitHubUserIdentity,
   refreshGitHubTokens,
-} from './github'
+} from './external/github'
 
 const normalizeOrigin = (value: string | null | undefined): string | null => {
   if (!value) return null
