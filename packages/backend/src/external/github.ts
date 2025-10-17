@@ -139,5 +139,3 @@ export const fetchGitHubUserIdentity = async (accessToken: string): Promise<GitH
     throw error
   }
 }
-
-export { updateGameIndex } from './decksettings/projects'

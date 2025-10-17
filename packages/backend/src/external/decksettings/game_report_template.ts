@@ -32,7 +32,7 @@ const redisLookupGameReportTemplate = async (): Promise<GitHubIssueTemplate | nu
   return null
 }
 
-export const fetchGameReportTemplate = async (forceRefresh: boolean = false): Promise<GitHubIssueTemplate> => {
+export const fetchGameReportTemplate = async (authToken: string | null = null, forceRefresh: boolean = false): Promise<GitHubIssueTemplate> => {
   if (!forceRefresh) {
     const cachedData = await redisLookupGameReportTemplate()
     if (cachedData) {
@@ -42,7 +42,13 @@ export const fetchGameReportTemplate = async (forceRefresh: boolean = false): Pr
   const url = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/ISSUE_TEMPLATE/GAME-REPORT.yml'
   try {
     logger.info('Fetching GitHub game report template from URL')
-    const response = await fetch(url)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (authToken) {
+      headers['Authorization'] = `bearer ${authToken}`
+    }
+    const response = await fetch(url, { headers })
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`GitHub raw request failed when fetching game report template with status ${response.status}: ${errorBody}`)

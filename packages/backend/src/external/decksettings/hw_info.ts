@@ -31,7 +31,7 @@ export const redisLookupHardwareInfo = async (): Promise<HardwareInfo[] | null> 
   return null
 }
 
-export const fetchHardwareInfo = async (forceRefresh: boolean = false): Promise<HardwareInfo[]> => {
+export const fetchHardwareInfo = async (authToken: string | null = null, forceRefresh: boolean = false): Promise<HardwareInfo[]> => {
   if (!forceRefresh) {
     const cachedData = await redisLookupHardwareInfo()
     if (cachedData) {
@@ -41,7 +41,13 @@ export const fetchHardwareInfo = async (forceRefresh: boolean = false): Promise<
   const url = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/scripts/config/hardware.json'
   try {
     logger.info('Fetching GitHub hardware info from URL')
-    const response = await fetch(url)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (authToken) {
+      headers['Authorization'] = `bearer ${authToken}`
+    }
+    const response = await fetch(url, { headers })
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`GitHub raw request failed when fetching hardware info with status ${response.status}: ${errorBody}`)

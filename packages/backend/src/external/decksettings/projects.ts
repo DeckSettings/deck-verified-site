@@ -391,10 +391,8 @@ export const fetchProjectsByAppIdOrGameName = async (
 /**
  * Updates the Redis cache with the latest game data from GitHub org packages.
  */
-export const updateGameIndex = async (): Promise<void> => {
+export const updateGameIndex = async (authToken: string | null): Promise<void> => {
   try {
-    const authToken = config.defaultGithubAuthToken
-
     const projects = await fetchProject('', authToken)
     if (projects) {
       for (const project of projects) {

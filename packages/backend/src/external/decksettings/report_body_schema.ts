@@ -31,7 +31,7 @@ const redisLookupReportBodySchema = async (): Promise<GitHubReportIssueBodySchem
   return null
 }
 
-export const fetchReportBodySchema = async (forceRefresh: boolean = false): Promise<GitHubReportIssueBodySchema> => {
+export const fetchReportBodySchema = async (authToken: string | null = null, forceRefresh: boolean = false): Promise<GitHubReportIssueBodySchema> => {
   if (!forceRefresh) {
     const cachedData = await redisLookupReportBodySchema()
     if (cachedData) {
@@ -41,7 +41,13 @@ export const fetchReportBodySchema = async (forceRefresh: boolean = false): Prom
   const schemaUrl = 'https://raw.githubusercontent.com/DeckSettings/game-reports-steamos/refs/heads/master/.github/scripts/config/game-report-validation.json'
   try {
     logger.info('Fetching GitHub report body schema from URL')
-    const response = await fetch(schemaUrl)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (authToken) {
+      headers['Authorization'] = `bearer ${authToken}`
+    }
+    const response = await fetch(schemaUrl, { headers })
     if (!response.ok) {
       const errorBody = await response.text()
       logger.error(`GitHub raw request failed when fetching report body schema with status ${response.status}: ${errorBody}`)

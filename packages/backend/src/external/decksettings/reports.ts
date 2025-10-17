@@ -73,12 +73,15 @@ export const fetchReports = async (
 }
 
 /**
- * Parses the provided GitHub issues data to extract and structure relevant
+ * Parses provided GitHub issues data to extract and structure relevant
  * information into the GameReport format. It also processes the issue body using a schema
  * to populate the `data` field of each GameReport.
  */
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
-  const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(), fetchHardwareInfo()])
+  const [schema, hardwareInfo] = await Promise.all([
+    fetchReportBodySchema(null, false),
+    fetchHardwareInfo(null, false),
+  ])
   const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
     m.banner == null ||
     m.poster == null ||
@@ -268,6 +271,7 @@ const redisLookupAuthorGameReportCount = async (author: string): Promise<number 
 export const fetchRecentReports = async (
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
+  authToken: string | null = null,
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
@@ -280,7 +284,7 @@ export const fetchRecentReports = async (
       }
     }
 
-    const reports = await fetchReports(undefined, 'open', null, validatedSort, 'desc', count)
+    const reports = await fetchReports(undefined, 'open', null, validatedSort, 'desc', count, true, authToken)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       await redisCacheRecentGameReports(returnData, count, validatedSort)
@@ -302,6 +306,7 @@ export const fetchRecentReports = async (
  */
 export const fetchPopularReports = async (
   count: number = 5,
+  authToken: string | null = null,
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
   try {
@@ -313,7 +318,7 @@ export const fetchPopularReports = async (
       }
     }
 
-    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', count)
+    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', count, true, authToken)
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       await redisCachePopularGameReports(returnData, count)

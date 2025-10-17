@@ -38,36 +38,25 @@ export const fetchRepoIssueLabels = async (authToken: string | null = null, forc
       return cachedData as GitHubIssueLabel[]
     }
   }
-
-  if (!authToken && config.defaultGithubAuthToken) {
-    authToken = config.defaultGithubAuthToken
-  }
-
   logger.info('Fetching labels from GitHub API')
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-
   if (authToken) {
     headers['Authorization'] = `bearer ${authToken}`
   }
-
   const response = await fetch('https://api.github.com/repos/DeckSettings/game-reports-steamos/labels', {
     method: 'GET',
     headers,
   })
-
   if (!response.ok) {
     const errorBody = await response.text()
     logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
     throw new Error('Failed to fetch labels from GitHub API. Non-success response received from GitHub')
   }
-
   const data: GitHubIssueLabel[] = await response.json()
-
   if (data) {
     await redisCacheGitHubIssueLabels(data)
   }
-
   return data
 }
