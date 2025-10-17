@@ -175,12 +175,24 @@ export const fetchProject = async (
     authToken = config.defaultGithubAuthToken
   }
 
+  // GraphQL uses a points-based cost model. Increasing the results requested increases the points used.
+  // We have 5k points per hour. Cost can be roughly calculated by (maxReportsPerGame * maxGamesPerRequest / 100).
+  // As we increase in the number of games with reports, this will need to be refined.
+  const maxReportsPerGame = 10  // This will set the max number of issues returned per request
+  const maxGamesPerRequest = 10 // This will configure how many requests need to be made to fetch all games matching the search term
+
   const orgNodeId = 'O_kgDOC35waw'
   const query = `
     query fetchOrgProjects($orgId: ID!, $cursor: String, $searchTerm: String!) {
+      rateLimit {
+        limit
+        cost
+        remaining
+        resetAt
+      }
       node(id: $orgId) {
         ... on Organization {
-          projectsV2(first: 100, after: $cursor, query: $searchTerm) {
+          projectsV2(first: ${maxGamesPerRequest}, after: $cursor, query: $searchTerm) {
             nodes {
               id
               title
@@ -188,7 +200,7 @@ export const fetchProject = async (
               shortDescription
               readme
               url
-              items(first: 100) {
+              items(first: ${maxReportsPerGame}) {
                 nodes {
                   content {
                     __typename
@@ -198,7 +210,7 @@ export const fetchProject = async (
                       title
                       url
                       body
-                      labels(first: 5) {
+                      labels(first: 10) {
                         nodes {
                           id
                           name
@@ -298,6 +310,21 @@ export const fetchProject = async (
       }
 
       const responseData = await response.json()
+
+      // Attempt to record GitHub API rate limit request cost as a metric.
+      try {
+        if (responseData?.data?.rateLimit) {
+          const rl = responseData.data.rateLimit
+          logMetric('github_rate_limit_cost', searchTerm || '_', {
+            rate_limit: rl.limit,
+            rate_limit_remaining: rl.remaining,
+            rate_limit_cost: rl.cost,
+            rate_limit_reset: rl.resetAt,
+          })
+        }
+      } catch (e) {
+        logger.error('Failed to log GraphQL rateLimit cost data:', e)
+      }
 
       if (responseData.errors) {
         responseData.errors.forEach((error: {
