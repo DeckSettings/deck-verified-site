@@ -286,10 +286,7 @@ export const fetchSteamStoreGameDetails = async (appId: string): Promise<SteamSt
       await redisCacheSteamStoreDetails({}, cacheKey, 3600) // Cache error response for 1 hour
       return {}
     }
-
     const data = await response.json()
-    console.log(data)
-
     if (data && data[appId]?.success) {
       const appDetails: SteamStoreAppDetails = data[appId].data
 
