@@ -62,7 +62,7 @@ export const fetchReports = async (
 
     if (!response.ok) {
       const errorBody = await response.text()
-      logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
+      logger.error(`GitHub API request failed with status ${response.status} when fetching reports using query '${query}': ${errorBody}`)
       return null
     }
     return await response.json()

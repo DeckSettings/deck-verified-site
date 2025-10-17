@@ -390,10 +390,28 @@ export const parseReportBody = async (
 
     // Calculate additional calculated_battery_life_minutes field
     if (data.average_battery_power_draw && isValidNumber(Number(data.average_battery_power_draw)) && Number(data.average_battery_power_draw) > 0) {
-      // Match device info from hardwareInfo
-      const matchedDevice = hardwareInfo.find(
-        (device) => device.name === data.device,
-      )
+      // Match device info from hardwareInfo using a compact predicate that strips manufacturer prefixes
+      const manufacturers = ['Valve', 'ASUS', 'Lenovo']
+      const stripManufacturerPrefixOnce = (s: string) => {
+        const trimmed = (s || '').trim().toLowerCase()
+        for (const m of manufacturers) {
+          const prefix = m.toLowerCase() + ' '
+          if (trimmed.startsWith(prefix)) {
+            return trimmed.substring(prefix.length).trim()
+          }
+        }
+        return trimmed
+      }
+      const reportedDeviceLower = String(data.device || '').trim().toLowerCase()
+      const matchedDevice = hardwareInfo.find((device) => {
+        const deviceNameLower = (device.name || '').trim().toLowerCase()
+        // Direct case-insensitive compare
+        if (deviceNameLower === reportedDeviceLower) return true
+        // The reported device doesn't have a manufacturer prefix (e.g. hardware: "Lenovo Legion Go", reported: "Legion Go")
+        if (stripManufacturerPrefixOnce(deviceNameLower) === reportedDeviceLower) return true
+        return false
+      })
+
       if (matchedDevice) {
         data.calculated_battery_life_minutes = await calculatedBatteryLife(matchedDevice, Number(data.average_battery_power_draw))
       } else {

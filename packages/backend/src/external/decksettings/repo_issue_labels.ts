@@ -51,7 +51,7 @@ export const fetchRepoIssueLabels = async (authToken: string | null = null, forc
   })
   if (!response.ok) {
     const errorBody = await response.text()
-    logger.error(`GitHub API request failed with status ${response.status}: ${errorBody}`)
+    logger.error(`GitHub API request failed when fetching repo issue labels with status ${response.status}: ${errorBody}`)
     throw new Error('Failed to fetch labels from GitHub API. Non-success response received from GitHub')
   }
   const data: GitHubIssueLabel[] = await response.json()

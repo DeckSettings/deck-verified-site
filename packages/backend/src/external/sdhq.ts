@@ -174,7 +174,7 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
           ? review.excerpt.rendered.replace(/<[^>]+>/g, '')
           : review.title.rendered,
       )
-      const assumedDevice = 'Steam Deck LCD (256GB/512GB)'
+      const assumedDevice = 'Valve Steam Deck LCD (256GB/512GB)'
       const averagePowerDraw = convertWattageToNumber(optimizedSettings?.projected_battery_usage_and_temperature?.wattage)
       const hardwareInfo = await fetchHardwareInfo()
       const matchedDevice = hardwareInfo.find(
