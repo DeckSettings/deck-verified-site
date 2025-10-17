@@ -379,9 +379,7 @@ export const fetchProjectsByAppIdOrGameName = async (
       return parsedProject
     }
   }
-
-  logger.error(`No GitHub projects found for "${searchTerm}"`)
-
+  logger.warn(`No GitHub projects found for "${searchTerm}". Caching empty response.`)
   // Cache an empty response for a short period of time
   // TODO: Handle a rate limit by github with a longer cache of this data. I think setting this to 1 week is fine as the scheduled task will update it if a report is submitted anyway.
   await redisCacheGitHubProjectDetails({}, appId, gameName)
