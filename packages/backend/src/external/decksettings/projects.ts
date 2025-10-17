@@ -1,6 +1,6 @@
 import logfmt from 'logfmt'
 import config from '../../config'
-import logger from '../../logger'
+import logger, { logMetric } from '../../logger'
 import {
   redisCacheExtData,
   redisLookupExtData,
@@ -265,6 +265,31 @@ export const fetchProject = async (
           },
         }),
       })
+
+      // Attempt to record GitHub rate limit headers as a metric.
+      try {
+        const rlLimit = response.headers.get('x-ratelimit-limit')
+        const rlRemaining = response.headers.get('x-ratelimit-remaining')
+        const rlUsed = response.headers.get('x-ratelimit-used')
+        const rlReset = response.headers.get('x-ratelimit-reset')
+        const rlResource = response.headers.get('x-ratelimit-resource')
+
+        const metricAdditional: Record<string, any> = {
+          rate_limit: rlLimit,
+          rate_limit_remaining: rlRemaining,
+          rate_limit_used: rlUsed,
+          rate_limit_reset: rlReset,
+          rate_limit_resource: rlResource,
+        }
+
+        // We do not have a user_id in this context.
+        // To avoid logging metrics for another user's tokens, only record when the auth token is the default.
+        if (authToken === config.defaultGithubAuthToken) {
+          logMetric('github_rate_limit', searchTerm || '_', metricAdditional)
+        }
+      } catch (e) {
+        logger.error('Failed to log GitHub rate limit metric:', e)
+      }
 
       if (!response.ok) {
         const errorBody = await response.text()
