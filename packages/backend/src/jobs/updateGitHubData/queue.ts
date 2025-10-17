@@ -1,8 +1,8 @@
 import { Queue } from 'bullmq'
 import { redisConnectionOptions } from '../../redis'
 
-export const GAME_INDEX_QUEUE_NAME = 'game-index-updates'
+export const GITHUB_DATA_QUEUE_NAME = 'github-data-updates'
 
-export const gameIndexQueue = new Queue(GAME_INDEX_QUEUE_NAME, {
+export const githubDataQueue = new Queue(GITHUB_DATA_QUEUE_NAME, {
   connection: redisConnectionOptions,
 })

@@ -43,12 +43,15 @@
 #   SENTRY_PROFILES_SAMPLE_RATE_API
 #   #-  - REDIS_PASSWORD -
 #   REDIS_PASSWORD=password
-#   #-  - GH_TOKEN -
-#   #-    A GH Token for read access to the repo API
-#   GH_TOKEN=XXXXXXXXXXX
+#   #-  - API_GH_TOKEN -
+#   #-    A GitHub token for read access for the api service to the DeckSettings GitHub org/repo API
+#   API_GH_TOKEN=XXXXXXXXXXX
+#   #-  - TASKS_GH_TOKEN -
+#   #-    A GitHub token for read access for the tasks service to the DeckSettings GitHub org/repo API
+#   TASKS_GH_TOKEN=XXXXXXXXXXX
 #   #-  - DEFAULT_CACHE_TIME -
 #   #-    The default time to cache game information. This mostly is used to avoid GitHub rate limiting.
-#   DEFAULT_CACHE_TIME=1200
+#   DEFAULT_CACHE_TIME=21600
 #   #-  - REVERSE_PROXY_COUNT -
 #   #-    A count of reverse proxy's that the service is behind
 #   REVERSE_PROXY_COUNT=0
@@ -132,10 +135,10 @@ services:
     environment:
       # -- Application execution
       NODE_ENV: production
-      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-21600}
       RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
       # -- GitHub token (required to increase rate limits on API calls).
-      GH_TOKEN: ${GH_TOKEN:?}
+      GH_TOKEN: ${TASKS_GH_TOKEN:?}
       # -- Blogger API key (optional, used for generating blog posts)
       BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
       # -- Cache Config
@@ -216,12 +219,12 @@ services:
       # -- Application execution
       NODE_ENV: production
       BASE_URL: ${BASE_URL:-}
-      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-1800}
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-21600}
       REVERSE_PROXY_COUNT: ${REVERSE_PROXY_COUNT:-0}
       DISABLE_RATE_LIMITER: ${DISABLE_RATE_LIMITER:-false}
       RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
       # -- GitHub token (required to increase rate limits on API calls).
-      GH_TOKEN: ${GH_TOKEN:?}
+      GH_TOKEN: ${API_GH_TOKEN:?}
       # -- GitHub User Login
       GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
       GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}

@@ -794,10 +794,12 @@ export const fetchReportBodySchema = async (): Promise<GitHubReportIssueBodySche
  * If the labels are cached in Redis, the cached data is returned. Otherwise, the labels are
  * fetched from the GitHub API, cached in Redis, and returned.
  */
-export const fetchIssueLabels = async (authToken: string | null = null): Promise<GitHubIssueLabel[]> => {
-  const cachedData = await redisLookupGitHubIssueLabels()
-  if (cachedData) {
-    return cachedData as GitHubIssueLabel[]
+export const fetchIssueLabels = async (authToken: string | null = null, forceRefresh: boolean = false): Promise<GitHubIssueLabel[]> => {
+  if (!forceRefresh) {
+    const cachedData = await redisLookupGitHubIssueLabels()
+    if (cachedData) {
+      return cachedData as GitHubIssueLabel[]
+    }
   }
 
   // Use default API auth token if none provided

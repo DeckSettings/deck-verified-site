@@ -3,8 +3,8 @@ import logger from '../logger'
 import { redisConnectionOptions } from '../redis'
 import { GITHUB_MONITOR_QUEUE_NAME } from './githubMonitor/queue'
 import { run as githubMonitorProcessor } from './githubMonitor/processor'
-import { GAME_INDEX_QUEUE_NAME } from './updateGameIndex/queue'
-import { run as updateGameIndexProcessor } from './updateGameIndex/processor'
+import { GITHUB_DATA_QUEUE_NAME } from './updateGitHubData/queue'
+import { run as updateGitHubDataProcessor } from './updateGitHubData/processor'
 
 export function initializeWorkers() {
   logger.info('Initializing BullMQ workers...')
@@ -19,8 +19,8 @@ export function initializeWorkers() {
     },
   })
 
-  // --- Game Index Worker ---
-  new Worker(GAME_INDEX_QUEUE_NAME, updateGameIndexProcessor, {
+  // --- GitHub Data Worker ---
+  new Worker(GITHUB_DATA_QUEUE_NAME, updateGitHubDataProcessor, {
     connection: redisConnectionOptions,
     concurrency: 1, // Only one of these should run at a time
   })

@@ -148,7 +148,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  *
  * @queryParam mode {string} - Optional login mode to adjust behaviour (e.g., different redirect target).
  *
- * @returns {object} 302 - Redirects to GitHub authorize URL on success.
+ * @returns {object} 302 - Redirects to GitHub authorise URL on success.
  * @returns {object} 404 - Auth disabled.
  * @returns {object} 500 - Failed to initiate GitHub auth flow.
  */
@@ -920,8 +920,8 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   // TODO: Create a list here of AppIDs that we do not return anything for. Things like Proton, Steam Linux Runtime, etc.
 
   try {
-    // First try GitHub project data.
-    const project = await fetchProjectsByAppIdOrGameName(discoveredAppId !== null ? discoveredAppId.toString() : null, discoveredGameName, null)
+    // First, try GitHub project data.
+    const project = await fetchProjectsByAppIdOrGameName(discoveredAppId !== null ? discoveredAppId.toString() : null, discoveredGameName, null, false)
     if (project && project.projectNumber) {
       // Update discovered values.
       discoveredAppId = project.appId // project.appId is a number.
