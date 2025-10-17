@@ -252,7 +252,7 @@ export const fetchPopularReports = async (count: number = 5): Promise<HomeReport
  * @param appId - Steam AppID (preferred).
  * @returns A `GameDetails` object or `null` if not available or on error.
  */
-export const fetchGameData = async (gameName: string | null, appId: string | null): Promise<GameDetails | null> => {
+export const fetchGameData = async (gameName: string | null, appId: string | null, githubToken?: string | null): Promise<GameDetails | null> => {
   let url = apiUrl('/deck-verified/api/v1/game_details')
   if (appId) {
     url += `?appid=${appId}&include_external=true`
@@ -264,7 +264,15 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
   }
 
   try {
-    const response = await fetchService(url)
+    const options: RequestInit | undefined = githubToken
+      ? {
+        headers: {
+          'X-GitHub-Token': githubToken,
+        },
+      }
+      : undefined
+
+    const response = await fetchService(url, options)
     if (response.status === 204) {
       return null
     }
@@ -386,11 +394,6 @@ export const gameReportTemplate = async (): Promise<GameReportForm | null> => {
 
 /**
  * Fetch issue labels used by the reports repository — network-only.
- *
- * This function performs a direct network request to the backend and does not
- * perform any in-memory caching. Caching responsibilities should be handled by
- * Pinia stores (or other calling code) so that fetch helpers remain single
- * purpose and side-effect free.
  *
  * @returns An array of `GitHubIssueLabel` objects (may be empty on error).
  */

@@ -10,6 +10,7 @@ import {
 } from 'quasar-extras-svg-icons/simple-icons-v14'
 import { useGameStore } from 'src/stores/game-store'
 import { useGameMarketStore } from 'src/stores/game-market-store'
+import { useAuthStore } from 'src/stores/auth-store'
 import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import type {
   GameReport,
@@ -46,6 +47,7 @@ const isClient = typeof window !== 'undefined'
 const route = useRoute()
 const gameStore = useGameStore()
 const marketStore = useGameMarketStore()
+const authStore = useAuthStore()
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
@@ -344,7 +346,8 @@ onMounted(async () => {
     }
     try {
       // Trigger game data load if not already in store
-      await gameStore.ensureLoaded(route)
+      const githubToken = authStore && authStore.isLoggedIn && authStore.accessToken ? authStore.accessToken : null
+      await gameStore.ensureLoaded(route, githubToken)
     } finally {
       // Ensure we stop the ajax bar after loading
       if (ajaxBar.value) {

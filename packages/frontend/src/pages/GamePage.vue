@@ -2,6 +2,7 @@
 import GameData from 'components/GameData.vue'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import { useGameStore } from 'src/stores/game-store'
+import { useAuthStore } from 'src/stores/auth-store'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import type { Pinia } from 'pinia'
 import { nextTick, ref } from 'vue'
@@ -10,13 +11,15 @@ import { nextTick, ref } from 'vue'
 defineOptions({
   async preFetch({ store, currentRoute }: { store: Pinia; currentRoute: RouteLocationNormalizedLoaded }) {
     const s = useGameStore(store)
+    const a = useAuthStore(store)
+    const githubToken = a.isLoggedIn && a.accessToken ? a.accessToken : null
     if (process.env.SERVER) {
       // SSR: block so bots get full HTML
-      await s.ensureLoaded(currentRoute)
+      await s.ensureLoaded(currentRoute, githubToken)
     } else {
       // Client nav: switch page immediately, fetch in background
-      s.resetGameState()                 // clear old game instantly
-      void s.ensureLoaded(currentRoute)  // fire & forget (no await)
+      s.resetGameState()                                // clear old game instantly
+      void s.ensureLoaded(currentRoute, githubToken)    // fire & forget (no await)
     }
   },
 })

@@ -910,6 +910,7 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   const includeExternal = req.query['include_external'] === 'true'
   const requestIp = req.ips.length > 0 ? req.ips[0] : req.ip
   const userAgent = req.headers['user-agent'] || 'Unknown'
+  const githubToken = typeof req.headers['x-github-token'] === 'string' ? req.headers['x-github-token'] : null
 
   // If both parameters are missing, return an error.
   if (!appId && !gameName) {
@@ -925,7 +926,6 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
   // Start with initially discovered values.
   let discoveredAppId: number | null = appId ? Number(appId) : null
   let discoveredGameName: string | null = gameName
-
 
   if (discoveredAppId) {
     // Validate AppID against a the largest known AppID from Steam's store API
@@ -973,7 +973,11 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 
   try {
     // First, try GitHub project data.
-    const project = await fetchProjectsByAppIdOrGameName(discoveredAppId !== null ? discoveredAppId.toString() : null, discoveredGameName, null, false)
+    const project = await fetchProjectsByAppIdOrGameName(
+      discoveredAppId !== null ? discoveredAppId.toString() : null,
+      discoveredGameName,
+      githubToken, false,
+    )
     if (project && project.projectNumber) {
       // Update discovered values.
       discoveredAppId = project.appId // project.appId is a number.

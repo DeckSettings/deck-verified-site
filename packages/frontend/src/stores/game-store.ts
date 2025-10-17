@@ -181,7 +181,7 @@ export const useGameStore = defineStore('game', {
       }
     },
 
-    async ensureLoaded(currentRoute: RouteLocationNormalizedLoaded): Promise<void> {
+    async ensureLoaded(currentRoute: RouteLocationNormalizedLoaded, githubToken?: string | null): Promise<void> {
       if (this.gameData === null) {
         this.isLoaded = false
       }
@@ -241,7 +241,7 @@ export const useGameStore = defineStore('game', {
 
         // Fetch game data (this one you await in SSR; on client it's fire-and-forget)
         const fetched = (parsedAppId || parsedGameName)
-          ? await fetchGameData(parsedGameName, parsedAppId)
+          ? await fetchGameData(parsedGameName, parsedAppId, githubToken)
           : null
 
         await labelsPromise
