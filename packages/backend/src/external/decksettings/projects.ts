@@ -256,6 +256,7 @@ export const fetchProject = async (
     let endCursor: string | null = null
     const discoveredProjects: any[] = []
     const returnProjects: GitHubProjectDetails[] = []
+    let totalQueryCost = 0
 
     while (hasNextPage) {
       const headers: Record<string, string> = {
@@ -293,11 +294,12 @@ export const fetchProject = async (
           rate_limit_reset: rlReset,
           rate_limit_resource: rlResource,
         }
+        const headerMetricValue = `[${endCursor ?? '_'}] ${searchTerm || '_'}`
 
         // We do not have a user_id in this context.
         // To avoid logging metrics for another user's tokens, only record when the auth token is the default.
         if (authToken === config.defaultGithubAuthToken) {
-          logMetric('github_rate_limit', searchTerm || '_', metricAdditional)
+          logMetric('github_rate_limit', headerMetricValue, metricAdditional)
         }
       } catch (e) {
         logger.error('Failed to log GitHub rate limit metric:', e)
@@ -315,10 +317,13 @@ export const fetchProject = async (
       try {
         if (responseData?.data?.rateLimit) {
           const rl = responseData.data.rateLimit
-          logMetric('github_rate_limit_cost', searchTerm || '_', {
+          const cost = typeof rl.cost === 'number' ? rl.cost : parseInt(String(rl.cost || '0'), 10) || 0
+          totalQueryCost += cost // Accumulate cost for the whole fetchProject call
+          const metricValue = `[${endCursor ?? '_'}] ${searchTerm || '_'}`
+          logMetric('github_fetch_project_query_rate_limit_cost', metricValue, {
             rate_limit: rl.limit,
             rate_limit_remaining: rl.remaining,
-            rate_limit_cost: rl.cost,
+            rate_limit_cost: cost,
             rate_limit_reset: rl.resetAt,
           })
         }
@@ -382,6 +387,16 @@ export const fetchProject = async (
 
       hasNextPage = responseData.data.node.projectsV2.pageInfo.hasNextPage
       endCursor = responseData.data.node.projectsV2.pageInfo.endCursor
+    }
+
+    // After paging loop completes, log total query cost metric for this fetchProject call
+    try {
+      const totalMetricValue = `[${endCursor ?? '_'}] ${searchTerm || '_'}`
+      logMetric('github_fetch_project_query_rate_limit_total_cost', totalMetricValue, {
+        total_rate_limit_cost: totalQueryCost,
+      })
+    } catch (e) {
+      logger.error('Failed to log total GraphQL query cost metric:', e)
     }
 
     return returnProjects
