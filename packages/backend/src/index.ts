@@ -6,7 +6,7 @@ import type { Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import config from './config'
 import { generalLimiter } from './rateLimiter'
-import logger, { logMetric } from './logger'
+import logger, { logMetric, requestIdMiddleware } from './logger'
 import {
   buildAuthResultCors,
   githubAuthStartHandler,
@@ -98,6 +98,9 @@ if (config.enableRateLimiter) {
 } else {
   logger.info('Running with rate limiter disabled.')
 }
+
+// Attach request id middleware so all downstream logs can pick up request_id
+app.use(requestIdMiddleware)
 
 // Configure middleware to log requests
 app.use((req: Request, res: Response, next: NextFunction) => {
