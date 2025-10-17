@@ -222,7 +222,7 @@ services:
       DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-21600}
       REVERSE_PROXY_COUNT: ${REVERSE_PROXY_COUNT:-0}
       DISABLE_RATE_LIMITER: ${DISABLE_RATE_LIMITER:-false}
-      RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
+      RUN_SCHEDULED_TASKS_ON_START: false
       # -- GitHub token (required to increase rate limits on API calls).
       GH_TOKEN: ${API_GH_TOKEN:?}
       # -- GitHub User Login
