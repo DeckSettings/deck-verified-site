@@ -11,6 +11,8 @@ import {
 import { useGameStore } from 'src/stores/game-store'
 import { useGameMarketStore } from 'src/stores/game-market-store'
 import { useAuthStore } from 'src/stores/auth-store'
+import { useConfigStore } from 'src/stores/config-store'
+import { storeToRefs } from 'pinia'
 import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
 import type {
   GameReport,
@@ -48,6 +50,8 @@ const route = useRoute()
 const gameStore = useGameStore()
 const marketStore = useGameMarketStore()
 const authStore = useAuthStore()
+const configStore = useConfigStore()
+const { hideDuplicateReports } = storeToRefs(configStore)
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
@@ -61,7 +65,11 @@ const gameData = computed<GameDetails | null>(() => gameStore.gameData)
 const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
   const gd = gameData.value
   if (!gd || !gd.reports || gd.reports.length === 0) return null
-  const internalOnly = gd.reports.slice().sort((a, b) => {
+  const baseReports = hideDuplicateReports.value
+    ? gd.reports.filter(report => !isDuplicateReport(report))
+    : gd.reports.slice()
+  if (baseReports.length === 0) return null
+  const internalOnly = baseReports.slice().sort((a, b) => {
     const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
     if (duplicatePriority !== 0) return duplicatePriority
     const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
@@ -145,7 +153,11 @@ const clearSort = () => {
   sortOption.value = 'none'
   sortOrder.value = 'off'
 }
-const hasActiveFilters = computed(() => selectedDevice.value !== 'all' || selectedLauncher.value !== 'all')
+const hasActiveFilters = computed(() =>
+  selectedDevice.value !== 'all' ||
+  selectedLauncher.value !== 'all' ||
+  hideDuplicateReports.value,
+)
 const hasActiveSort = computed(() => sortOrder.value !== 'off')
 
 const hasSystemConfig = (report: ExtendedGameReport) => {
@@ -286,6 +298,10 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
   }
 
   // Sort logic
+  if (hideDuplicateReports.value) {
+    reports = reports.filter(report => !isDuplicateReport(report))
+  }
+
   if (sortOption.value === 'reactions') {
     reports = reports.slice().sort((a, b) => {
       const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
@@ -646,7 +662,7 @@ useMeta(() => {
       <div class="col-xs-12 col-md-8 self-start q-pr-lg-sm q-px-md-sm q-px-xs-none">
         <div class="game-data-container q-mr-lg-sm">
           <div v-if="isLoading">
-            <div class="game-data-filters row q-mb-md justify-between items-center">
+            <div class="game-data-filters row justify-between items-center">
               <div class="filters col-xs-12 col-md-8">
                 <q-skeleton type="QInput" width="210px" height="56px" class="filter-select q-my-xs-sm q-mr-xs" />
                 <q-skeleton type="QInput" width="210px" height="56px" class="filter-select q-my-xs-sm q-ml-xs" />
@@ -755,10 +771,9 @@ useMeta(() => {
           </div>
           <div v-else-if="gameData">
             <div v-if="hasReports"
-                 class="game-data-filters row justify-between items-center"
-                 :class="(!$q.platform.isMobileUi) ? 'q-mb-md' : ''">
+                 class="game-data-filters row justify-between items-center">
               <div v-if="$q.screen.lt.md && $q.platform.isMobileUi" class="col-12">
-                <div class="row no-wrap items-center q-col-gutter-sm">
+                <div class="row no-wrap items-center q-col-gutter-sm q-mb-sm">
                   <div class="col-6" style="max-width:100px">
                     <SecondaryButton
                       v-if="!hasActiveFilters"
@@ -818,10 +833,15 @@ useMeta(() => {
                       <q-select v-model="selectedLauncher" label="Launcher"
                                 dense outlined emit-value map-options
                                 :options="launcherOptions" />
+                      <q-toggle
+                        v-model="hideDuplicateReports"
+                        dense
+                        color="warning"
+                        label="Hide duplicates" />
                     </q-card-section>
                     <q-card-actions align="between">
                       <SecondaryButton dense color="primary" label="Clear"
-                                       @click="selectedDevice = 'all'; selectedLauncher = 'all'" />
+                                       @click="selectedDevice = 'all'; selectedLauncher = 'all'; hideDuplicateReports = false" />
                       <primaryButton dense color="primary" label="Apply" icon="filter_alt"
                                      v-close-popup />
                     </q-card-actions>
@@ -866,44 +886,58 @@ useMeta(() => {
               <template v-else>
                 <!-- Filters (Top Left) -->
                 <div class="filters col-xs-12 col-md-8">
-                  <q-select v-model="selectedDevice" label="Device"
-                            dense outlined
-                            class="filter-select q-my-xs-sm q-mr-xs"
-                            :options="deviceOptions" emit-value map-options />
-                  <q-select v-model="selectedLauncher" label="Launcher"
-                            dense outlined
-                            class="filter-select q-my-xs-sm q-ml-xs"
-                            :options="launcherOptions" emit-value map-options />
+                  <div class="filter-container">
+                    <q-select v-model="selectedDevice" label="Device"
+                              dense square borderless
+                              class="filter-select"
+                              :options="deviceOptions" emit-value map-options />
+                  </div>
+                  <div class="filter-container">
+                    <q-select v-model="selectedLauncher" label="Launcher"
+                              dense square borderless
+                              class="filter-select"
+                              :options="launcherOptions" emit-value map-options />
+                  </div>
+                  <div class="filter-container">
+                    <q-toggle
+                      v-model="hideDuplicateReports"
+                      dense
+                      color="warning"
+                      class="hide-duplicates-toggle"
+                      label="Hide duplicates" />
+                  </div>
                 </div>
 
                 <!-- Sorting (Top Right) -->
-                <div class="sorting col-md-shrink" :class="$q.platform.is.mobile ? 'q-pt-md' : ''">
-                  <!-- Sort by Updated -->
-                  <q-btn dense round flat @click="toggleSortOrder('updated')"
-                         :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
-                    <q-icon name="event" />
-                    <q-icon
-                      :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
-                      :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
-                    <q-tooltip>Sort by Last Updated</q-tooltip>
-                  </q-btn>
-                  <!-- Sort by Most Liked -->
-                  <q-btn dense round flat @click="toggleSortOrder('reactions')"
-                         :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
-                    <q-icon name="thumb_up" />
-                    <q-icon
-                      :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
-                      :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
-                    <q-tooltip v-if="sortOption !== 'reactions' || sortOrder === 'off'">
-                      Sort by Most Liked
-                    </q-tooltip>
-                    <q-tooltip v-else-if="sortOrder === 'asc'">
-                      Sorting by Most Liked Ascending
-                    </q-tooltip>
-                    <q-tooltip v-else-if="sortOrder === 'desc'">
-                      Sorting by Most Liked Descending
-                    </q-tooltip>
-                  </q-btn>
+                <div class="sorting col-md-shrink q-pt-sm q-pt-md-none">
+                  <div class="sorting-container">
+                    <!-- Sort by Updated -->
+                    <q-btn dense round flat @click="toggleSortOrder('updated')"
+                           :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'">
+                      <q-icon name="event" />
+                      <q-icon
+                        :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
+                        :color="(sortOrder !== 'off' && sortOption === 'updated') ? 'primary' : 'white'" />
+                      <q-tooltip>Sort by Last Updated</q-tooltip>
+                    </q-btn>
+                    <!-- Sort by Most Liked -->
+                    <q-btn dense round flat @click="toggleSortOrder('reactions')"
+                           :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'">
+                      <q-icon name="thumb_up" />
+                      <q-icon
+                        :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
+                        :color="(sortOrder !== 'off' && sortOption === 'reactions') ? 'primary' : 'white'" />
+                      <q-tooltip v-if="sortOption !== 'reactions' || sortOrder === 'off'">
+                        Sort by Most Liked
+                      </q-tooltip>
+                      <q-tooltip v-else-if="sortOrder === 'asc'">
+                        Sorting by Most Liked Ascending
+                      </q-tooltip>
+                      <q-tooltip v-else-if="sortOrder === 'desc'">
+                        Sorting by Most Liked Descending
+                      </q-tooltip>
+                    </q-btn>
+                  </div>
                 </div>
               </template>
             </div>
@@ -1352,24 +1386,53 @@ useMeta(() => {
   height: auto;
 }
 
-.filters {
-  display: flex;
-  align-items: center;
-}
-
-.filter-select {
-  width: 100%;
-  background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
-}
-
+.filters,
 .sorting {
   display: flex;
   align-items: center;
+  margin-bottom: 15px;
+}
+
+.filters {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-container,
+.sorting-container {
   background-color: color-mix(in srgb, var(--q-dark) 80%, transparent);
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 3px;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-  padding: 0 10px 5px 5px;
+  min-height: 42px;
+  padding-left: 10px;
+  padding-right: 3px;
+}
+
+.sorting-container {
+  padding: 3px;
+}
+
+.filter-container {
+  flex: 0 1 220px;
+  min-width: 210px;
+}
+
+.sorting {
+  margin-left: auto;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.filter-select {
+  width: 210px;
+}
+
+.hide-duplicates-toggle {
+  white-space: nowrap;
+  width: 100%;
+  margin-top: 10px;
 }
 
 /* Report Body */
@@ -1531,6 +1594,14 @@ useMeta(() => {
   }
 }
 
+@media (max-width: 1023.98px) {
+  .sorting {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
+
 /* -sm- */
 @media (min-width: 600px) {
   .background-container::before {
@@ -1549,10 +1620,6 @@ useMeta(() => {
 
   .game-image-container {
     max-width: 400px;
-  }
-
-  .filter-select {
-    width: 210px;
   }
 
   .config-card .config-item {

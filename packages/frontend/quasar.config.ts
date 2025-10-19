@@ -79,13 +79,16 @@ export default defineConfig((ctx) => {
       // distDir
 
       extendViteConf (viteConf) {
-        // Normalize alias into array form and preserve existing aliases
+        // Normalise alias into array form and preserve existing aliases
         const authReplacement = ctx.modeName === 'capacitor'
           ? '/src/utils/auth/impl/capacitor.ts'
           : '/src/utils/auth/impl/web.ts'
         const apiReplacement = ctx.modeName === 'capacitor'
           ? '/src/utils/api/impl/capacitor.ts'
           : '/src/utils/api/impl/web.ts'
+        const configReplacement = ctx.modeName === 'capacitor'
+          ? '/src/utils/config/impl/capacitor.ts'
+          : '/src/utils/config/impl/web.ts'
 
         const existing = viteConf.resolve?.alias
         let aliasArr: Array<{ find: string | RegExp; replacement: string }>
@@ -99,10 +102,15 @@ export default defineConfig((ctx) => {
         }
 
         // Remove any prior aliases to avoid duplicates
-        aliasArr = aliasArr.filter(a => a.find !== '@app/auth' && a.find !== '@app/api')
+        aliasArr = aliasArr.filter(a =>
+          a.find !== '@app/auth' &&
+          a.find !== '@app/api' &&
+          a.find !== '@app/config',
+        )
 
         aliasArr.push({ find: '@app/auth', replacement: authReplacement })
         aliasArr.push({ find: '@app/api', replacement: apiReplacement })
+        aliasArr.push({ find: '@app/config', replacement: configReplacement })
 
         viteConf.resolve = { ...(viteConf.resolve || {}), alias: aliasArr }
       },
