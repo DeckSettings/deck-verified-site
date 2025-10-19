@@ -62,6 +62,8 @@ const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
   const gd = gameData.value
   if (!gd || !gd.reports || gd.reports.length === 0) return null
   const internalOnly = gd.reports.slice().sort((a, b) => {
+    const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
+    if (duplicatePriority !== 0) return duplicatePriority
     const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
     const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
     return bLikes - aLikes
@@ -166,6 +168,12 @@ const hasPerformanceSettings = (report: ExtendedGameReport) => {
     report.data.scaling_mode ||
     report.data.scaling_filter
   )
+}
+
+const DUPLICATE_LABEL = 'community:duplicate-report'
+type LabeledItem = { labels?: Array<{ name: string } | GitHubIssueLabel> }
+const isDuplicateReport = (report: LabeledItem) => {
+  return Array.isArray(report.labels) && report.labels.some(label => label?.name === DUPLICATE_LABEL)
 }
 
 // Expanded state per-report id
@@ -278,20 +286,26 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
   }
 
   // Sort logic
-  if (sortOrder.value !== 'off') {
-    if (sortOption.value === 'reactions') {
-      reports = reports.slice().sort((a, b) => {
-        const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-        const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-        return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes
-      })
-    } else if (sortOption.value === 'updated') {
-      reports = reports.slice().sort((a, b) => {
-        const aUpdated = new Date(a.updated_at).getTime()
-        const bUpdated = new Date(b.updated_at).getTime()
-        return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
-      })
-    }
+  if (sortOption.value === 'reactions') {
+    reports = reports.slice().sort((a, b) => {
+      const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
+      if (duplicatePriority !== 0) return duplicatePriority
+      const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
+      const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
+      return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes
+    })
+  } else if (sortOption.value === 'updated') {
+    reports = reports.slice().sort((a, b) => {
+      const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
+      if (duplicatePriority !== 0) return duplicatePriority
+      const aUpdated = new Date(a.updated_at).getTime()
+      const bUpdated = new Date(b.updated_at).getTime()
+      return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
+    })
+  } else {
+    reports = reports.slice().sort((a, b) =>
+      Number(isDuplicateReport(a)) - Number(isDuplicateReport(b)),
+    )
   }
 
   return reports
@@ -906,9 +920,27 @@ useMeta(() => {
                     <template v-slot:header>
                       <q-tooltip
                         transition-show="scale" transition-hide="scale"
-                        anchor="bottom end" self="bottom right" :offset="[-30, -10]">
+                        anchor="bottom end" self="bottom right" :offset="[-35, -8]">
                         Click to Show/Hide Report
                       </q-tooltip>
+                      <q-chip
+                        v-if="isDuplicateReport(report)"
+                        size="sm"
+                        square
+                        :dense="$q.screen.lt.sm"
+                        color="warning"
+                        text-color="black"
+                        class="duplicate-chip"
+                        aria-label="Duplicate community report indicator">
+                        <q-avatar icon="backup_table"
+                                  color="warning" text-color="black" />
+                        <span class="duplicate-chip-text">
+                          Duplicate
+                        </span>
+                        <q-tooltip anchor="center left" self="center right" :offset="[5, 0]">
+                          This report is marked as a duplicate by the community.
+                        </q-tooltip>
+                      </q-chip>
                       <q-item-section class="gt-xs">
                         <!-- Wrapper for the layout -->
                         <div class="row items-center q-gutter-sm">
@@ -1368,6 +1400,13 @@ useMeta(() => {
   padding: 10px
 }
 
+.duplicate-chip {
+  position: absolute;
+  right: -15px;
+  top: -15px;
+  border-radius: 0 3px 0 12px;
+}
+
 ::v-deep(.game-data-item-expand-button) {
   padding: 0;
   color: var(--q-primary) !important;
@@ -1483,6 +1522,12 @@ useMeta(() => {
 @media (max-width: 299.98px) {
   .game-banner-badges {
     display: none !important;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .duplicate-chip-text {
+    display: none;
   }
 }
 
