@@ -51,140 +51,143 @@ const getGameDataUrl = (metricResult: { app_id?: number | null; game_name?: stri
 </script>
 
 <template>
-  <div class="q-pa-md-md">
+  <div class="q-pa-none">
     <q-list padding>
-      <q-item
-        v-for="(metricResult, index) in paginatedResults"
-        :key="index"
-        class="report-item"
-        :class="{ 'q-pl-md': $q.platform.is.mobile }"
-        v-ripple
-        :clickable="$q.platform.is.mobile"
-        :to="!$q.platform.is.mobile ? '' : getGameDataUrl(metricResult)"
-      >
-        <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
-          <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
-            <q-img
-              v-if="metricResult?.metadata?.poster"
-              class="game-poster"
-              :src="metricResult?.metadata?.poster"
-              alt="Game Image"
-              :ratio="2/3"
-              :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
-            >
-              <template v-slot:error>
-                <img
-                  src="~/assets/poster-placeholder.png"
-                  alt="Placeholder"
-                  :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-                />
-              </template>
-            </q-img>
-            <q-img
-              v-else-if="metricResult.app_id"
-              class="game-poster"
-              :src="`https://steamcdn-a.akamaihd.net/steam/apps/${metricResult.app_id}/library_600x900.jpg`"
-              alt="Game Image"
-              :ratio="2/3"
-              :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
-            >
-              <template v-slot:error>
-                <img
-                  src="~/assets/poster-placeholder.png"
-                  alt="Placeholder"
-                  :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-                />
-              </template>
-            </q-img>
-            <img
-              v-else
-              class="game-poster"
-              src="~/assets/poster-placeholder.png"
-              alt="Placeholder"
-              :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
-            />
-          </div>
-        </q-item-section>
+      <template v-for="(metricResult, index) in paginatedResults"
+                :key="index">
+        <q-item
+          class="report-item"
+          :class="{ 'q-pl-md': $q.platform.is.mobile }"
+          v-ripple
+          :clickable="$q.platform.is.mobile"
+          :to="!$q.platform.is.mobile ? '' : getGameDataUrl(metricResult)"
+        >
+          <q-item-section top avatar class="q-pa-none q-pr-sm q-pr-sm-md">
+            <div :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'">
+              <q-img
+                v-if="metricResult?.metadata?.poster"
+                class="game-poster"
+                :src="metricResult?.metadata?.poster"
+                alt="Game Image"
+                :ratio="2/3"
+                :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
+              >
+                <template v-slot:error>
+                  <img
+                    src="~/assets/poster-placeholder.png"
+                    alt="Placeholder"
+                    :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
+                  />
+                </template>
+              </q-img>
+              <q-img
+                v-else-if="metricResult.app_id"
+                class="game-poster"
+                :src="`https://steamcdn-a.akamaihd.net/steam/apps/${metricResult.app_id}/library_600x900.jpg`"
+                alt="Game Image"
+                :ratio="2/3"
+                :style="$q.platform.is.mobile ? 'width: 80px;' : 'width: 100px;'"
+              >
+                <template v-slot:error>
+                  <img
+                    src="~/assets/poster-placeholder.png"
+                    alt="Placeholder"
+                    :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
+                  />
+                </template>
+              </q-img>
+              <img
+                v-else
+                class="game-poster"
+                src="~/assets/poster-placeholder.png"
+                alt="Placeholder"
+                :style="$q.platform.is.mobile ? 'width: 80px; height: 120px;' : 'width: 100px; height: 150px;'"
+              />
+            </div>
+          </q-item-section>
 
-        <q-item-section top class="col q-ml-sm game-info-section overflow-hidden">
-          <div class="column full-width">
-            <!-- Top content -->
-            <div class="row items-start justify-between q-col-gutter-sm no-wrap">
-              <div class="col" style="white-space: nowrap; overflow: hidden;">
-                <div class="text-h6 q-mb-xs">
-                  {{ metricResult.game_name || '<< Game Name Not Yet Parsed >>' }}
+          <q-item-section top class="col q-ml-sm game-info-section overflow-hidden">
+            <div class="column full-width">
+              <!-- Top content -->
+              <div class="row items-start justify-between q-col-gutter-sm no-wrap">
+                <div class="col" style="white-space: nowrap; overflow: hidden;">
+                  <div class="text-h6 q-mb-xs">
+                    {{ metricResult.game_name || '<< Game Name Not Yet Parsed >>' }}
+                  </div>
+                  <div class="text-caption">
+                    <div><b>App ID: </b>{{ metricResult.app_id ?? 'N/A' }}</div>
+                    <div><b>Report Count: </b>{{ metricResult.report_count ?? 0 }}</div>
+                  </div>
                 </div>
-                <div class="text-caption">
-                  <div><b>App ID: </b>{{ metricResult.app_id ?? 'N/A' }}</div>
-                  <div><b>Report Count: </b>{{ metricResult.report_count ?? 0 }}</div>
+                <div class="col-auto self-start">
+                  <SecondaryButton
+                    class="gt-sm"
+                    icon="chrome_reader_mode"
+                    label="View Reports"
+                    :to="getGameDataUrl(metricResult)"
+                  />
                 </div>
               </div>
-              <div class="col-auto self-start">
-                <SecondaryButton
-                  class="gt-sm"
-                  icon="chrome_reader_mode"
-                  label="View Reports"
-                  :to="getGameDataUrl(metricResult)"
-                />
+
+              <!-- Bottom content -->
+              <div class="row">
+                <div class="col">
+                  <div class="text-caption q-mb-xs">
+                    <b>Views: </b><span class="text-bold text-secondary">{{ metricResult.count }}</span>
+                  </div>
+                  <q-linear-progress
+                    :value="metricResult.count / maxRequestCount"
+                    color="secondary"
+                    class="rounded-borders"
+                    size="sm"
+                    track-color="grey-3"
+                  />
+                  <div class="row gt-sm q-gutter-sm q-mt-xs">
+                    <q-btn v-if="metricResult.app_id"
+                           class="q-ma-none"
+                           round flat
+                           :icon="simSteam"
+                           :href="`https://store.steampowered.com/app/${metricResult.app_id}`"
+                           target="_blank" rel="noopener"
+                           color="white">
+                      <q-tooltip>View on Steam</q-tooltip>
+                    </q-btn>
+                    <q-btn v-if="metricResult.app_id"
+                           class="q-ma-none"
+                           round flat
+                           :icon="simProtondb"
+                           :href="`https://www.protondb.com/app/${metricResult.app_id}?device=steamDeck`"
+                           target="_blank" rel="noopener"
+                           color="white">
+                      <q-tooltip>View on ProtonDB</q-tooltip>
+                    </q-btn>
+                    <q-btn v-if="metricResult.app_id"
+                           class="q-ma-none"
+                           round flat
+                           :icon="simSteamdb"
+                           :href="`https://steamdb.info/app/${metricResult.app_id}/charts/`"
+                           target="_blank" rel="noopener"
+                           color="white">
+                      <q-tooltip>View on SteamDB</q-tooltip>
+                    </q-btn>
+                    <q-btn v-if="metricResult.game_name"
+                           class="q-ma-none"
+                           round flat
+                           :icon="simPcgamingwiki"
+                           :href="getPCGamingWikiUrlFromGameName(metricResult.game_name)"
+                           target="_blank" rel="noopener"
+                           color="white">
+                      <q-tooltip>View on PCGamingWiki</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
               </div>
             </div>
+          </q-item-section>
+        </q-item>
 
-            <!-- Bottom content -->
-            <div class="row">
-              <div class="col">
-                <div class="text-caption q-mb-xs">
-                  <b>Views: </b><span class="text-bold text-secondary">{{ metricResult.count }}</span>
-                </div>
-                <q-linear-progress
-                  :value="metricResult.count / maxRequestCount"
-                  color="secondary"
-                  class="rounded-borders"
-                  size="sm"
-                  track-color="grey-3"
-                />
-                <div class="row gt-sm q-gutter-sm q-mt-xs">
-                  <q-btn v-if="metricResult.app_id"
-                         class="q-ma-none"
-                         round flat
-                         :icon="simSteam"
-                         :href="`https://store.steampowered.com/app/${metricResult.app_id}`"
-                         target="_blank" rel="noopener"
-                         color="white">
-                    <q-tooltip>View on Steam</q-tooltip>
-                  </q-btn>
-                  <q-btn v-if="metricResult.app_id"
-                         class="q-ma-none"
-                         round flat
-                         :icon="simProtondb"
-                         :href="`https://www.protondb.com/app/${metricResult.app_id}?device=steamDeck`"
-                         target="_blank" rel="noopener"
-                         color="white">
-                    <q-tooltip>View on ProtonDB</q-tooltip>
-                  </q-btn>
-                  <q-btn v-if="metricResult.app_id"
-                         class="q-ma-none"
-                         round flat
-                         :icon="simSteamdb"
-                         :href="`https://steamdb.info/app/${metricResult.app_id}/charts/`"
-                         target="_blank" rel="noopener"
-                         color="white">
-                    <q-tooltip>View on SteamDB</q-tooltip>
-                  </q-btn>
-                  <q-btn v-if="metricResult.game_name"
-                         class="q-ma-none"
-                         round flat
-                         :icon="simPcgamingwiki"
-                         :href="getPCGamingWikiUrlFromGameName(metricResult.game_name)"
-                         target="_blank" rel="noopener"
-                         color="white">
-                    <q-tooltip>View on PCGamingWiki</q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-            </div>
-          </div>
-        </q-item-section>
-      </q-item>
+        <q-separator dark spaced inset v-if="index < paginatedResults.length - 1" class="hidden" />
+      </template>
     </q-list>
     <div v-if="itemsPerPage > 0" class="q-pa-lg flex flex-center">
       <q-pagination
