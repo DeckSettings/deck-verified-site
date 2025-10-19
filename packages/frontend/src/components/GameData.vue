@@ -153,11 +153,6 @@ const clearSort = () => {
   sortOption.value = 'none'
   sortOrder.value = 'off'
 }
-const hasActiveFilters = computed(() =>
-  selectedDevice.value !== 'all' ||
-  selectedLauncher.value !== 'all' ||
-  hideDuplicateReports.value,
-)
 const hasActiveSort = computed(() => sortOrder.value !== 'off')
 
 const hasSystemConfig = (report: ExtendedGameReport) => {
@@ -187,6 +182,17 @@ type LabeledItem = { labels?: Array<{ name: string } | GitHubIssueLabel> }
 const isDuplicateReport = (report: LabeledItem) => {
   return Array.isArray(report.labels) && report.labels.some(label => label?.name === DUPLICATE_LABEL)
 }
+
+const hasDuplicateReports = computed(() => {
+  const gd = gameData.value
+  if (!gd || !Array.isArray(gd.reports)) return false
+  return gd.reports.some(report => isDuplicateReport(report))
+})
+const hasActiveFilters = computed(() =>
+  selectedDevice.value !== 'all' ||
+  selectedLauncher.value !== 'all' ||
+  (hideDuplicateReports.value && hasDuplicateReports.value),
+)
 
 // Expanded state per-report id
 const expanded = ref<Record<number, boolean>>({})
@@ -834,6 +840,7 @@ useMeta(() => {
                                 dense outlined emit-value map-options
                                 :options="launcherOptions" />
                       <q-toggle
+                        v-if="hasDuplicateReports"
                         v-model="hideDuplicateReports"
                         dense
                         color="warning"
@@ -898,7 +905,7 @@ useMeta(() => {
                               class="filter-select"
                               :options="launcherOptions" emit-value map-options />
                   </div>
-                  <div class="filter-container">
+                  <div v-if="hasDuplicateReports" class="filter-container">
                     <q-toggle
                       v-model="hideDuplicateReports"
                       dense
