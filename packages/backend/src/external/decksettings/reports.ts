@@ -26,10 +26,12 @@ export const fetchReports = async (
   repoName: string = 'game-reports-steamos',
   filterState: 'open' | 'closed' | null = 'open',
   filterAuthor: string | null = null,
+  filterLabels: string[] | null = null,
   sort: 'reactions-+1' | 'created' | 'updated' | 'comments' = 'updated',
   direction: 'asc' | 'desc' = 'desc',
   limit: number | null = null,
   excludeInvalid: boolean = true,
+  excludeLabels: string[] | null = null,
   accessToken: string | null = null,
 ): Promise<GithubIssuesSearchResult | null> => {
   const repoOwner = 'DeckSettings'
@@ -40,6 +42,26 @@ export const fetchReports = async (
   }
   if (filterAuthor) {
     query += `+author:${filterAuthor}`
+  }
+  if (filterLabels && filterLabels.length > 0) {
+    filterLabels
+      .map((label) => label.trim())
+      .filter((label) => label.length > 0)
+      .forEach((label) => {
+        const sanitizedLabel = label.replace(/"/g, '')
+        const encodedLabel = encodeURIComponent(sanitizedLabel)
+        query += `+label:%22${encodedLabel}%22`
+      })
+  }
+  if (excludeLabels && excludeLabels.length > 0) {
+    excludeLabels
+      .map((label) => label.trim())
+      .filter((label) => label.length > 0)
+      .forEach((label) => {
+        const sanitizedLabel = label.replace(/"/g, '')
+        const encodedLabel = encodeURIComponent(sanitizedLabel)
+        query += `+-label:%22${encodedLabel}%22`
+      })
   }
   if (excludeInvalid) {
     query += '+-label:invalid:template-incomplete'
@@ -284,7 +306,18 @@ export const fetchRecentReports = async (
       }
     }
 
-    const reports = await fetchReports(undefined, 'open', null, validatedSort, 'desc', count, true, authToken)
+    const reports = await fetchReports(
+      undefined,
+      'open',
+      null,
+      null,
+      validatedSort,
+      'desc',
+      count,
+      true,
+      ['community:duplicate-report'],
+      authToken,
+    )
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       await redisCacheRecentGameReports(returnData, count, validatedSort)
@@ -318,7 +351,18 @@ export const fetchPopularReports = async (
       }
     }
 
-    const reports = await fetchReports(undefined, 'open', null, 'reactions-+1', 'desc', count, true, authToken)
+    const reports = await fetchReports(
+      undefined,
+      'open',
+      null,
+      null,
+      'reactions-+1',
+      'desc',
+      count,
+      true,
+      null,
+      authToken,
+    )
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       await redisCachePopularGameReports(returnData, count)
@@ -345,7 +389,14 @@ export const fetchAuthorReportCount = async (author: string): Promise<number> =>
       return cachedData
     }
 
-    const reports = await fetchReports(undefined, 'open', author, 'updated', 'desc')
+    const reports = await fetchReports(
+      undefined,
+      'open',
+      author,
+      null,
+      'updated',
+      'desc',
+    )
     if (reports && reports?.items?.length > 0) {
       await redisCacheAuthorGameReportCount(reports.items.length, author)
       return reports.items.length

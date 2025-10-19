@@ -506,10 +506,12 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
       undefined,
       null,
       identity.login,
+      null,
       'updated',
       'desc',
       null,
       false,
+      null,
       githubToken,
     )
 
