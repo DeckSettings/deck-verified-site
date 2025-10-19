@@ -1235,7 +1235,8 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
   try {
     // Parse query parameters
     const days = Math.min(parseInt(req.query['days'] as string, 10) || 7, 7)
-    const limit = Math.min(parseInt(req.query['limit'] as string, 10) || 100, 500)
+    const rawLimit = parseInt(req.query['limit'] as string, 10)
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 100 : rawLimit, 1), 500)
     const minReportCount = req.query['min_report_count']
       ? parseInt(req.query['min_report_count'] as string, 10)
       : 0
@@ -1246,7 +1247,9 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
     const disableFilter = req.query.disable_filter === 'true'
 
     // Retrieve the aggregated metrics for the past `days` for 'game_details'
-    const aggregatedMetrics = await getAggregatedMetrics('game_details', days, limit)
+    // Fetch extra records to offset losses when deduping overlapping app/name combinations.
+    const fetchLimit = Math.min(limit * 3, 1500)
+    const aggregatedMetrics = await getAggregatedMetrics('game_details', days, fetchLimit)
 
     // Transform the results by extracting app_id and game_name from metricValue
     const transformedMetrics = await Promise.all(
@@ -1382,11 +1385,13 @@ app.get('/deck-verified/api/v1/metric/game_details', async (req: Request, res: R
       filteredMetrics = dedupePass2
     }
 
+    const limitedMetrics = filteredMetrics.slice(0, limit)
+
     // Build the response object
     const returnData: AggregateMetricResponse = {
       metric: 'game_details',
       days,
-      results: filteredMetrics,
+      results: limitedMetrics,
     }
 
     // Return the response as JSON
