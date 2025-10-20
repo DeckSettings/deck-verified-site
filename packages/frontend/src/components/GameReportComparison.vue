@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import type { GameReport, GameReportData } from '../../../shared/src/game'
 import { parseMarkdownKeyValueList } from 'src/utils/markdownSettings'
-import SecondaryButton from 'components/elements/SecondaryButton.vue'
+import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import { useGameStore } from 'src/stores/game-store'
 import type { QTableColumn } from 'quasar'
 
 interface ComparisonRow {
@@ -17,6 +25,7 @@ interface SectionConfig {
   title: string;
   rows: ComparisonRow[];
   tableRows: ComparisonTableRow[];
+  index: number;
 }
 
 interface ReportHeader {
@@ -24,6 +33,11 @@ interface ReportHeader {
   shortTitle: string;
   user: string;
   device: string;
+  summary: string;
+  targetFramerate: string;
+  batteryLife: string;
+  hasTargetFramerate: boolean;
+  hasBatteryLife: boolean;
 }
 
 interface ComparisonTableRow {
@@ -31,6 +45,7 @@ interface ComparisonTableRow {
   setting: string;
   values: string[];
   status: 'same' | 'different';
+  sectionIndex: number;
 }
 
 type ComparisonReport = Omit<GameReport, 'data'> & {
@@ -42,6 +57,23 @@ type ComparisonColumn = QTableColumn & {
   index?: number;
 }
 
+type SectionHeaderRow = {
+  id: string;
+  sectionId: string;
+  sectionTitle: string;
+  sectionIndex: number;
+  type: 'section-header';
+};
+
+type ComparisonDisplayRow =
+  | (ComparisonTableRow & {
+  sectionId: string;
+  sectionTitle: string;
+  sectionIndex: number;
+  type: 'data';
+})
+  | SectionHeaderRow;
+
 const props = defineProps<{
   reports: ComparisonReport[];
 }>()
@@ -51,13 +83,26 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>()
 
+const gameStore = useGameStore()
+
 const reportHeaders = computed<ReportHeader[]>(() =>
-  props.reports.map((report, index) => ({
-    id: report.id ?? index,
-    shortTitle: `Report ${index + 1}`,
-    user: report.user?.login ?? '',
-    device: report.data?.device ?? '',
-  })),
+  props.reports.map((report, index) => {
+    const summary = formatSummary(report.data?.summary)
+    const targetMetrics = formatTargetFramerate(report.data?.target_framerate)
+    const batteryMetrics = formatBatteryLife(report.data?.calculated_battery_life_minutes)
+
+    return {
+      id: report.id ?? index,
+      shortTitle: `Report ${index + 1}`,
+      user: report.user?.login ?? '',
+      device: report.data?.device ?? '',
+      summary,
+      targetFramerate: targetMetrics.text,
+      hasTargetFramerate: targetMetrics.hasValue,
+      batteryLife: batteryMetrics.text,
+      hasBatteryLife: batteryMetrics.hasValue,
+    }
+  }),
 )
 
 const systemRows = computed<ComparisonRow[]>(() =>
@@ -160,23 +205,51 @@ const sections = computed<SectionConfig[]>(() => [
   { id: 'display', title: 'Game Display Settings', rows: displaySettingRows.value },
   { id: 'graphics', title: 'Game Graphics Settings', rows: graphicsSettingRows.value },
 ].filter(section => section.rows.length > 0)
-  .map(section => ({
+  .map((section, index) => ({
     ...section,
+    index,
     tableRows: section.rows.map(row => ({
       id: row.id,
       setting: row.label,
       values: row.values,
       status: row.status,
+      sectionIndex: index,
     })),
   })))
 
 const selectedCount = computed(() => props.reports.length)
 
+const headerTitle = computed(() => {
+  const candidates = [
+    gameStore.gameName,
+    props.reports[0]?.data?.game_name,
+  ]
+  for (const candidate of candidates) {
+    const sanitized = sanitizeValue(candidate)
+    if (sanitized) return sanitized
+  }
+  return 'Compare Reports'
+})
+
 const headerSubtitle = computed(() => {
   if (selectedCount.value === 0) return 'No reports selected'
-  if (selectedCount.value === 1) return '1 report selected'
-  return `${selectedCount.value} reports selected`
+  return `Compare ${selectedCount.value} report${selectedCount.value === 1 ? '' : 's'}`
 })
+
+const headerImageSrc = computed(() => {
+  const sources = [
+    gameStore.gameBanner,
+    gameStore.gamePoster,
+    gameStore.metadata.image,
+  ]
+  for (const src of sources) {
+    const sanitized = sanitizeValue(src)
+    if (sanitized) return sanitized
+  }
+  return ''
+})
+
+const hasHeaderImage = computed(() => headerImageSrc.value.length > 0)
 
 const columns = computed<ComparisonColumn[]>(() => {
   const baseColumn: ComparisonColumn = {
@@ -190,7 +263,12 @@ const columns = computed<ComparisonColumn[]>(() => {
     (header, index) => ({
       name: `report-${index}`,
       label: header.shortTitle,
-      field: (row: ComparisonTableRow) => row.values[index] ?? '',
+      field: (row: ComparisonTableRow | ComparisonDisplayRow) => {
+        if ('values' in row && Array.isArray(row.values)) {
+          return row.values[index] ?? ''
+        }
+        return ''
+      },
       align: 'left',
       sortable: false,
       headerInfo: header,
@@ -198,6 +276,120 @@ const columns = computed<ComparisonColumn[]>(() => {
     }),
   )
   return [baseColumn, ...dynamicColumns]
+})
+
+const comparisonTableRows = computed<ComparisonDisplayRow[]>(() =>
+  sections.value.flatMap(section => [
+    {
+      id: `${section.id}__header`,
+      sectionId: section.id,
+      sectionTitle: section.title,
+      sectionIndex: section.index,
+      type: 'section-header' as const,
+    },
+    ...section.tableRows.map(row => ({
+      ...row,
+      sectionId: section.id,
+      sectionTitle: section.title,
+      sectionIndex: section.index,
+      type: 'data' as const,
+    })),
+  ]),
+)
+
+const currentSectionTitle = ref('Setting')
+const currentSectionIndex = ref(0)
+const tableWrapperRef = ref<HTMLElement | null>(null)
+const tableScrollContainer = ref<HTMLElement | null>(null)
+const sectionHeaderElements = ref<HTMLElement[]>([])
+const STICKY_TOP_OFFSET = 16
+
+const currentSectionColor = computed(() => getSectionColor(currentSectionIndex.value))
+
+const handleTableScroll = () => {
+  updateCurrentSectionFromScroll()
+}
+
+function updateTableScrollContainer() {
+  const wrapper = tableWrapperRef.value
+  const nextContainer = wrapper?.querySelector('.q-table__middle') as HTMLElement | null
+  if (tableScrollContainer.value === nextContainer) return
+  if (tableScrollContainer.value) {
+    tableScrollContainer.value.removeEventListener('scroll', handleTableScroll)
+  }
+  tableScrollContainer.value = nextContainer
+  if (tableScrollContainer.value) {
+    tableScrollContainer.value.addEventListener('scroll', handleTableScroll, { passive: true })
+  }
+}
+
+function collectSectionHeaderElements() {
+  const container = tableScrollContainer.value
+  if (!container) {
+    sectionHeaderElements.value = []
+    return
+  }
+  sectionHeaderElements.value = Array.from(
+    container.querySelectorAll<HTMLElement>('[data-section-header]'),
+  )
+}
+
+function updateCurrentSectionFromScroll() {
+  const container = tableScrollContainer.value
+  const headers = sectionHeaderElements.value
+
+  if (!container || headers.length === 0) {
+    currentSectionTitle.value = sections.value[0]?.title ?? 'Setting'
+    currentSectionIndex.value = sections.value[0]?.index ?? 0
+    return
+  }
+
+  const containerTop = container.getBoundingClientRect().top
+  let activeHeader = headers[0]
+
+  headers.forEach(header => {
+    const headerTop = header.getBoundingClientRect().top
+    if (headerTop - containerTop <= STICKY_TOP_OFFSET) {
+      activeHeader = header
+    }
+  })
+
+  currentSectionTitle.value =
+    activeHeader?.dataset.sectionTitle ?? sections.value[0]?.title ?? 'Setting'
+  const sectionIndexValue = activeHeader?.dataset.sectionIndex
+  currentSectionIndex.value = sectionIndexValue != null ? Number(sectionIndexValue) || 0 : 0
+}
+
+async function refreshSectionTracking() {
+  await nextTick()
+  updateTableScrollContainer()
+  if (!sections.value.length) {
+    sectionHeaderElements.value = []
+    currentSectionTitle.value = 'Setting'
+    currentSectionIndex.value = 0
+    return
+  }
+  collectSectionHeaderElements()
+  updateCurrentSectionFromScroll()
+}
+
+onMounted(() => {
+  void refreshSectionTracking()
+})
+
+watch(
+  () => sections.value
+    .map(section => `${section.id}:${section.tableRows.length}:${section.tableRows.map(row => row.id).join(',')}`)
+    .join('|'),
+  () => {
+    void refreshSectionTracking()
+  },
+)
+
+onBeforeUnmount(() => {
+  if (tableScrollContainer.value) {
+    tableScrollContainer.value.removeEventListener('scroll', handleTableScroll)
+  }
 })
 
 function buildFixedRows(config: {
@@ -290,111 +482,298 @@ function displayCellValue(value: string): string {
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : '—'
 }
+
+function formatSummary(value: string | null | undefined): string {
+  const sanitized = sanitizeValue(value)
+  if (!sanitized) return ''
+  return sanitized.replace(/\s+/g, ' ')
+}
+
+function formatTargetFramerate(value: string | null | undefined): { text: string; hasValue: boolean } {
+  const normalized = sanitizeValue(value)
+  const hasValue = normalized.length > 0
+  let display = normalized
+
+  if (hasValue && /^\d+$/.test(normalized)) {
+    display = `${normalized} FPS`
+  }
+
+  return {
+    text: hasValue ? display : '—',
+    hasValue,
+  }
+}
+
+function formatBatteryLife(minutes: number | null | undefined): { text: string; hasValue: boolean } {
+  if (typeof minutes !== 'number' || Number.isNaN(minutes)) {
+    return { text: '—', hasValue: false }
+  }
+
+  const totalMinutes = Math.max(0, Math.round(minutes))
+  if (totalMinutes <= 0) {
+    return { text: '—', hasValue: false }
+  }
+
+  const hours = Math.floor(totalMinutes / 60)
+  const remainingMinutes = totalMinutes % 60
+  const parts: string[] = []
+
+  if (hours > 0) {
+    parts.push(`${hours}h`)
+  }
+  if (remainingMinutes > 0 || parts.length === 0) {
+    parts.push(`${remainingMinutes}m`)
+  }
+
+  return {
+    text: parts.join(' '),
+    hasValue: true,
+  }
+}
+
+function getDisplayRowValue(row: ComparisonDisplayRow, column: ComparisonColumn | QTableColumn): string {
+  if (row.type !== 'data') return ''
+  if (column.name === 'setting') return row.setting
+  const typedColumn = column as ComparisonColumn
+  if (typedColumn.index == null) return ''
+  return row.values[typedColumn.index] ?? ''
+}
+
+function getHeaderStickyStyle(isLabelColumn: boolean) {
+  return {
+    position: 'sticky',
+    top: 'var(--comparison-sticky-header-offset, 0px)',
+    zIndex: isLabelColumn ? 5 : 3,
+    transition: 'background-color 0.25s ease-in',
+  }
+}
+
+const SECTION_COLOR_WEIGHTS = [30, 70] as const
+const DEFAULT_SECTION_COLOR_WEIGHT = SECTION_COLOR_WEIGHTS[0]
+
+function getSectionColorWeight(index: number): number {
+  if (!Number.isFinite(index) || index < 0) {
+    return DEFAULT_SECTION_COLOR_WEIGHT
+  }
+  const length = SECTION_COLOR_WEIGHTS.length
+  const safeIndex = ((index % length) + length) % length
+  const weight = SECTION_COLOR_WEIGHTS[safeIndex]
+  return weight ?? DEFAULT_SECTION_COLOR_WEIGHT
+}
+
+function getSectionColor(index: number): string {
+  const weight = getSectionColorWeight(index)
+  return `color-mix(in srgb, var(--q-primary, #1976d2) ${weight}%, var(--q-dark))`
+}
+
+function getSectionSoftColor(index: number): string {
+  const weight = Math.max(getSectionColorWeight(index) - 15, 20)
+  return `color-mix(in srgb, var(--q-primary, #1976d2) ${weight}%, var(--q-dark))`
+}
+
+function getSectionStyle(index: number) {
+  return {
+    '--section-row-color': getSectionColor(index),
+    '--section-row-color-soft': getSectionSoftColor(index),
+  }
+}
 </script>
 
 <template>
   <q-card class="comparison-card">
     <q-card-section class="comparison-card__header">
       <div class="header-content">
-        <div class="header-titles">
-          <div class="header-title">Compare Reports</div>
-          <div class="header-subtitle">{{ headerSubtitle }}</div>
+        <div class="header-info">
+          <q-img
+            v-if="hasHeaderImage"
+            class="header-image"
+            :src="headerImageSrc"
+            alt="Game Banner"
+            fit="contain"
+          >
+            <template #error>
+              <img src="~/assets/banner-placeholder.png" alt="Placeholder" />
+            </template>
+          </q-img>
+          <div class="header-details">
+            <div class="header-title">{{ headerTitle }}</div>
+            <div class="header-subtitle">{{ headerSubtitle }}</div>
+          </div>
         </div>
-        <div class="header-actions">
-          <SecondaryButton
-            v-if="selectedCount"
-            size="sm"
-            outline
-            icon="clear_all"
-            label="Clear"
-            @click="emit('clear')"
-          />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            class="header-close-btn"
-            aria-label="Close comparison dialog"
-            @click="emit('close')"
-          />
+        <div class="header-actions header-actions--comparison">
+          <div class="header-action header-action--cancel" v-if="selectedCount">
+            <PrimaryButton
+              class="header-btn"
+              label="Clear"
+              color="warning"
+              icon="clear_all"
+              full-width
+              :dense="$q.screen.lt.sm"
+              @click="() => { emit('clear'); emit('close') }"
+            />
+          </div>
+          <div class="header-action header-action--cancel">
+            <PrimaryButton
+              class="header-btn"
+              label="Close"
+              color="negative"
+              icon="close"
+              full-width
+              :dense="$q.screen.lt.sm"
+              @click="emit('close')"
+            />
+          </div>
         </div>
       </div>
     </q-card-section>
     <q-separator />
     <q-card-section class="comparison-card__body">
-      <div class="report-comparison">
-        <section
-          v-for="section in sections"
-          :key="section.id"
-          class="comparison-section"
+      <div
+        ref="tableWrapperRef"
+        class="comparison-table-container"
+      >
+        <q-table
+          flat
+          dense
+          hide-bottom
+          :rows="comparisonTableRows"
+          :columns="columns"
+          row-key="id"
+          separator="cell"
+          class="comparison-qtable full-height"
+          table-class="comparison-qtable__table"
+          :rows-per-page-options="[0]"
+          :pagination="{ rowsPerPage: 0 }"
+          :style="{
+            '--comparison-section-color': currentSectionColor,
+          }"
         >
-          <h3 class="section-title">{{ section.title }}</h3>
-          <q-table
-            flat
-            dense
-            hide-bottom
-            :rows="section.tableRows"
-            :columns="columns"
-            row-key="id"
-            separator="cell"
-            class="comparison-qtable"
-            table-class="comparison-qtable__table"
-            :rows-per-page-options="[0]"
-            :pagination="{ rowsPerPage: 0 }"
-          >
-            <template #header-cell="slotCtx">
-              <q-th
-                :props="slotCtx"
-                :class="[
-                  'sticky-header',
-                  slotCtx.col.name === 'setting' ? 'sticky-left label-column' : 'report-column',
-                ]"
-              >
-                <template v-if="slotCtx.col.name === 'setting'">
-                  Setting
-                </template>
-                <template v-else>
-                  <div class="report-header">
-                    <div class="report-name">{{ slotCtx.col.headerInfo?.shortTitle ?? slotCtx.col.label }}</div>
-                    <div v-if="slotCtx.col.headerInfo?.user || slotCtx.col.headerInfo?.device"
-                         class="report-meta">
-                      <span v-if="slotCtx.col.headerInfo?.user">@{{ slotCtx.col.headerInfo?.user }}</span>
-                      <span
-                        v-if="slotCtx.col.headerInfo?.user && slotCtx.col.headerInfo?.device"
-                      > • </span>
-                      <span v-if="slotCtx.col.headerInfo?.device">{{ slotCtx.col.headerInfo?.device
-                        }}</span>
-                    </div>
+          <template #header-cell="slotCtx">
+            <q-th
+              :props="slotCtx"
+              :class="[
+                'sticky-header',
+                slotCtx.col.name === 'setting' ? 'sticky-left label-column' : 'report-column',
+              ]"
+              :style="getHeaderStickyStyle(slotCtx.col.name === 'setting')"
+            >
+              <template v-if="slotCtx.col.name === 'setting'">
+                <div class="section-title">
+                  {{ currentSectionTitle || 'Setting' }}
+                </div>
+              </template>
+              <template v-else>
+                <div class="report-header">
+                  <div class="report-name">
+                    {{ slotCtx.col.headerInfo?.shortTitle ?? slotCtx.col.label }}
                   </div>
-                </template>
-              </q-th>
-            </template>
-            <template #body-cell="slotCtx">
+                  <div
+                    v-if="slotCtx.col.headerInfo?.user || slotCtx.col.headerInfo?.device"
+                    class="report-meta report-meta--details ellipsis"
+                  >
+                    <span v-if="slotCtx.col.headerInfo?.user">
+                      @{{ slotCtx.col.headerInfo?.user }}
+                    </span>
+                    <span
+                      v-if="slotCtx.col.headerInfo?.user && slotCtx.col.headerInfo?.device"
+                      class="report-meta__separator"
+                      aria-hidden="true"
+                    >
+                      •
+                    </span>
+                    <span v-if="slotCtx.col.headerInfo?.device">
+                      {{ slotCtx.col.headerInfo?.device }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="slotCtx.col.headerInfo?.summary"
+                    class="report-meta report-summary ellipsis"
+                    :title="slotCtx.col.headerInfo?.summary"
+                  >
+                    "{{ slotCtx.col.headerInfo?.summary }}"
+                  </div>
+                  <div
+                    v-if="slotCtx.col.headerInfo && (slotCtx.col.headerInfo.hasTargetFramerate || slotCtx.col.headerInfo.hasBatteryLife)"
+                    class="report-meta report-metrics"
+                  >
+                    <span
+                      v-if="slotCtx.col.headerInfo?.hasTargetFramerate"
+                      class="report-metrics__value"
+                      :title="slotCtx.col.headerInfo?.targetFramerate"
+                    >
+                      {{ slotCtx.col.headerInfo?.targetFramerate }}
+                    </span>
+                    <span
+                      v-if="slotCtx.col.headerInfo?.hasTargetFramerate && slotCtx.col.headerInfo?.hasBatteryLife"
+                      class="report-metrics__separator"
+                      aria-hidden="true"
+                    >
+                      •
+                    </span>
+                    <span
+                      v-if="slotCtx.col.headerInfo?.hasBatteryLife"
+                      class="report-metrics__value"
+                      :title="slotCtx.col.headerInfo?.batteryLife"
+                    >
+                      {{ slotCtx.col.headerInfo?.batteryLife }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </q-th>
+          </template>
+          <template #body="slotCtx">
+            <q-tr
+              v-if="slotCtx.row.type === 'section-header'"
+              :key="`section-header-${slotCtx.row.sectionId}`"
+              :class="['section-header-row', `section-${slotCtx.row.sectionId}`]"
+              :data-section-header="slotCtx.row.sectionId"
+              :data-section-title="`${slotCtx.row.sectionTitle}`"
+              :data-section-index="slotCtx.row.sectionIndex"
+              :style="getSectionStyle(slotCtx.row.sectionIndex)"
+            >
               <q-td
-                :props="slotCtx"
-                :class="slotCtx.col.name === 'setting'
-                  ? ['label-column', 'sticky-left', 'value-cell']
-                  : getCellClasses(slotCtx.row.status, String(slotCtx.value ?? ''))"
+                :colspan="slotCtx.cols.length"
+                class="section-header-cell"
+                :style="getSectionStyle(slotCtx.row.sectionIndex)"
               >
-                <template v-if="slotCtx.col.name === 'setting'">
-                  {{ slotCtx.row.setting }}
-                </template>
-                <template v-else>
-                  {{ displayCellValue(String(slotCtx.value ?? '')) }}
-                </template>
+                {{ slotCtx.row.sectionTitle }}
               </q-td>
-            </template>
-            <template #no-data>
-              <div class="empty-state">
-                No comparable report data available.
-              </div>
-            </template>
-          </q-table>
-        </section>
-        <div v-if="sections.length === 0" class="empty-state">
-          No comparable report data available.
-        </div>
+            </q-tr>
+            <q-tr
+              v-else
+              :key="`section-rows-${slotCtx.row.sectionId}`"
+              :props="slotCtx"
+              :class="['comparison-row', `section-${slotCtx.row.sectionId}`]"
+              :data-section-row="slotCtx.row.sectionId"
+            >
+              <template
+                v-for="col in slotCtx.cols"
+                :key="col.name"
+              >
+                <q-td
+                  :props="slotCtx"
+                  :class="col.name === 'setting'
+                    ? ['label-column', 'sticky-left', 'value-cell']
+                    : getCellClasses(slotCtx.row.status, getDisplayRowValue(slotCtx.row, col))"
+                  :style="col.name === 'setting' ? getSectionStyle(slotCtx.row.sectionIndex) : undefined"
+                >
+                  <template v-if="col.name === 'setting'">
+                    {{ slotCtx.row.setting }}
+                  </template>
+                  <template v-else>
+                    {{ displayCellValue(getDisplayRowValue(slotCtx.row, col)) }}
+                  </template>
+                </q-td>
+              </template>
+            </q-tr>
+          </template>
+          <template #no-data>
+            <div class="empty-state">
+              No comparable report data available.
+            </div>
+          </template>
+        </q-table>
       </div>
     </q-card-section>
   </q-card>
@@ -426,79 +805,125 @@ function displayCellValue(value: string): string {
 
 .header-content {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 24px;
 }
 
-.header-titles {
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.header-image {
+  height: 60px;
+  width: auto;
+  max-width: 320px;
+  aspect-ratio: 16 / 7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.header-image :deep(img) {
+  object-fit: contain;
+  height: 100%;
+  width: auto;
+}
+
+.header-details {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .header-title {
-  margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   font-weight: 600;
+  margin: 0;
 }
 
 .header-subtitle {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .header-actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 12px;
+  align-items: stretch;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
-.header-close-btn {
-  color: rgba(255, 255, 255, 0.7);
-  transition: color 0.2s ease, background-color 0.2s ease;
+.header-actions--comparison {
+  min-width: 0;
 }
 
-.header-close-btn:hover,
-.header-close-btn:focus-visible {
-  color: white;
-  background-color: color-mix(in srgb, var(--q-primary, #1976d2) 22%, transparent);
+.header-action {
+  flex: 0 1 200px;
+  min-width: 150px;
+  display: flex;
+}
+
+.header-action--cancel {
+  flex: 0 1 200px;
+  min-width: 150px;
+}
+
+.header-btn {
+  width: 100%;
+  margin: 0 !important;
 }
 
 .comparison-card__body {
   flex: 1 1 auto;
   padding: 0;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  --comparison-sticky-header-offset: 0px;
 }
 
-.report-comparison {
+.comparison-table-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  flex: 1 1 auto;
+  gap: 16px;
   padding: 20px 24px 24px;
-}
-
-.comparison-section {
-  background: color-mix(in srgb, var(--q-dark, #1d1d1d) 85%, transparent);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  padding: 16px;
-}
-
-.section-title {
-  margin: 0 0 12px;
-  font-size: 1.15rem;
-  font-weight: 600;
+  overflow: hidden;
 }
 
 .comparison-qtable {
-  margin-top: 12px;
+  flex: 1 1 auto;
   max-width: 100%;
-  overflow-x: auto;
+}
+
+.comparison-qtable.full-height {
+  height: 100%;
 }
 
 .comparison-qtable__table {
   min-width: 900px;
+}
+
+.comparison-qtable :deep(.q-table__container) {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--q-dark, #1d1d1d) 85%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.comparison-qtable :deep(.q-table__middle) {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .comparison-qtable :deep(thead th),
@@ -507,14 +932,19 @@ function displayCellValue(value: string): string {
   padding: 10px;
   vertical-align: top;
   text-align: left;
+  max-width: 300px;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .comparison-qtable :deep(thead th) {
-  background: color-mix(in srgb, var(--q-primary, #1976d2) 60%, var(--q-dark));
+  background-color: var(--comparison-section-color, color-mix(in srgb, var(--q-primary, #1976d2) 60%, var(--q-dark)));
   font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  transition: background-color 0.25s ease-in;
+  max-width: 300px;
+  width: 300px;
+  box-sizing: border-box;
 }
 
 .label-column {
@@ -532,28 +962,99 @@ function displayCellValue(value: string): string {
   z-index: 4;
 }
 
-.comparison-qtable :deep(thead th.sticky-left) {
+.comparison-qtable :deep(.sticky-header) {
+  position: sticky;
+  top: var(--comparison-sticky-header-offset, 0px);
+  z-index: 3;
+}
+
+.comparison-qtable :deep(.sticky-header.sticky-left) {
   z-index: 5;
+}
+
+.comparison-qtable :deep(tbody) {
+  scroll-margin-top: 48px;
+}
+
+.section-header-row {
+  position: relative;
+}
+
+.section-title,
+.section-header-cell {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 12px 0;
+  color: #fff;
+}
+
+.section-header-cell {
+  background-color: var(--section-row-color, color-mix(in srgb, var(--q-primary, #1976d2) 55%, var(--q-dark, #1d1d1d)));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  transition: background-color 0.25s ease-in;
 }
 
 .report-header {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  max-width: 300px;
 }
 
 .report-name {
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .report-meta {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.report-meta--details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-meta__separator {
+  opacity: 0.6;
+}
+
+.report-summary {
+  font-style: italic;
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.report-metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.report-metrics__value {
+  white-space: nowrap;
+}
+
+.report-metrics__separator {
+  opacity: 0.6;
 }
 
 .value-cell {
   background: color-mix(in srgb, var(--q-dark, #1d1d1d) 98%, transparent);
   transition: background-color 0.2s ease;
+}
+
+.comparison-qtable :deep(tbody td.label-column) {
+  background-color: var(--section-row-color-soft, color-mix(in srgb, var(--q-primary, #1976d2) 40%, var(--q-dark, #1d1d1d)));
+  transition: background-color 0.25s ease-in;
 }
 
 .value-cell--same {
@@ -583,6 +1084,10 @@ function displayCellValue(value: string): string {
     min-width: 0;
   }
 
+  .comparison-table-container {
+    padding: 16px;
+  }
+
   .label-column {
     min-width: 150px;
     width: 150px;
@@ -590,7 +1095,7 @@ function displayCellValue(value: string): string {
 }
 
 @media (max-width: 767px) {
-  .comparison-section {
+  .comparison-table-container {
     padding: 12px;
   }
 
@@ -622,8 +1127,101 @@ function displayCellValue(value: string): string {
     justify-content: space-between;
   }
 
-  .report-comparison {
-    padding: 16px;
+  .comparison-table-container {
+    padding: 0 3px 0 3px;
   }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .header-info {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-image {
+    display: none;
+  }
+
+  .header-actions--comparison {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .header-action {
+    flex: 1 1 150px;
+    min-width: 120px;
+  }
+
+  .report-header {
+    max-width: 170px;
+  }
+
+  .report-meta--details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .report-meta--details .report-meta__separator {
+    display: none;
+  }
+
+  .report-meta__separator {
+    display: none;
+  }
+
+  .sticky-left {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    z-index: auto !important;
+  }
+
+  .comparison-qtable :deep(thead) {
+    position: sticky !important;
+    top: 0;
+    z-index: 4;
+  }
+
+  .comparison-qtable :deep(.sticky-header.sticky-left) {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    z-index: auto !important;
+  }
+
+  .comparison-qtable :deep(thead th .section-title) {
+    position: static;
+  }
+
+  .comparison-qtable :deep(thead th) {
+    max-width: 170px;
+    width: 170px;
+    padding: 8px;
+  }
+
+  .comparison-qtable :deep(thead th:first-child) {
+    padding: 5px;
+  }
+
+  .comparison-qtable :deep(thead td) {
+    padding: 8px;
+  }
+
+  .comparison-qtable :deep(thead td:first-child) {
+    padding: 5px;
+  }
+
+  .comparison-card .header-content {
+    align-items: stretch;
+  }
+
 }
 </style>
