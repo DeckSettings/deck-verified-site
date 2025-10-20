@@ -2,6 +2,7 @@
 import { defineComponent, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
 import draggable from 'vuedraggable'
+import { parseMarkdownKeyValueList } from 'src/utils/markdownSettings'
 
 const commonGameSettingsKeys = [
   'ADAPTIVE PERFORMANCE FPS',
@@ -240,28 +241,18 @@ export default defineComponent({
     const initialValueOptions = ref<string[]>([])
     const valueOptions = ref<string[]>([])
 
-    // Initialize key/value pairs from previousData.
+    // Initialise key/value pairs from previousData.
     // previousData is expected to be a markdown list of the form:
     // - **KEY:** Value
     const initKeyValuePairs = async () => {
       if (!props.previousData) return
-      const lines: string[] = props.previousData.split('\n')
-      // Regex matches lines like: - **Key:** Value
-      const regex = /^-\s\*\*(.+?):\*\*\s*(.+)$/
-      const pairs: Row[] = []
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed) continue
-        const match = trimmed.match(regex)
-        if (match && match.length > 2) {
-          pairs.push({
-            id: nextRowId++,
-            key: match[1]?.trim().toUpperCase() as string,
-            value: match[2]?.trim() as string,
-          })
-        }
-      }
-      if (pairs.length > 0) {
+      const entries = parseMarkdownKeyValueList(props.previousData)
+      if (entries.length > 0) {
+        const pairs: Row[] = entries.map(entry => ({
+          id: nextRowId++,
+          key: entry.key,
+          value: entry.value,
+        }))
         sections.value.push({ title: defaultSectionTitle, items: pairs })
       }
     }
@@ -604,12 +595,15 @@ export default defineComponent({
   .game-settings-section :deep(.q-item) {
     overflow: hidden;
   }
+
   .game-settings-section :deep(.q-item__section) {
     min-width: 0;
   }
+
   .game-settings-section :deep(.q-item__section--avatar) {
     flex: 0 0 28px;
   }
+
   .game-settings-section :deep(.q-avatar) {
     width: 24px;
     height: 24px;

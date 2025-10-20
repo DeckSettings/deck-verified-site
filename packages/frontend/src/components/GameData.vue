@@ -28,7 +28,6 @@ import DeviceImage from 'components/elements/DeviceImage.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
-import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import { useMeta } from 'quasar'
 import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
@@ -36,6 +35,8 @@ import ProtonBadge from 'components/elements/ProtonBadge.vue'
 import SteamCompatBadge from 'components/elements/SteamCompatBadge.vue'
 import PriceBadge from 'components/elements/PriceBadge.vue'
 import PageHeader from 'components/elements/PageHeader.vue'
+import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
+import GameReportComparison from 'components/GameReportComparison.vue'
 
 dayjs.extend(relativeTime)
 
@@ -243,6 +244,47 @@ const hasReports = computed(() => {
   const gd = gameData.value
   return !!(gd && Array.isArray(gd.reports) && gd.reports.length > 0)
 })
+
+const compareReports = ref<ExtendedGameReport[]>([])
+const comparisonDialogOpen = ref(false)
+const hoveredCompareReportId = ref<number | null>(null)
+
+const hasReportsToCompare = computed(() => compareReports.value.length > 0)
+
+watch(appId, () => {
+  compareReports.value = []
+  comparisonDialogOpen.value = false
+})
+
+function isReportSelectedForCompare(reportId: number) {
+  return compareReports.value.some(report => report.id === reportId)
+}
+
+function getCompareButtonIcon(reportId: number) {
+  const isSelected = isReportSelectedForCompare(reportId)
+  if (hoveredCompareReportId.value === reportId) {
+    return isSelected ? 'remove_circle' : 'add'
+  }
+  return 'balance'
+}
+
+function addReportToCompare(report: ExtendedGameReport) {
+  if (isReportSelectedForCompare(report.id)) {
+    compareReports.value = compareReports.value.filter(item => item.id !== report.id)
+    return
+  }
+  compareReports.value.push(report)
+}
+
+function openComparisonDialog() {
+  if (!hasReportsToCompare.value) return
+  comparisonDialogOpen.value = true
+}
+
+function clearCompareReports() {
+  compareReports.value = []
+  comparisonDialogOpen.value = false
+}
 
 /** SSR-stable, pure computed reports pipeline */
 const filteredReports = computed<ExtendedGameReport[]>(() => {
@@ -492,6 +534,26 @@ useMeta(() => {
   <div class="background-container"
        :class="{ 'background-container-mobile': $q.platform.isMobileUi }"
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
+  <div
+    v-if="hasReportsToCompare"
+    class="compare-dialog-trigger"
+  >
+    <q-btn
+      class="compare-dialog-trigger-button"
+      color="secondary"
+      text-color="black"
+      dense
+      unelevated
+      no-caps
+      icon="balance"
+      :aria-label="`Compare (${compareReports.length})`"
+      @click="openComparisonDialog"
+    >
+      <span class="compare-trigger-label">
+        Compare ({{ compareReports.length }})
+      </span>
+    </q-btn>
+  </div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
       <div class="col-xs-12 col-md-12 text-center">
@@ -982,6 +1044,22 @@ useMeta(() => {
                           This report is marked as a duplicate by the community.
                         </q-tooltip>
                       </q-chip>
+                      <q-btn
+                        class="compare-select-btn"
+                        :class="{ 'compare-select-btn-selected': isReportSelectedForCompare(report.id) }"
+                        round dense flat
+                        size="sm"
+                        :icon="getCompareButtonIcon(report.id)"
+                        @mouseenter="hoveredCompareReportId = report.id"
+                        @mouseleave="hoveredCompareReportId = null"
+                        @click.stop="addReportToCompare(report)"
+                        :aria-label="isReportSelectedForCompare(report.id) ? 'Report added to compare' : 'Add report to compare'"
+                      >
+                        <q-tooltip anchor="center right" self="center left">
+                          <span v-if="isReportSelectedForCompare(report.id)">Already in comparison list</span>
+                          <span v-else>Add to comparison</span>
+                        </q-tooltip>
+                      </q-btn>
                       <q-item-section class="gt-xs">
                         <!-- Wrapper for the layout -->
                         <div class="row items-center q-gutter-sm">
@@ -1341,9 +1419,90 @@ useMeta(() => {
       </div>
     </div>
   </div>
+
+  <q-dialog class="q-ma-none q-pa-none comparison-dialog"
+            backdrop-filter="blur(2px)"
+            full-height
+            :full-width="$q.screen.lt.md"
+            :maximized="$q.screen.lt.md"
+            v-model="comparisonDialogOpen">
+    <q-card class="comparison-dialog-card">
+      <q-card-section class="row items-center justify-between q-gutter-sm">
+        <div class="text-h6">Compare Reports</div>
+        <div class="row items-center q-gutter-sm">
+          <SecondaryButton
+            v-if="compareReports.length"
+            size="sm"
+            outline
+            icon="clear_all"
+            label="Clear"
+            @click="clearCompareReports"
+          />
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            @click="comparisonDialogOpen = false"
+            aria-label="Close comparison dialog"
+          />
+        </div>
+      </q-card-section>
+      <q-separator />
+      <q-card-section class="q-pa-none">
+        <div class="q-pa-md">
+          <GameReportComparison :reports="compareReports" />
+        </div>
+      </q-card-section>
+    </q-card>
+  </q-dialog>
 </template>
 
 <style scoped>
+
+.compare-dialog-trigger {
+  position: fixed;
+  top: 125px;
+  right: 0;
+  z-index: 20;
+}
+
+.compare-dialog-trigger-button {
+  border-radius: 16px 0 0 16px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.compare-dialog-trigger-button .compare-trigger-label {
+  max-width: 0;
+  opacity: 0;
+  margin-left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.2s ease, margin-left 0.2s ease;
+}
+
+.compare-dialog-trigger-button:hover .compare-trigger-label,
+.compare-dialog-trigger-button:focus-visible .compare-trigger-label {
+  max-width: 200px;
+  opacity: 1;
+  margin-left: 8px;
+}
+
+.comparison-dialog-card {
+  max-width: 1000px;
+  width: 95vw;
+}
+
+.comparison-dialog-card :deep(.q-card__section) {
+  background-color: color-mix(in srgb, var(--q-dark) 85%, transparent);
+}
+
+.game-data-item {
+  position: relative;
+}
 
 .background-container {
   background-size: cover;
@@ -1474,7 +1633,44 @@ useMeta(() => {
   position: absolute;
   right: -15px;
   top: -15px;
+  z-index: 10;
   border-radius: 0 3px 0 12px;
+}
+
+.compare-select-btn {
+  position: absolute;
+  top: -11px;
+  left: -11px;
+  z-index: 10;
+  padding: 0;
+  color: var(--q-primary) !important;
+  background-color: color-mix(in srgb, var(--q-primary) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--q-primary) 60%, transparent);
+  border-radius: 3px 0 12px 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none !important;
+}
+
+.compare-select-btn:hover,
+.compare-select-btn:focus-visible {
+  background-color: color-mix(in srgb, var(--q-primary) 32%, transparent);
+  border-color: color-mix(in srgb, var(--q-primary) 70%, transparent);
+}
+
+.compare-select-btn-selected {
+  color: var(--q-positive) !important;
+  background-color: color-mix(in srgb, var(--q-positive) 28%, transparent);
+  border-color: color-mix(in srgb, var(--q-positive) 70%, transparent);
+}
+
+.compare-select-btn-selected:hover,
+.compare-select-btn-selected:focus-visible {
+  background-color: color-mix(in srgb, var(--q-positive) 36%, transparent);
+  border-color: color-mix(in srgb, var(--q-positive) 80%, transparent);
+}
+
+.compare-select-btn :deep(.q-icon) {
+  transition: color 0.2s ease;
 }
 
 ::v-deep(.game-data-item-expand-button) {
