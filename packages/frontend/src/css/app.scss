@@ -14,6 +14,36 @@ html {
   scroll-behavior: smooth;
 }
 
+:root {
+  --scrollbar-track: color-mix(in srgb, var(--q-dark) 75%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--q-primary) 55%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--q-primary) 70%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
 /* -sm- */
 @media (max-width: 599.98px) {
   h1, .text-h1 {

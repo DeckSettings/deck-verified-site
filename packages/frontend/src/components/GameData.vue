@@ -1426,35 +1426,11 @@ useMeta(() => {
             :full-width="$q.screen.lt.md"
             :maximized="$q.screen.lt.md"
             v-model="comparisonDialogOpen">
-    <q-card class="comparison-dialog-card">
-      <q-card-section class="row items-center justify-between q-gutter-sm">
-        <div class="text-h6">Compare Reports</div>
-        <div class="row items-center q-gutter-sm">
-          <SecondaryButton
-            v-if="compareReports.length"
-            size="sm"
-            outline
-            icon="clear_all"
-            label="Clear"
-            @click="clearCompareReports"
-          />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            @click="comparisonDialogOpen = false"
-            aria-label="Close comparison dialog"
-          />
-        </div>
-      </q-card-section>
-      <q-separator />
-      <q-card-section class="q-pa-none">
-        <div class="q-pa-md">
-          <GameReportComparison :reports="compareReports" />
-        </div>
-      </q-card-section>
-    </q-card>
+    <GameReportComparison
+      :reports="compareReports"
+      @clear="clearCompareReports"
+      @close="comparisonDialogOpen = false"
+    />
   </q-dialog>
 </template>
 
@@ -1489,15 +1465,6 @@ useMeta(() => {
   max-width: 200px;
   opacity: 1;
   margin-left: 8px;
-}
-
-.comparison-dialog-card {
-  max-width: 1000px;
-  width: 95vw;
-}
-
-.comparison-dialog-card :deep(.q-card__section) {
-  background-color: color-mix(in srgb, var(--q-dark) 85%, transparent);
 }
 
 .game-data-item {
