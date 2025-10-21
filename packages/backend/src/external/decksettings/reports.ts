@@ -381,7 +381,10 @@ export const fetchPopularReports = async (
 /**
  * Retrieves a count of game reports for a given author.
  */
-export const fetchAuthorReportCount = async (author: string): Promise<number> => {
+export const fetchAuthorReportCount = async (
+  author: string,
+  authToken: string | null = null,
+): Promise<number> => {
   try {
     const cachedData = await redisLookupAuthorGameReportCount(author)
     if (cachedData) {
@@ -396,6 +399,10 @@ export const fetchAuthorReportCount = async (author: string): Promise<number> =>
       null,
       'updated',
       'desc',
+      null,
+      true,
+      null,
+      authToken,
     )
     if (reports && reports?.items?.length > 0) {
       await redisCacheAuthorGameReportCount(reports.items.length, author)

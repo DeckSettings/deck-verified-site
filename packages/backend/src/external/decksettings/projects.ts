@@ -76,7 +76,10 @@ const redisLookupGitHubProjectDetails = async (
  * Parses the provided GitHub project data to extract and structure relevant information
  * into the GitHubProjectGameDetails format.
  */
-export const parseProjectDetails = async (project: GitHubProjectDetails): Promise<GitHubProjectGameDetails> => {
+export const parseProjectDetails = async (
+  project: GitHubProjectDetails,
+  authToken: string | null = null,
+): Promise<GitHubProjectGameDetails> => {
   const reportBodySchema: GitHubReportIssueBodySchema = await fetchReportBodySchema()
   const hardwareInfo = await fetchHardwareInfo()
 
@@ -139,7 +142,7 @@ export const parseProjectDetails = async (project: GitHubProjectDetails): Promis
         user: {
           login: issue.user.login,
           avatar_url: issue.user.avatar_url,
-          report_count: await fetchAuthorReportCount(issue.user.login),
+          report_count: await fetchAuthorReportCount(issue.user.login, authToken),
         },
         created_at: issue.created_at,
         updated_at: issue.updated_at,
@@ -437,7 +440,7 @@ export const fetchProjectsByAppIdOrGameName = async (
 
     const project = projects[0]
     if (project) {
-      const parsedProject = await parseProjectDetails(project)
+      const parsedProject = await parseProjectDetails(project, authToken)
       try {
         await redisCacheGitHubProjectDetails(parsedProject, appId, gameName)
       } catch (error) {
@@ -461,7 +464,7 @@ export const updateGameIndex = async (authToken: string | null): Promise<void> =
     const projects = await fetchProject('', authToken)
     if (projects) {
       for (const project of projects) {
-        const parsedProject = await parseProjectDetails(project)
+        const parsedProject = await parseProjectDetails(project, authToken)
         logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
         try {
           await storeGameInRedis({
