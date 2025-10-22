@@ -188,8 +188,8 @@ defineExpose({
 
                 <q-separator dark />
 
-                <NotificationCenter />
                 <MobileProgressNotifications />
+                <NotificationCenter />
 
                 <q-separator dark spaced />
               </template>
@@ -309,10 +309,10 @@ defineExpose({
                   </q-item>
                 </q-list>
 
-                <q-separator dark />
+                <q-separator dark class="q-my-md" />
 
-                <NotificationCenter />
                 <MobileProgressNotifications />
+                <NotificationCenter />
               </template>
 
               <template v-else>
