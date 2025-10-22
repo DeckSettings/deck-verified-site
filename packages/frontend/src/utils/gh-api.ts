@@ -118,14 +118,44 @@ export const updateIssue = async (issueNumber: number, title: string, body: stri
   const accessToken = authStore.accessToken
 
   const url = `https://api.github.com/repos/DeckSettings/game-reports-steamos/issues/${issueNumber}`
+  const baseHeaders = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Accept': 'application/vnd.github+json',
+  }
+
+  // Only include the body in the PATCH request if it actually differs.
+  // GitHub currently skips firing `issues.edited` when PATCH payloads include an unchanged body.
+  // I want to keep the ability to trigger a "refresh" just by editing a report without making any changes.
+  // So to keep the GitHub workflows working, I need to exclude the body if it has not changed.
+  let existingIssue: Partial<GitHubIssue> | null = null
+  let includeBody = true
+  try {
+    const currentResponse = await fetch(url, {
+      method: 'GET',
+      headers: baseHeaders,
+    })
+    if (currentResponse.ok) {
+      existingIssue = await currentResponse.json().catch(() => null)
+      if (existingIssue && existingIssue.body === body) {
+        includeBody = false
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch current issue for comparison, falling back to sending body', err)
+  }
+
+  const payload: Record<string, unknown> = { title }
+  if (includeBody) {
+    payload.body = body
+  }
+
   const response = await fetch(url, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/vnd.github+json',
+      ...baseHeaders,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ title, body }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
