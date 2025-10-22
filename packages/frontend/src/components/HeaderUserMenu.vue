@@ -279,11 +279,13 @@ defineExpose({
               <template v-if="isLoggedIn">
                 <q-list dark>
                   <q-item clickable v-ripple
-                          class="header-user-menu-dialog-content-list-item"
+                          class="side-dialog-menu-list-item"
                           :to="{ name: 'user-reports' }"
                   >
                     <q-item-section avatar>
-                      <q-avatar square color="primary" text-color="white" icon="description" />
+                      <q-avatar color="primary">
+                        <q-icon name="description" />
+                      </q-avatar>
                     </q-item-section>
                     <q-item-section>My Reports</q-item-section>
                     <q-item-section side>
@@ -291,11 +293,13 @@ defineExpose({
                     </q-item-section>
                   </q-item>
                   <q-item clickable v-ripple
-                          class="header-user-menu-dialog-content-list-item"
+                          class="side-dialog-menu-list-item"
                           @click="isSettingsDialogOpen = true"
                   >
                     <q-item-section avatar>
-                      <q-avatar square color="primary" text-color="white" icon="settings" />
+                      <q-avatar color="primary">
+                        <q-icon name="settings" />
+                      </q-avatar>
                     </q-item-section>
                     <q-item-section>App Settings</q-item-section>
                     <q-item-section side>
@@ -313,11 +317,13 @@ defineExpose({
               <template v-else>
                 <q-list dark>
                   <q-item clickable v-ripple
-                          class="header-user-menu-dialog-content-list-item"
+                          class="side-dialog-menu-list-item"
                           @click="isSettingsDialogOpen = true"
                   >
                     <q-item-section avatar>
-                      <q-avatar square color="primary" text-color="white" icon="settings" />
+                      <q-avatar color="primary">
+                        <q-icon name="settings" />
+                      </q-avatar>
                     </q-item-section>
                     <q-item-section>App Settings</q-item-section>
                     <q-item-section side>
@@ -430,11 +436,6 @@ defineExpose({
 
 .header-user-menu-dialog-content {
   flex: 1;
-}
-
-.header-user-menu-dialog-content-list-item {
-  margin-left: 0;
-  padding-left: 8px;
 }
 
 .header-user-menu-dialog-footer {

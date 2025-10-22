@@ -81,15 +81,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
     <q-card-section class="q-gutter-lg">
       <section>
         <div class="text-subtitle2 text-weight-bold q-mb-sm">Home Cards</div>
-        <q-list bordered dark class="rounded-borders">
+        <q-list>
           <q-item
-            clickable
-            class="text-white"
+            clickable v-ripple
+            class="side-dialog-menu-list-item"
             @click="toggleHomeWelcome"
           >
             <q-item-section avatar>
-              <q-avatar size="32px" color="primary" text-color="white">
-                <q-icon name="home" size="20px" />
+              <q-avatar color="primary">
+                <q-icon name="home" />
               </q-avatar>
             </q-item-section>
 
@@ -116,15 +116,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
           <q-item
             v-for="feed in feeds"
             :key="feed.key"
-            clickable
-            class="text-white"
+            clickable v-ripple
+            class="side-dialog-menu-list-item"
             @click="toggleFeed(feed.key)"
           >
             <q-item-section avatar>
-              <q-avatar v-if="feed.logo" size="32px">
+              <q-avatar v-if="feed.logo">
                 <img :src="feed.logo" :alt="`${feed.title} logo`" loading="lazy">
               </q-avatar>
-              <q-icon v-else name="rss_feed" size="28px" color="primary" />
+              <q-icon v-else name="rss_feed" size="40px" color="primary" />
             </q-item-section>
 
             <q-item-section>
@@ -151,15 +151,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
       <section>
         <div class="text-subtitle2 text-weight-bold q-mb-sm">Reports</div>
-        <q-list bordered dark class="rounded-borders">
+        <q-list>
           <q-item
-            clickable
-            class="text-white"
+            clickable v-ripple
+            class="side-dialog-menu-list-item"
             @click="toggleHideDuplicates"
           >
             <q-item-section avatar>
-              <q-avatar size="32px" color="primary" text-color="white">
-                <q-icon name="content_copy" size="18px" />
+              <q-avatar color="primary">
+                <q-icon name="content_copy" />
               </q-avatar>
             </q-item-section>
 
@@ -189,15 +189,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
     <q-card-section class="q-gutter-lg">
       <section>
         <div class="text-subtitle2 text-weight-bold q-mb-sm">More...</div>
-        <q-list bordered dark class="rounded-borders">
+        <q-list>
           <q-item
-            clickable
-            class="text-white"
+            clickable v-ripple
+            class="side-dialog-menu-list-item"
             @click="isAboutDialogOpen = true"
           >
             <q-item-section avatar>
-              <q-avatar size="32px" color="primary" text-color="white">
-                <q-icon name="info" size="18px" />
+              <q-avatar color="primary">
+                <q-icon name="info" />
               </q-avatar>
             </q-item-section>
             <q-item-section>
@@ -303,18 +303,18 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
             <section>
               <div class="text-h6 text-weight-bold q-mb-sm">Explore and Connect</div>
-              <q-list bordered dark class="rounded-borders">
+              <q-list>
                 <q-item
-                  clickable
-                  class="text-white"
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   :href="websiteLink"
                   target="_blank"
                   rel="noopener"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px" color="primary" text-color="white">
-                      <q-icon name="web" size="18px" />
+                    <q-avatar color="primary">
+                      <q-icon name="web" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -327,16 +327,16 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                   </q-item-section>
                 </q-item>
                 <q-item
-                  clickable
-                  class="text-white"
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   :href="discordLink"
                   target="_blank"
                   rel="noopener"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px" color="primary" text-color="white">
-                      <q-icon name="discord" size="18px" />
+                    <q-avatar color="primary">
+                      <q-icon name="discord" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -357,17 +357,17 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 Deck Verified proudly integrates logos, links, and data from several great resources that support the
                 handheld gaming community:
               </div>
-              <q-list bordered dark class="rounded-borders">
+              <q-list>
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://store.steampowered.com/"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
+                    <q-avatar>
                       <img :src="steamLogo" alt="Steam logo" />
                     </q-avatar>
                   </q-item-section>
@@ -385,15 +385,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
 
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://www.protondb.com/"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
+                    <q-avatar>
                       <img :src="protondbLogo" alt="ProtonDB logo" />
                     </q-avatar>
                   </q-item-section>
@@ -411,15 +411,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
 
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://steamdeckhq.com/"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
+                    <q-avatar>
                       <img :src="sdhqLogo" alt="Steam Deck HQ logo" />
                     </q-avatar>
                   </q-item-section>
@@ -437,16 +437,16 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
 
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://steamdb.info/"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
-                      <q-icon size="32px" :name="simSteamdb" />
+                    <q-avatar>
+                      <q-icon :name="simSteamdb" size="40px" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -463,15 +463,15 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
 
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://isthereanydeal.com/"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
+                    <q-avatar>
                       <img :src="itadLogo" alt="IsThereAnyDeal logo" />
                     </q-avatar>
                   </q-item-section>
@@ -489,16 +489,16 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
 
                 <q-item
-                  clickable
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   href="https://www.pcgamingwiki.com/wiki/Home"
                   target="_blank"
                   rel="noopener"
-                  class="text-white"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px">
-                      <q-icon size="32px" :name="simPcgamingwiki" :style="{ color: '#536fa8' }" />
+                    <q-avatar>
+                      <q-icon :name="simPcgamingwiki" :style="{ color: '#536fa8' }" size="40px" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -518,18 +518,18 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
             <section>
               <div class="text-h6 text-weight-bold q-mb-sm">Legal & Privacy</div>
-              <q-list bordered dark class="rounded-borders">
+              <q-list>
                 <q-item
-                  clickable
-                  class="text-white"
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   :href="privacyPolicyLink"
                   target="_blank"
                   rel="noopener"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px" color="primary" text-color="white">
-                      <q-icon name="policy" size="18px" />
+                    <q-avatar color="primary">
+                      <q-icon name="policy" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -545,16 +545,16 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                   </q-item-section>
                 </q-item>
                 <q-item
-                  clickable
-                  class="text-white"
+                  clickable v-ripple
+                  class="side-dialog-menu-list-item"
                   tag="a"
                   :href="termsOfServiceLink"
                   target="_blank"
                   rel="noopener"
                 >
                   <q-item-section avatar>
-                    <q-avatar size="32px" color="primary" text-color="white">
-                      <q-icon name="gavel" size="18px" />
+                    <q-avatar color="primary">
+                      <q-icon name="gavel" />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>

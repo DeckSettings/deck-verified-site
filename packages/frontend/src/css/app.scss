@@ -133,7 +133,19 @@ html {
 
 .side-dialog-menu-list-item {
   margin-left: 0;
-  padding-left: 0;
+  padding-left: 8px;
+  background-color: color-mix(in srgb, var(--q-primary) 5%, transparent);
+  border-radius: 3px;
+  margin-bottom: 3px;
+  margin-top: 3px;
+}
+
+.side-dialog-menu-list-item .q-avatar {
+  font-size: 40px;
+}
+
+.side-dialog-menu-list-item .q-avatar .q-icon {
+  font-size: 25px;
 }
 
 @media (max-width: 599.98px) {
