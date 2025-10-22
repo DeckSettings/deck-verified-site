@@ -175,7 +175,7 @@ defineExpose({
                       <q-icon name="chevron_right" />
                     </q-item-section>
                   </q-item>
-                  <q-item clickable v-ripple @click="isSettingsDialogOpen = true">
+                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple @click="isSettingsDialogOpen = true">
                     <q-item-section avatar>
                       <q-avatar square color="primary" text-color="white" icon="settings" />
                     </q-item-section>
@@ -293,7 +293,7 @@ defineExpose({
                       <q-icon name="chevron_right" />
                     </q-item-section>
                   </q-item>
-                  <q-item clickable v-ripple
+                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
                           class="side-dialog-menu-list-item"
                           @click="isSettingsDialogOpen = true"
                   >
@@ -317,7 +317,7 @@ defineExpose({
 
               <template v-else>
                 <q-list dark>
-                  <q-item clickable v-ripple
+                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
                           class="side-dialog-menu-list-item"
                           @click="isSettingsDialogOpen = true"
                   >
