@@ -368,11 +368,12 @@ defineExpose({
         transition-hide="slide-down"
         transition-duration="100"
       >
-        <q-card
-          class="side-dialog-card bg-dark text-white q-pa-none"
-          :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;'"
+        <q-card class="side-dialog-card"
+                :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
         >
-          <AppSettings />
+          <q-card-section class="side-dialog-content">
+            <AppSettings />
+          </q-card-section>
         </q-card>
       </q-dialog>
     </template>
