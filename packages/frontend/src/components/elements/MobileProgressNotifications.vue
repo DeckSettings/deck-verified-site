@@ -102,6 +102,12 @@ const showPercent = (v: number | 'indeterminate' | null) => {
 .mobile-progress-list {
   border-radius: 3px;
   background: color-mix(in srgb, var(--q-dark) 75%, transparent);
+  margin-left: 0;
+}
+
+.mobile-progress-item {
+  margin-left: 0;
+  padding-left: 8px;
 }
 
 .mobile-progress-item:last-child {

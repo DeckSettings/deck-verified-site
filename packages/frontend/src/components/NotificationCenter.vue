@@ -51,9 +51,9 @@ const handleOpenLink = (link: string) => {
       />
     </div>
 
-    <q-list v-if="hasNotifications" class="notification-menu__list" aria-label="User notifications" dense>
+    <q-list v-if="hasNotifications" class="notification-menu-list" aria-label="User notifications" dense>
       <template v-for="(notification, idx) in notifications" :key="notification.id">
-        <q-item class="notification-menu__item" clickable v-ripple>
+        <q-item class="notification-menu-item" clickable v-ripple>
           <q-item-section avatar>
             <q-icon
               :name="notification.icon"
@@ -97,23 +97,29 @@ const handleOpenLink = (link: string) => {
       </template>
     </q-list>
 
-    <div v-else class="notification-menu__empty text-caption text-center q-pt-xs">
+    <div v-else class="notification-menu-empty text-caption text-center q-pt-xs">
       You're all caught up.
     </div>
   </section>
 </template>
 
 <style scoped>
-.notification-menu__list {
+.notification-menu-list {
   border-radius: 3px;
   background: color-mix(in srgb, var(--q-dark) 75%, transparent);
+  margin-left: 0;
 }
 
-.notification-menu__item :deep(.q-item__label--caption) {
+.notification-menu-item {
+  margin-left: 0;
+  padding-left: 8px;
+}
+
+.notification-menu-item :deep(.q-item__label--caption) {
   opacity: 0.8;
 }
 
-.notification-menu__empty {
+.notification-menu-empty {
   opacity: 0.7;
 }
 </style>

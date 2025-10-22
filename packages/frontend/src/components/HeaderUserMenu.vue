@@ -194,7 +194,7 @@ defineExpose({
         round
         color="white"
         icon="menu"
-        class="header-user-menu__dialog-trigger"
+        class="header-user-menu-dialog-trigger"
         aria-label="Open menu"
         @click="openMobileMenu"
       >
@@ -225,15 +225,15 @@ defineExpose({
         backdrop-filter="blur(2px)"
         maximized
         position="left"
-        class="header-user-menu__dialog-dialog"
+        class="header-user-menu-dialog-dialog"
         transition-show="slide-right"
         transition-hide="slide-left"
       >
         <q-card
-          class="header-user-menu__dialog-card bg-dark text-white"
+          class="header-user-menu-dialog-card bg-dark text-white"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
-          <q-card-section class="header-user-menu__dialog-header row items-center justify-between no-wrap">
+          <q-card-section class="header-user-menu-dialog-header row items-center justify-between no-wrap">
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
@@ -262,11 +262,13 @@ defineExpose({
 
           <q-separator dark />
 
-          <q-scroll-area class="header-user-menu__dialog-scroll">
-            <div class="header-user-menu__dialog-content column q-pa-md q-gutter-lg">
+          <q-scroll-area class="header-user-menu-dialog-scroll">
+            <div class="header-user-menu-dialog-content column q-pa-md q-gutter-lg">
               <template v-if="isLoggedIn">
                 <q-list dark>
-                  <q-item clickable v-ripple :to="{ name: 'user-reports' }">
+                  <q-item clickable v-ripple
+                          class="header-user-menu-dialog-content-list-item"
+                          :to="{ name: 'user-reports' }">
                     <q-item-section avatar>
                       <q-avatar square color="primary" text-color="white" icon="description" />
                     </q-item-section>
@@ -298,9 +300,9 @@ defineExpose({
             </div>
           </q-scroll-area>
 
-          <q-separator dark class="header-user-menu__dialog-footer-separator" />
+          <q-separator dark class="header-user-menu-dialog-footer-separator" />
 
-          <div class="header-user-menu__dialog-footer column q-gutter-sm q-pa-md q-pt-lg">
+          <div class="header-user-menu-dialog-footer column q-gutter-sm q-pa-md q-pt-lg">
             <PrimaryButton
               color="primary"
               full-width
@@ -333,7 +335,7 @@ defineExpose({
   padding: 0;
 }
 
-.header-user-menu__dialog-trigger {
+.header-user-menu-dialog-trigger {
   min-width: 0;
 }
 
@@ -359,7 +361,7 @@ defineExpose({
   }
 }
 
-.header-user-menu__dialog-card {
+.header-user-menu-dialog-card {
   min-height: 100vh;
   min-width: 550px;
   display: flex;
@@ -367,34 +369,39 @@ defineExpose({
   background: color-mix(in srgb, var(--q-dark) 92%, transparent);
 }
 
-.header-user-menu__dialog-scroll {
+.header-user-menu-dialog-scroll {
   flex: 1;
 }
 
-.header-user-menu__dialog-content {
+.header-user-menu-dialog-content {
   flex: 1;
 }
 
-.header-user-menu__dialog-footer {
+.header-user-menu-dialog-content-list-item {
+  margin-left: 0;
+  padding-left: 8px;
+}
+
+.header-user-menu-dialog-footer {
   display: none;
   background: inherit;
   border-top: 1px solid color-mix(in srgb, white 12%, transparent);
 }
 
-.header-user-menu__dialog-footer-separator {
+.header-user-menu-dialog-footer-separator {
   display: none;
   margin: 0;
 }
 
 
 @media (max-width: 599.98px) {
-  .header-user-menu__dialog-card {
+  .header-user-menu-dialog-card {
     min-width: 80vw;
   }
 }
 
 @media (max-width: 359.98px) {
-  .header-user-menu__dialog-header {
+  .header-user-menu-dialog-header {
     flex-wrap: wrap;
   }
 
@@ -405,12 +412,12 @@ defineExpose({
 }
 
 @media (max-width: 280px) {
-  .header-user-menu__dialog-card {
+  .header-user-menu-dialog-card {
     min-width: 0;
   }
 
-  .header-user-menu__dialog-footer-separator,
-  .header-user-menu__dialog-footer {
+  .header-user-menu-dialog-footer-separator,
+  .header-user-menu-dialog-footer {
     display: inherit;
   }
 }
