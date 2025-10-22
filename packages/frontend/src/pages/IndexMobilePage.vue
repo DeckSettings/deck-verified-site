@@ -1,7 +1,7 @@
 <template>
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="q-pa-md bg-grey-10 text-white">
-      <div class="column q-gutter-lg">
+      <div class="cards-container">
         <q-card flat bordered class="overflow-hidden">
           <div class="welcome-background" :style="{ backgroundImage: `url('${heroBackgroundImageUrl}')` }">
             <div class="welcome-content column text-white q-pa-md q-gutter-md">
@@ -120,7 +120,7 @@
           <q-banner v-if="feed.error" class="bg-negative text-white" dense>{{ feed.error }}</q-banner>
         </q-card>
 
-        <q-card flat square class="bg-transparent text-grey-5 text-center q-pa-sm">
+        <q-card flat square class="footer-card bg-transparent text-grey-5 text-center q-pa-sm">
           <div class="column items-center q-gutter-xs">
             <div>
               <div class="text-subtitle2 text-weight-bold">Made by Josh Sunnex (Josh.5)</div>
@@ -395,5 +395,27 @@ watch(feedEntries, (entries) => {
   position: absolute;
   display: block;
   top: 100px;
+}
+
+.cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (orientation: landscape) and (min-width: 750px) {
+  .cards-container {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Consider forcing the first child to always be full width */
+  /*.cards-container > :first-child {
+    grid-column: 1 / -1;
+  }*/
+  .cards-container > .footer-card {
+    grid-column: 1 / -1;
+  }
 }
 </style>
