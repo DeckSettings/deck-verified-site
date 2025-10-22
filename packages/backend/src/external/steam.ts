@@ -30,7 +30,7 @@ export interface MaxSteamAppIdCache {
 }
 
 export const IGNORE_GAME_NAME_REGEX: RegExp[] = [
-  /^Proton\s\d+\.\d+$/,
+  /^Proton\s\d+\.\d+\s*(\(\w+\))?$/,
   /^Steam Linux Runtime \d+\.\d+\s\(.*\)$/,
 ]
 export const IGNORE_APP_IDS = [
