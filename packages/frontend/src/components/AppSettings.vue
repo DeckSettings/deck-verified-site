@@ -62,7 +62,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 </script>
 
 <template>
-  <q-card flat bordered>
+  <q-card flat class="side-dialog-inner-card">
     <q-card-section class="side-dialog-header row items-center justify-between no-wrap">
 
       <div class="text-subtitle1 text-weight-bold">App Settings</div>
@@ -218,7 +218,6 @@ const discordLink = 'https://streamingtech.co.nz/discord'
   <q-dialog
     v-model="isAboutDialogOpen"
     backdrop-filter="blur(2px)"
-    full-height
     maximized
     position="left"
     transition-show="slide-up"
@@ -229,7 +228,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
             :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
     >
       <q-card-section class="side-dialog-content">
-        <q-card flat bordered class="side-dialog-inner-card">
+        <q-card flat class="side-dialog-inner-card">
           <q-card-section class="side-dialog-header row items-center justify-between no-wrap">
 
             <div class="text-subtitle1 text-weight-bold">About</div>

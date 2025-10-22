@@ -241,7 +241,7 @@ defineExpose({
         transition-hide="slide-left"
       >
         <q-card
-          class="side-dialog-card bg-dark text-white"
+          class="side-dialog-card"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
           <q-card-section
