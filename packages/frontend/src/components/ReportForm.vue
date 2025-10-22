@@ -62,6 +62,7 @@ const props = defineProps({
 })
 
 const $q = useQuasar()
+const isShortLandscape = computed(() => $q.screen.isShortLandscape)
 
 
 const reportForm = ref()
@@ -939,11 +940,14 @@ watch(formValues, () => {
 
 <template>
   <q-card class="report-card"
-          :class="!inDialog ? 'fullscreen' : ''"
+          :class="{
+            fullscreen: !inDialog,
+            'short-landscape': isShortLandscape
+          }"
           :style="!inDialog ? 'margin-top:58px;' : 'max-width: 1180px;'">
-    <q-card-section class="report-header">
-      <div class="header-content">
-        <div v-if="gameName" class="header-info">
+    <q-card-section class="report-header" :class="{'short-landscape': isShortLandscape}">
+      <div class="header-content" :class="{'short-landscape': isShortLandscape}">
+        <div v-if="gameName" class="header-info" :class="{'short-landscape': isShortLandscape}">
           <q-img
             v-if="gameBanner"
             class="header-image"
@@ -962,7 +966,10 @@ watch(formValues, () => {
             <div v-if="appId" class="header-subtitle">App ID: {{ appId }}</div>
           </div>
         </div>
-        <div class="header-actions" :class="!gameName ? 'header-actions-full-width' : ''">
+        <div class="header-actions" :class="{
+          'header-actions-full-width': !gameName,
+          'header-actions-short-landscape': isShortLandscape
+        }">
           <div v-if="showCancelButton" class="header-action header-action--cancel">
             <PrimaryButton
               class="header-btn"
@@ -970,7 +977,7 @@ watch(formValues, () => {
               color="negative"
               icon="close"
               full-width
-              :dense="$q.screen.lt.sm"
+              :dense="$q.screen.lt.sm || isShortLandscape"
               @click="formCancelClick"
             />
           </div>
@@ -981,11 +988,12 @@ watch(formValues, () => {
               color="warning"
               icon="clear_all"
               full-width
-              :dense="$q.screen.lt.sm"
+              :dense="$q.screen.lt.sm || isShortLandscape"
               @click="formClearClick"
             />
           </div>
-          <div class="header-action header-action--submit" :class="!$q.platform.isMobileUi ? 'lt-md' : ''">
+          <div class="header-action header-action--submit"
+               :class="!$q.platform.isMobileUi && !isShortLandscape ? 'lt-md' : ''">
             <PrimaryButton
               class="header-btn"
               label="Submit On GitHub"
@@ -993,7 +1001,7 @@ watch(formValues, () => {
               icon="fab fa-github"
               icon-right="open_in_new"
               full-width
-              :dense="$q.screen.lt.sm"
+              :dense="$q.screen.lt.sm || isShortLandscape"
               @click="formCheckAndSubmit"
             />
           </div>
@@ -1001,7 +1009,7 @@ watch(formValues, () => {
       </div>
     </q-card-section>
 
-    <q-separator />
+    <q-separator class="report-divider" :vertical="isShortLandscape" />
 
     <q-card-section class="scroll form-body">
       <q-spinner v-if="!formData" />
@@ -1337,7 +1345,7 @@ watch(formValues, () => {
     <q-card-actions
       align="right"
       class="q-pa-md-md gt-sm"
-      v-if="!$q.platform.isMobileUi"
+      v-if="!$q.platform.isMobileUi && !isShortLandscape"
     >
       <div class="header-action header-action--submit">
         <PrimaryButton
@@ -1525,11 +1533,30 @@ watch(formValues, () => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.report-header.short-landscape {
+  border-bottom: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+}
+
+.header-content.short-landscape {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  height: 100%;
+  flex: 1;
+  width: 100%;
+  max-width: 190px;
 }
 
 .header-info {
@@ -1545,7 +1572,7 @@ watch(formValues, () => {
   width: auto;
   max-width: 320px;
   aspect-ratio: 16 / 7;
-  border-radius: 10px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -1553,6 +1580,17 @@ watch(formValues, () => {
   object-fit: contain;
   height: 100%;
   width: auto;
+}
+
+.report-card.short-landscape .header-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 7;
+}
+
+.report-card.short-landscape .header-image :deep(img) {
+  width: 100%;
+  height: auto;
 }
 
 .header-details {
@@ -1565,6 +1603,11 @@ watch(formValues, () => {
 .header-title {
   font-size: 1.4rem;
   font-weight: 600;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-subtitle {
@@ -1586,6 +1629,24 @@ watch(formValues, () => {
   width: 100%;
   flex-direction: row;
   justify-content: space-between;
+}
+
+.header-actions-short-landscape {
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: auto;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+}
+
+.header-info.short-landscape {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header-action {
@@ -1611,6 +1672,11 @@ watch(formValues, () => {
 .header-btn {
   width: 100%;
   margin: 0 !important;
+}
+
+.report-divider {
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0;
 }
 
 .header-btn .q-btn__content {
@@ -1657,14 +1723,6 @@ watch(formValues, () => {
   border: 1px solid color-mix(in srgb, white 30%, #5319e7);
   border-radius: 16px;
   padding: 0 8px;
-}
-
-@media (max-width: 599.98px) {
-  .section-aside--sticky {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
 }
 
 .section-body {
@@ -1781,9 +1839,51 @@ watch(formValues, () => {
   opacity: 0.85;
 }
 
+/* Custom styling for short-landscape */
+.report-card.short-landscape {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.report-card.short-landscape .header-details {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.report-card.short-landscape .header-subtitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-card.short-landscape .header-actions {
+  align-items: stretch;
+}
+
+.report-card.short-landscape .header-action,
+.report-card.short-landscape .header-action--cancel,
+.report-card.short-landscape .header-action--submit {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.report-card.short-landscape .report-divider {
+  align-self: stretch;
+  min-height: 100%;
+}
+
+.report-card.short-landscape .form-body {
+  flex: 1;
+  min-width: 0;
+}
+
 @media (max-width: 1023.98px) {
   .report-header {
-    padding: 16px;
+    padding: 8px;
+  }
+
+  .report-header.short-landscape {
+    padding: 8px;
   }
 
   .report-card {
@@ -1874,6 +1974,12 @@ watch(formValues, () => {
   .section-aside {
     padding-left: 6px;
     padding-right: 6px;
+  }
+
+  .section-aside--sticky {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 </style>

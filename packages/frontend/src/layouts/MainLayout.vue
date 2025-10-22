@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout :view="$q.screen.isShortLandscape ? 'hhh lpR fFf' : 'hHh lpR fFf'">
 
     <q-header class="app-header text-white">
       <q-toolbar class="header-toolbar q-px-sm q-py-md q-px-sm-lg q-py-sm-lg">

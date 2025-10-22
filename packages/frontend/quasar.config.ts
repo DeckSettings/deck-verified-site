@@ -3,7 +3,7 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
-import * as dotenv from 'dotenv';
+import * as dotenv from 'dotenv'
 import path from 'path'
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
@@ -18,6 +18,7 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
       'platform-check',
+      { path: 'screen-check', server: false },
       { path: 'handheld-device-check', server: false },
       'i18n',
       'axios',
@@ -60,7 +61,7 @@ export default defineConfig((ctx) => {
       vueRouterMode: 'history', // available values: 'hash', 'history'
       env: {
         BUILD_TARGET: process.env.BUILD_TARGET || 'web',
-        BACKEND_API_ORIGIN: process.env.BACKEND_API_ORIGIN || 'https://deckverified.games'
+        BACKEND_API_ORIGIN: process.env.BACKEND_API_ORIGIN || 'https://deckverified.games',
       },
       // vueRouterBase,
       // vueDevtools,
@@ -78,7 +79,7 @@ export default defineConfig((ctx) => {
       // polyfillModulePreload: true,
       // distDir
 
-      extendViteConf (viteConf) {
+      extendViteConf(viteConf) {
         // Normalise alias into array form and preserve existing aliases
         const authReplacement = ctx.modeName === 'capacitor'
           ? '/src/utils/auth/impl/capacitor.ts'
@@ -96,7 +97,10 @@ export default defineConfig((ctx) => {
         if (Array.isArray(existing)) {
           aliasArr = existing.slice()
         } else if (existing && typeof existing === 'object') {
-          aliasArr = Object.entries(existing as Record<string, string>).map(([find, replacement]) => ({ find, replacement }))
+          aliasArr = Object.entries(existing as Record<string, string>).map(([find, replacement]) => ({
+            find,
+            replacement,
+          }))
         } else {
           aliasArr = []
         }
