@@ -17,13 +17,44 @@
 
     <q-card-section class="q-gutter-lg">
       <section>
-        <div class="text-subtitle2 text-weight-bold q-mb-sm">Home Feeds</div>
+        <div class="text-subtitle2 text-weight-bold q-mb-sm">Home Cards</div>
         <q-list bordered dark class="rounded-borders">
+          <q-item
+            clickable
+            class="text-white"
+            @click="toggleHomeWelcome"
+          >
+            <q-item-section avatar>
+              <q-avatar size="32px" color="primary" text-color="white">
+                <q-icon name="home" size="20px" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-body1 text-weight-medium">
+                Welcome Card
+              </q-item-label>
+              <q-item-label caption class="text-grey-5">
+                Show the welcome card with tips on using this app
+              </q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
+              <q-toggle
+                color="primary"
+                :model-value="showHomeWelcomeCard"
+                :disable="!isHydrated"
+                @update:model-value="handleHomeWelcomeToggle"
+                @click.stop
+              />
+            </q-item-section>
+          </q-item>
+
           <q-item
             v-for="feed in feeds"
             :key="feed.key"
-            class="text-white"
             clickable
+            class="text-white"
             @click="toggleFeed(feed.key)"
           >
             <q-item-section avatar>
@@ -35,7 +66,7 @@
 
             <q-item-section>
               <q-item-label class="text-body1 text-weight-medium">
-                {{ feed.title }}
+                {{ `${feed.title} Feed` }}
               </q-item-label>
               <q-item-label v-if="feed.subtitle" caption class="text-grey-5">
                 {{ feed.subtitle }}
@@ -47,7 +78,7 @@
                 color="primary"
                 :model-value="!configStore.isFeedDisabled(feed.key)"
                 :disable="!isHydrated"
-                @update:model-value="(value) => handleToggle(feed.key, value)"
+                @update:model-value="(value) => handleFeedToggle(feed.key, value)"
                 @click.stop
               />
             </q-item-section>
@@ -65,9 +96,9 @@ import { useConfigStore } from 'src/stores/config-store'
 import { APP_FEEDS } from 'src/constants/feeds'
 
 const configStore = useConfigStore()
-const { isHydrated } = storeToRefs(configStore)
+const { isHydrated, showHomeWelcomeCard } = storeToRefs(configStore)
 
-const handleToggle = (key: string, enabled: boolean) => {
+const handleFeedToggle = (key: string, enabled: boolean) => {
   if (!isHydrated.value) return
   configStore.setFeedDisabled(key, !enabled)
 }
@@ -75,7 +106,17 @@ const handleToggle = (key: string, enabled: boolean) => {
 const toggleFeed = (key: string) => {
   if (!isHydrated.value) return
   const isEnabled = !configStore.isFeedDisabled(key)
-  handleToggle(key, !isEnabled)
+  handleFeedToggle(key, !isEnabled)
+}
+
+const handleHomeWelcomeToggle = (value: boolean) => {
+  if (!isHydrated.value) return
+  configStore.setShowHomeWelcomeCard(value)
+}
+
+const toggleHomeWelcome = () => {
+  if (!isHydrated.value) return
+  configStore.toggleShowHomeWelcomeCard()
 }
 
 const feeds = computed(() => APP_FEEDS)

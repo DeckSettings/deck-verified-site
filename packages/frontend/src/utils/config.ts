@@ -9,12 +9,14 @@ export type { ConfigPayload }
 
 export const DEFAULT_CONFIG: ConfigPayload = {
   hideDuplicateReports: false,
+  showHomeWelcomeCard: true,
   disabledFeeds: [],
 }
 
 export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | undefined): ConfigPayload => {
   const normalized: ConfigPayload = {
     hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
+    showHomeWelcomeCard: DEFAULT_CONFIG.showHomeWelcomeCard,
     disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
   }
 
@@ -26,6 +28,9 @@ export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | 
 
   if (typeof record.hideDuplicateReports === 'boolean') {
     normalized.hideDuplicateReports = record.hideDuplicateReports
+  }
+  if (typeof record.showHomeWelcomeCard === 'boolean') {
+    normalized.showHomeWelcomeCard = record.showHomeWelcomeCard
   }
   if (Array.isArray(record.disabledFeeds)) {
     normalized.disabledFeeds = record.disabledFeeds.filter((value): value is string => true)

@@ -2,7 +2,8 @@
   <q-pull-to-refresh class="fit" no-mouse @refresh="handleRefresh">
     <q-page class="q-pa-md bg-grey-10 text-white">
       <div class="cards-container">
-        <q-card flat bordered class="overflow-hidden">
+        <!-- WELCOME CARD -->
+        <q-card v-if="showHomeWelcomeCard" flat bordered class="overflow-hidden">
           <div class="welcome-background" :style="{ backgroundImage: `url('${heroBackgroundImageUrl}')` }">
             <div class="welcome-content column text-white q-pa-md q-gutter-md">
               <!-- Caption -->
@@ -36,6 +37,7 @@
           </div>
         </q-card>
 
+        <!-- FEED CARDS -->
         <q-card
           v-for="([feedKey, feed]) in feedEntries"
           :key="feedKey"
@@ -196,7 +198,7 @@ dayjs.extend(relativeTime)
 
 const feedStore = useRssFeedStore()
 const configStore = useConfigStore()
-const { disabledFeeds } = storeToRefs(configStore)
+const { disabledFeeds, showHomeWelcomeCard } = storeToRefs(configStore)
 const carouselModels = reactive<Record<string, number>>({})
 const isMounted = ref(false)
 

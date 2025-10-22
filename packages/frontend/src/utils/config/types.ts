@@ -1,5 +1,6 @@
 export interface ConfigPayload {
   hideDuplicateReports: boolean;
+  showHomeWelcomeCard: boolean;
   disabledFeeds: string[];
 }
 

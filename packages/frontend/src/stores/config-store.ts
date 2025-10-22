@@ -6,19 +6,29 @@ import type { ConfigPayload } from 'src/utils/config'
 export const useConfigStore = defineStore('config', () => {
   const state = reactive<ConfigPayload>({
     hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
+    showHomeWelcomeCard: DEFAULT_CONFIG.showHomeWelcomeCard,
     disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
   })
   const isHydrated = ref(false)
 
   const hideDuplicateReports = toRef(state, 'hideDuplicateReports')
+  const showHomeWelcomeCard = toRef(state, 'showHomeWelcomeCard')
   const disabledFeeds = toRef(state, 'disabledFeeds')
 
   const setHideDuplicateReports = (value: boolean) => {
     hideDuplicateReports.value = value
   }
 
+  const setShowHomeWelcomeCard = (value: boolean) => {
+    showHomeWelcomeCard.value = value
+  }
+
   const toggleHideDuplicateReports = () => {
     hideDuplicateReports.value = !hideDuplicateReports.value
+  }
+
+  const toggleShowHomeWelcomeCard = () => {
+    showHomeWelcomeCard.value = !showHomeWelcomeCard.value
   }
 
   const hydrate = async () => {
@@ -30,9 +40,11 @@ export const useConfigStore = defineStore('config', () => {
       const result = await loadConfig()
       if (result) {
         state.hideDuplicateReports = result.hideDuplicateReports
+        state.showHomeWelcomeCard = result.showHomeWelcomeCard
         state.disabledFeeds = [...result.disabledFeeds]
       } else {
         state.hideDuplicateReports = DEFAULT_CONFIG.hideDuplicateReports
+        state.showHomeWelcomeCard = DEFAULT_CONFIG.showHomeWelcomeCard
         state.disabledFeeds = [...DEFAULT_CONFIG.disabledFeeds]
       }
     } catch (error) {
@@ -59,12 +71,14 @@ export const useConfigStore = defineStore('config', () => {
   watch(
     () => ({
       hideDuplicateReports: state.hideDuplicateReports,
+      showHomeWelcomeCard: state.showHomeWelcomeCard,
       disabledFeeds: state.disabledFeeds,
     }),
     async (value) => {
       if (!isHydrated.value) return
       const payload: ConfigPayload = {
         hideDuplicateReports: value.hideDuplicateReports,
+        showHomeWelcomeCard: value.showHomeWelcomeCard,
         disabledFeeds: [...value.disabledFeeds],
       }
       try {
@@ -80,6 +94,9 @@ export const useConfigStore = defineStore('config', () => {
     hideDuplicateReports,
     setHideDuplicateReports,
     toggleHideDuplicateReports,
+    showHomeWelcomeCard,
+    setShowHomeWelcomeCard,
+    toggleShowHomeWelcomeCard,
     disabledFeeds,
     setFeedDisabled,
     isFeedDisabled,
