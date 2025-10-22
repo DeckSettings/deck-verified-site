@@ -91,3 +91,27 @@ html {
   overflow: hidden;
   z-index: 1000;
 }
+
+.side-dialog-card {
+  min-height: 100vh;
+  min-width: 550px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--q-dark) 92%, transparent);
+}
+
+.side-dialog-header {
+  min-height: 80px;
+}
+
+@media (max-width: 599.98px) {
+  .side-dialog-card {
+    min-width: 90vw;
+  }
+}
+
+@media (max-width: 280px) {
+  .side-dialog-card {
+    min-width: 0;
+  }
+}

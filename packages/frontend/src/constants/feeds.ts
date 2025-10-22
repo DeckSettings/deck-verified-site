@@ -1,0 +1,31 @@
+export interface AppFeedDefinition {
+  key: string;
+  url: string;
+  title: string;
+  subtitle?: string;
+  logo?: string | null;
+}
+
+export const APP_FEEDS: AppFeedDefinition[] = [
+  {
+    key: 'sdhq-game-reviews',
+    url: 'https://steamdeckhq.com/feed/?post_type=game-reviews',
+    title: 'Game Settings Reviews',
+    subtitle: 'Updates on the latest SDHQ Game Settings guides',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+  {
+    key: 'sdhq-tips-and-guides',
+    url: 'https://steamdeckhq.com/tips-and-guides/feed/',
+    title: 'Game Tips and Guides',
+    subtitle: 'Latest how-to articles, tips, and guides for Steam Deck and handheld gaming',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+  {
+    key: 'sdhq-news',
+    url: 'https://steamdeckhq.com/feed/',
+    title: 'News',
+    subtitle: 'The latest Steam Deck updates, game patches, deals, device reviews, and community highlights',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+]

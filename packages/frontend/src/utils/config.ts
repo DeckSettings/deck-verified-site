@@ -9,10 +9,14 @@ export type { ConfigPayload }
 
 export const DEFAULT_CONFIG: ConfigPayload = {
   hideDuplicateReports: false,
+  disabledFeeds: [],
 }
 
 export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | undefined): ConfigPayload => {
-  const normalized: ConfigPayload = { ...DEFAULT_CONFIG }
+  const normalized: ConfigPayload = {
+    hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
+    disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
+  }
 
   if (!payload || typeof payload !== 'object') {
     return normalized
@@ -20,14 +24,12 @@ export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | 
 
   const record = payload as Partial<ConfigPayload>
 
-  (Object.keys(DEFAULT_CONFIG) as Array<keyof ConfigPayload>).forEach((key) => {
-    const defaultValue = DEFAULT_CONFIG[key]
-    const incomingValue = record[key]
-
-    if (typeof incomingValue === typeof defaultValue) {
-      normalized[key] = incomingValue as typeof defaultValue
-    }
-  })
+  if (typeof record.hideDuplicateReports === 'boolean') {
+    normalized.hideDuplicateReports = record.hideDuplicateReports
+  }
+  if (Array.isArray(record.disabledFeeds)) {
+    normalized.disabledFeeds = record.disabledFeeds.filter((value): value is string => true)
+  }
 
   return normalized
 }

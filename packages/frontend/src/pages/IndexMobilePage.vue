@@ -180,50 +180,65 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useRssFeedStore } from 'src/stores/rss-feed-store'
 import type { FeedDefinition } from 'src/stores/rss-feed-store'
 import { simGithubsponsors, simKofi, simPatreon } from 'quasar-extras-svg-icons/simple-icons-v14'
+import { useConfigStore } from 'src/stores/config-store'
+import { APP_FEEDS } from 'src/constants/feeds'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
 const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-image.png`)
 
 dayjs.extend(relativeTime)
 
-const INITIAL_FEEDS = [
-  {
-    key: 'sdhq-game-reviews',
-    url: 'https://steamdeckhq.com/feed/?post_type=game-reviews',
-    title: 'Game Settings Reviews',
-    subtitle: 'Deck-ready performance breakdowns and recommended tweaks',
-    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
-  },
-  {
-    key: 'sdhq-tips-and-guides',
-    url: 'https://steamdeckhq.com/tips-and-guides/feed/',
-    title: 'Game Tips and Guides',
-    subtitle: '',
-    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
-  },
-  {
-    key: 'sdhq-news',
-    url: 'https://steamdeckhq.com/feed/',
-    title: 'News',
-    subtitle: '',
-    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
-  },
-]
-
 const feedStore = useRssFeedStore()
+const configStore = useConfigStore()
+const { disabledFeeds } = storeToRefs(configStore)
 const carouselModels = reactive<Record<string, number>>({})
+const isMounted = ref(false)
 
-INITIAL_FEEDS.forEach(({ key, url, title, subtitle, logo }) => {
-  feedStore.registerFeed(key, url, { title, subtitle, logo })
-  carouselModels[key] = 0
-})
+const enabledFeedDefinitions = computed(() =>
+  APP_FEEDS.filter(feed => !disabledFeeds.value.includes(feed.key)),
+)
 
-const feedEntries = computed<[string, FeedDefinition][]>(() => INITIAL_FEEDS
+watch(
+  enabledFeedDefinitions,
+  (feeds, previous) => {
+    const enabledKeys = new Set(feeds.map(feed => feed.key))
+
+    feeds.forEach(({ key, url, title, subtitle, logo }) => {
+      feedStore.registerFeed(key, url, {
+        title,
+        subtitle: subtitle ?? '',
+        logo: logo ?? null,
+      })
+      if (carouselModels[key] === undefined) {
+        carouselModels[key] = 0
+      }
+    })
+
+    Object.keys(carouselModels).forEach((key) => {
+      if (!enabledKeys.has(key)) {
+        delete carouselModels[key]
+      }
+    })
+
+    if (isMounted.value) {
+      const previousList = previous ?? []
+      const previousKeys = new Set(previousList.map(feed => feed.key))
+      const newlyEnabled = feeds.filter(feed => !previousKeys.has(feed.key))
+      if (newlyEnabled.length > 0) {
+        void Promise.all(newlyEnabled.map(({ key }) => feedStore.ensureFeed(key)))
+      }
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+const feedEntries = computed<[string, FeedDefinition][]>(() => enabledFeedDefinitions.value
   .map(({ key }) => {
     const feed = feedStore.feedByKey(key)
     return feed ? ([key, feed] as [string, FeedDefinition]) : null
@@ -231,11 +246,9 @@ const feedEntries = computed<[string, FeedDefinition][]>(() => INITIAL_FEEDS
   .filter((entry): entry is [string, FeedDefinition] => entry !== null))
 
 
-const isMounted = ref(false)
-
 onMounted(() => {
   isMounted.value = true
-  void Promise.all(INITIAL_FEEDS.map(({ key }) => feedStore.ensureFeed(key)))
+  void Promise.all(enabledFeedDefinitions.value.map(({ key }) => feedStore.ensureFeed(key)))
 })
 
 const formatDate = (iso?: string | null) => {

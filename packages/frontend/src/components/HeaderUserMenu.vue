@@ -8,6 +8,7 @@ import { useNotifications } from 'src/composables/useNotifications'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import MobileProgressNotifications from 'components/elements/MobileProgressNotifications.vue'
 import { mobileProgressState } from 'src/composables/useProgressNotifications'
+import AppSettings from 'components/AppSettings.vue'
 
 // Modern user dropdown combining authentication controls and notifications.
 
@@ -39,6 +40,7 @@ const hasProgress = computed(() => {
 })
 
 const isMobileMenuOpen = ref(false)
+const isSettingsDialogOpen = ref(false)
 
 const openMobileMenu = () => {
   if (displayMode.value !== 'hamburger') return
@@ -172,6 +174,15 @@ defineExpose({
                       <q-icon name="chevron_right" />
                     </q-item-section>
                   </q-item>
+                  <q-item clickable v-ripple @click="isSettingsDialogOpen = true">
+                    <q-item-section avatar>
+                      <q-avatar square color="primary" text-color="white" icon="settings" />
+                    </q-item-section>
+                    <q-item-section>App Settings</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
                 </q-list>
 
                 <q-separator dark />
@@ -230,10 +241,11 @@ defineExpose({
         transition-hide="slide-left"
       >
         <q-card
-          class="header-user-menu-dialog-card bg-dark text-white"
+          class="side-dialog-card bg-dark text-white"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
-          <q-card-section class="header-user-menu-dialog-header row items-center justify-between no-wrap">
+          <q-card-section
+            class="header-user-menu-dialog-header side-dialog-header row items-center justify-between no-wrap">
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
@@ -268,11 +280,24 @@ defineExpose({
                 <q-list dark>
                   <q-item clickable v-ripple
                           class="header-user-menu-dialog-content-list-item"
-                          :to="{ name: 'user-reports' }">
+                          :to="{ name: 'user-reports' }"
+                  >
                     <q-item-section avatar>
                       <q-avatar square color="primary" text-color="white" icon="description" />
                     </q-item-section>
                     <q-item-section>My Reports</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable v-ripple
+                          class="header-user-menu-dialog-content-list-item"
+                          @click="isSettingsDialogOpen = true"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar square color="primary" text-color="white" icon="settings" />
+                    </q-item-section>
+                    <q-item-section>App Settings</q-item-section>
                     <q-item-section side>
                       <q-icon name="chevron_right" />
                     </q-item-section>
@@ -314,8 +339,27 @@ defineExpose({
           </div>
         </q-card>
       </q-dialog>
+
+      <!-- App Settings Dialog -->
+      <q-dialog
+        v-model="isSettingsDialogOpen"
+        backdrop-filter="blur(2px)"
+        maximized
+        position="left"
+        transition-show="slide-up"
+        transition-hide="slide-down"
+        transition-duration="100"
+      >
+        <q-card
+          class="side-dialog-card bg-dark text-white q-pa-none"
+          :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;'"
+        >
+          <AppSettings />
+        </q-card>
+      </q-dialog>
     </template>
   </div>
+
 </template>
 
 <style scoped>
@@ -361,14 +405,6 @@ defineExpose({
   }
 }
 
-.header-user-menu-dialog-card {
-  min-height: 100vh;
-  min-width: 550px;
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in srgb, var(--q-dark) 92%, transparent);
-}
-
 .header-user-menu-dialog-scroll {
   flex: 1;
 }
@@ -393,13 +429,6 @@ defineExpose({
   margin: 0;
 }
 
-
-@media (max-width: 599.98px) {
-  .header-user-menu-dialog-card {
-    min-width: 80vw;
-  }
-}
-
 @media (max-width: 359.98px) {
   .header-user-menu-dialog-header {
     flex-wrap: wrap;
@@ -412,13 +441,17 @@ defineExpose({
 }
 
 @media (max-width: 280px) {
-  .header-user-menu-dialog-card {
-    min-width: 0;
-  }
-
   .header-user-menu-dialog-footer-separator,
   .header-user-menu-dialog-footer {
     display: inherit;
   }
+}
+
+.app-settings-dialog-card {
+  min-height: 100vh;
+}
+
+.app-settings-dialog-scroll {
+  height: 100%;
 }
 </style>
