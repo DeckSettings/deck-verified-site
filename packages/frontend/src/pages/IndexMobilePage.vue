@@ -199,6 +199,20 @@ const INITIAL_FEEDS = [
     subtitle: 'Deck-ready performance breakdowns and recommended tweaks',
     logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
   },
+  {
+    key: 'sdhq-tips-and-guides',
+    url: 'https://steamdeckhq.com/tips-and-guides/feed/',
+    title: 'Game Tips and Guides',
+    subtitle: '',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+  {
+    key: 'sdhq-news',
+    url: 'https://steamdeckhq.com/feed/',
+    title: 'News',
+    subtitle: '',
+    logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
 ]
 
 const feedStore = useRssFeedStore()
