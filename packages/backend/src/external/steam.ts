@@ -34,13 +34,16 @@ export const IGNORE_GAME_NAME_REGEX: RegExp[] = [
   /^Steam Linux Runtime \d+\.\d+\s\(.*\)$/,
 ]
 export const IGNORE_APP_IDS = [
-  2180100, // Proton Hotfix
-  1493710, // Proton Experimental
-  1070560, // Steam Linux Runtime
-  1070560, // "Steam Linux Runtime 1.0 (scout)"
-  1391110, // "Steam Linux Runtime 2.0 (soldier)"
-  1628350, // "Steam Linux Runtime 3.0 (sniper)"
-  228980, // "Steamworks Common Redistributables"
+  2180100,  // Proton Hotfix
+  1493710,  // Proton Experimental
+  1070560,  // Steam Linux Runtime
+  1070560,  // Steam Linux Runtime 1.0 (scout)
+  1391110,  // Steam Linux Runtime 2.0 (soldier)
+  1628350,  // Steam Linux Runtime 3.0 (sniper)
+  228980,   // Steamworks Common Redistributables
+  1182480,  // EALink
+  993090,   // Lossless Scaling
+  2693120,  // XBPlay
 ]
 
 const STEAM_STRINGS_MAP: Record<string, string> = {
