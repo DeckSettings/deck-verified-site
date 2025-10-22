@@ -310,18 +310,36 @@ defineExpose({
                 <MobileProgressNotifications />
               </template>
 
+              <template v-else>
+                <q-list dark>
+                  <q-item clickable v-ripple
+                          class="header-user-menu-dialog-content-list-item"
+                          @click="isSettingsDialogOpen = true"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar square color="primary" text-color="white" icon="settings" />
+                    </q-item-section>
+                    <q-item-section>App Settings</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
 
-              <div v-else class="column q-gutter-sm">
-                <p class="text-body2 text-grey-4">
-                  Connect your GitHub account to receive personalised notifications and save your activity.
-                </p>
-                <PrimaryButton
-                  color="primary"
-                  full-width
-                  icon="fab fa-github"
-                  label="Login with GitHub"
-                  @click="handleLogin" />
-              </div>
+                <q-separator dark />
+
+                <div class="column q-gutter-sm">
+                  <p class="text-body2 text-grey-4">
+                    Connect your GitHub account to receive personalised notifications and save your activity.
+                  </p>
+                  <PrimaryButton
+                    color="primary"
+                    full-width
+                    icon="fab fa-github"
+                    label="Login with GitHub"
+                    @click="handleLogin" />
+                </div>
+              </template>
             </div>
           </q-scroll-area>
 
