@@ -6,6 +6,7 @@ import { useAuthStore } from 'stores/auth-store'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useNotifications } from 'src/composables/useNotifications'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import FooterSupportCard from 'components/elements/FooterSupportCard.vue'
 import MobileProgressNotifications from 'components/elements/MobileProgressNotifications.vue'
 import { mobileProgressState } from 'src/composables/useProgressNotifications'
 import AppSettings from 'components/AppSettings.vue'
@@ -349,9 +350,10 @@ defineExpose({
             </div>
           </q-scroll-area>
 
-          <q-separator dark class="header-user-menu-dialog-footer-separator" />
+          <q-separator dark class="q-my-md" />
 
-          <div class="header-user-menu-dialog-footer column q-gutter-sm q-pa-md q-pt-lg">
+          <div class="header-user-menu-dialog-footer">
+            <FooterSupportCard v-if="$q.platform.isMobileUi" />
             <PrimaryButton
               color="primary"
               full-width
@@ -439,14 +441,14 @@ defineExpose({
 }
 
 .header-user-menu-dialog-footer {
-  display: none;
-  background: inherit;
-  border-top: 1px solid color-mix(in srgb, white 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 16px;
 }
 
-.header-user-menu-dialog-footer-separator {
+.footer-close-button {
   display: none;
-  margin: 0;
 }
 
 @media (max-width: 359.98px) {
@@ -461,8 +463,7 @@ defineExpose({
 }
 
 @media (max-width: 280px) {
-  .header-user-menu-dialog-footer-separator,
-  .header-user-menu-dialog-footer {
+  .footer-close-button {
     display: inherit;
   }
 }
