@@ -44,6 +44,17 @@ html {
   background: var(--scrollbar-thumb-hover);
 }
 
+body .q-item.q-router-link--active,
+body .q-item.q-router-link--exact-active,
+body .q-item--active {
+  color: color-mix(in srgb, var(--q-primary) 60%, white);
+}
+
+body .q-item.q-router-link--active .q-icon,
+body .q-item.q-router-link--exact-active .q-icon {
+  color: inherit;
+}
+
 /* -sm- */
 @media (max-width: 599.98px) {
   h1, .text-h1 {
