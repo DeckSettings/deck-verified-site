@@ -52,12 +52,12 @@ onBeforeUnmount(() => {
 })
 
 /*METADATA*/
-const metaTitle = ref('Steam Deck Game Settings (Community Reports)')
+const metaTitle = ref('Handheld Game Settings (Community Reports)')
 const metaDescription = ref('Browse Steam Deck game settings and community performance reports. Find graphics presets, FPS targets, and battery life tips for top PC games on Steam Deck, ROG Ally, and Legion Go, and other handhelds.')
 const metaLink = ref('https://deckverified.games/games-with-reports')
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('https://deckverified.games/hero-image.png')
-const metaAlt = ref('Steam Deck game settings reports')
+const metaAlt = ref('Handheld game settings reports')
 const metaImageType = ref('image/png')
 const metaImageWidth = ref('700')
 const metaImageHeight = ref('330')

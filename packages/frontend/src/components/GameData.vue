@@ -441,8 +441,8 @@ onBeforeUnmount(() => {
 })
 
 /*METADATA*/
-const metaTitle = computed(() => gameStore.metadata.title || 'Game Report – Steam Deck settings')
-const metaDescription = computed(() => gameStore.metadata.description || 'Best Steam Deck settings and community performance reports for this game. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.')
+const metaTitle = computed(() => gameStore.metadata.title || 'Game Report – Handheld Settings')
+const metaDescription = computed(() => gameStore.metadata.description || 'Best handheld PC settings and community performance reports for this game. Graphics presets, frame rate targets, battery life tips, and tweaks that work on SteamOS handhelds.')
 const metaLink = computed(() => `https://deckverified.games${route.path}`)
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = computed(() => gameStore.metadata.image)
