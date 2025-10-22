@@ -85,6 +85,42 @@
           </q-item>
         </q-list>
       </section>
+
+      <section>
+        <div class="text-subtitle2 text-weight-bold q-mb-sm">Reports</div>
+        <q-list bordered dark class="rounded-borders">
+          <q-item
+            clickable
+            class="text-white"
+            @click="toggleHideDuplicates"
+          >
+            <q-item-section avatar>
+              <q-avatar size="32px" color="primary" text-color="white">
+                <q-icon name="content_copy" size="18px" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-body1 text-weight-medium">
+                Hide Duplicate Reports
+              </q-item-label>
+              <q-item-label caption class="text-grey-5">
+                Hide reports that have been flagged as duplicates by the community
+              </q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
+              <q-toggle
+                color="primary"
+                :model-value="hideDuplicateReports"
+                :disable="!isHydrated"
+                @update:model-value="handleHideDuplicatesToggle"
+                @click.stop
+              />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </section>
     </q-card-section>
   </q-card>
 </template>
@@ -96,7 +132,7 @@ import { useConfigStore } from 'src/stores/config-store'
 import { APP_FEEDS } from 'src/constants/feeds'
 
 const configStore = useConfigStore()
-const { isHydrated, showHomeWelcomeCard } = storeToRefs(configStore)
+const { isHydrated, showHomeWelcomeCard, hideDuplicateReports } = storeToRefs(configStore)
 
 const handleFeedToggle = (key: string, enabled: boolean) => {
   if (!isHydrated.value) return
@@ -117,6 +153,16 @@ const handleHomeWelcomeToggle = (value: boolean) => {
 const toggleHomeWelcome = () => {
   if (!isHydrated.value) return
   configStore.toggleShowHomeWelcomeCard()
+}
+
+const handleHideDuplicatesToggle = (value: boolean) => {
+  if (!isHydrated.value) return
+  configStore.setHideDuplicateReports(value)
+}
+
+const toggleHideDuplicates = () => {
+  if (!isHydrated.value) return
+  configStore.toggleHideDuplicateReports()
 }
 
 const feeds = computed(() => APP_FEEDS)
