@@ -258,7 +258,7 @@ const redisCacheAuthorGameReportCount = async (count: number, author: string): P
     throw new Error('Missing required param: author.')
   }
   const redisKey = `github:game_reports:author_count:${author}`
-  const cacheTime = 60 * 60 * 24 // 1 day
+  const cacheTime = 60 * 60 * 4 // 4 hours
   try {
     const cacheData = Number(count).toString()
     await redisCacheExtData(cacheData, redisKey, cacheTime)
