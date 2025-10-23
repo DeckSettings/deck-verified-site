@@ -12,6 +12,7 @@ import { parseMarkdownKeyValueList } from 'src/utils/markdownSettings'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import { useGameStore } from 'src/stores/game-store'
 import type { QTableColumn } from 'quasar'
+import { standardizeGameSettingsKey } from 'src/constants/game-settings-key-map'
 
 interface ComparisonRow {
   id: string;
@@ -191,19 +192,18 @@ const performanceRows = computed<ComparisonRow[]>(() =>
   ]),
 )
 
-const displaySettingRows = computed<ComparisonRow[]>(() =>
-  buildMarkdownRows(data => data.game_display_settings),
-)
-
-const graphicsSettingRows = computed<ComparisonRow[]>(() =>
-  buildMarkdownRows(data => data.game_graphics_settings),
+const inGameSettingsRows = computed<ComparisonRow[]>(() =>
+  buildMarkdownRows(data => (
+    [data.game_display_settings, data.game_graphics_settings]
+      .filter(Boolean)
+      .join('\n')
+  )),
 )
 
 const sections = computed<SectionConfig[]>(() => [
   { id: 'system', title: 'System Configuration', rows: systemRows.value },
   { id: 'performance', title: 'Performance Settings', rows: performanceRows.value },
-  { id: 'display', title: 'Game Display Settings', rows: displaySettingRows.value },
-  { id: 'graphics', title: 'Game Graphics Settings', rows: graphicsSettingRows.value },
+  { id: 'in-game', title: 'In-Game Settings', rows: inGameSettingsRows.value },
 ].filter(section => section.rows.length > 0)
   .map((section, index) => ({
     ...section,
@@ -422,14 +422,16 @@ function buildMarkdownRows(getter: (data: Partial<GameReportData>) => string | u
 
   const baseEntries = parsedPerReport[0] ?? []
   baseEntries.forEach(entry => {
-    if (!order.includes(entry.key)) order.push(entry.key)
-    if (!labelLookup.has(entry.key)) labelLookup.set(entry.key, entry.rawKey)
+    const standardKey = standardizeGameSettingsKey(entry.key)
+    if (!order.includes(standardKey)) order.push(standardKey)
+    if (!labelLookup.has(standardKey)) labelLookup.set(standardKey, entry.rawKey.toUpperCase())
   })
 
   parsedPerReport.forEach(entries => {
     entries.forEach(entry => {
-      if (!order.includes(entry.key)) order.push(entry.key)
-      if (!labelLookup.has(entry.key)) labelLookup.set(entry.key, entry.rawKey)
+      const standardKey = standardizeGameSettingsKey(entry.key)
+      if (!order.includes(standardKey)) order.push(standardKey)
+      if (!labelLookup.has(standardKey)) labelLookup.set(standardKey, entry.rawKey.toUpperCase())
     })
   })
 
@@ -437,13 +439,13 @@ function buildMarkdownRows(getter: (data: Partial<GameReportData>) => string | u
     .map(key => {
       const label = labelLookup.get(key) ?? key
       const values = parsedPerReport.map(entries => {
-        const match = entries.find(entry => entry.key === key)
+        const match = entries.find(entry => standardizeGameSettingsKey(entry.key) === key)
         return sanitizeValue(match?.value ?? '')
       })
       if (!values.some(value => value)) return null
       return {
         id: `markdown-${key}`,
-        label,
+        label: label.toUpperCase(),
         values,
         status: determineRowStatus(values),
       }
