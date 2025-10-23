@@ -17,14 +17,19 @@ import {
 import {
   connectToRedis,
   storeGameInRedis,
-  searchGamesInRedis, getGamesWithReports,
-  logAggregatedMetric, getAggregatedMetrics,
+  searchGamesInRedis,
+  getGamesWithReports,
+  logAggregatedMetric,
+  getAggregatedMetrics,
   getTaskProgress,
 } from './redis'
 import {
   fetchJosh5Avatar,
   generateImageLinksFromAppId,
   generateGameRatingsSummary,
+  buildGeneralCommentNotification,
+  sanitizeGeneralCommentWebhookPayload,
+  parseReportBody,
 } from './helpers'
 import type {
   AggregateMetricResponse,
@@ -44,7 +49,6 @@ import {
   removeNotification,
   sanitizeNotificationInput,
 } from './notifications'
-import { parseReportBody } from './helpers'
 import { githubMonitorQueue } from './jobs'
 import { initializeWorkers } from './jobs/worker'
 import { initScheduledTasks } from './jobs/scheduler'
@@ -280,6 +284,67 @@ app.post('/deck-verified/api/auth/refresh', express.json(), async (req: Request,
   } catch (error) {
     logger.error('Error refreshing token:', error)
     res.status(500).json({ error: 'Refresh error' })
+  }
+})
+
+
+app.post('/deck-verified/api/internal/github/comment-event', express.json({ limit: '64kb' }), async (req: Request, res: Response) => {
+  if (!config.githubWorkflowSecret) {
+    logger.error('GitHub comment ingestion attempted without configured workflow secret.')
+    res.status(503).json({ error: 'workflow_ingest_disabled' })
+    return
+  }
+  const workflowSecret = typeof req.headers['x-github-workflow-secret'] === 'string' ? req.headers['x-github-workflow-secret'] : null
+  if (!workflowSecret || workflowSecret !== config.githubWorkflowSecret) {
+    logger.warn('Unauthorized GitHub comment ingestion attempt', {
+      remoteIp: req.ip,
+    })
+    res.status(401).json({ error: 'unauthorized' })
+    return
+  }
+
+  const rawType = typeof req.body?.type === 'string' ? req.body.type.trim().toLowerCase() : ''
+  if (!rawType) {
+    res.status(400).json({ error: 'missing_type' })
+    return
+  }
+
+  if (rawType !== 'general') {
+    logger.info('Ignoring unsupported GitHub comment webhook type', {
+      receivedType: rawType,
+    })
+    res.status(202).json({ status: 'ignored', reason: 'unsupported_type', type: rawType })
+    return
+  }
+
+  const payload = sanitizeGeneralCommentWebhookPayload(req.body)
+  if (!payload) {
+    logger.warn('Invalid GitHub comment payload received')
+    res.status(400).json({ error: 'invalid_payload' })
+    return
+  }
+
+  try {
+    const notification = buildGeneralCommentNotification({
+      issueNumber: payload.issueNumber,
+      commentBody: payload.commentBody,
+      commentUrl: payload.commentUrl,
+    })
+    await appendNotification(payload.issueAuthorId, notification)
+
+    logger.info('Stored GitHub comment notification', {
+      commentId: payload.commentId,
+      userId: payload.issueAuthorId,
+      commentUserId: payload.commentUserId,
+    })
+
+    res.status(202).json({ status: 'stored' })
+  } catch (error) {
+    logger.error('Failed to process GitHub comment event', {
+      error,
+      commentId: payload.commentId,
+    })
+    res.status(500).json({ error: 'ingest_failed' })
   }
 })
 

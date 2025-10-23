@@ -38,6 +38,8 @@ services:
       - private-net
     environment:
       RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
+      # -- GitHub Workflow Updates Secret
+      GITHUB_WORKFLOW_SECRET: ${GITHUB_WORKFLOW_SECRET:-}
       # -- GitHub token (required to increase rate limits on API calls).
       GH_TOKEN: ${GH_TOKEN:?}
       # -- GitHub User Login

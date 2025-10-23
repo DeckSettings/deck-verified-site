@@ -8,6 +8,7 @@ import {
   YouTubeOEmbedMetadata,
   GameRatingsSummary,
 } from '../../shared/src/game'
+import type { UserNotification } from '../../shared/src/notifications'
 import NodeCache from 'node-cache'
 import { fetchSteamDeckCompatibility, mapSteamDeckCompatibility } from './external/steam'
 import { fetchProtonDbSummary, mapProtonDbSummary } from './external/protondb'
@@ -32,6 +33,79 @@ export const generatePkceCodeVerifier = (): string => {
 export const generatePkceCodeChallenge = (verifier: string): string => {
   const hash = crypto.createHash('sha256').update(verifier).digest()
   return Buffer.from(hash).toString('base64url')
+}
+
+export interface GeneralCommentNotificationInput {
+  issueNumber: number | null
+  commentBody: string
+  commentUrl: string
+}
+
+export const buildGeneralCommentNotification = (input: GeneralCommentNotificationInput): UserNotification => {
+  const reference = Number.isFinite(input.issueNumber)
+    ? `report #${input.issueNumber}`
+    : 'your report'
+  const commentBody = (input.commentBody ?? '').replace(/\s+/g, ' ').trim()
+  const summary = truncateStringToLength(
+    commentBody,
+    160,
+  ) || 'Someone commented on your report.'
+
+  return {
+    icon: 'comment',
+    title: `New comment on ${reference}`,
+    body: summary,
+    link: input.commentUrl,
+    linkTooltip: 'Open comment on GitHub',
+  }
+}
+
+export interface GeneralCommentWebhookPayload {
+  type: 'general'
+  issueNumber: number | null
+  issueAuthorId: string
+  commentId: string
+  commentBody: string
+  commentUserId: string
+  commentUrl: string
+  commentCreatedAt: string | null
+}
+
+export const sanitizeGeneralCommentWebhookPayload = (input: unknown): GeneralCommentWebhookPayload | null => {
+  if (!input || typeof input !== 'object') {
+    return null
+  }
+
+  const raw = input as Record<string, any>
+
+  const issueAuthorNumeric = parseNumberOrNull(raw.issueAuthorId)
+  const commentNumeric = parseNumberOrNull(raw.commentId)
+  const commentUserNumeric = parseNumberOrNull(raw.commentUserId)
+  const commentUrl = typeof raw.commentUrl === 'string' ? raw.commentUrl.trim() : ''
+  const commentBody = typeof raw.commentBody === 'string' ? raw.commentBody : ''
+  const commentCreatedAt = typeof raw.commentCreatedAt === 'string'
+    ? raw.commentCreatedAt.trim() || null
+    : null
+  const issueNumber = parseNumberOrNull(raw.issueNumber)
+
+  if (issueAuthorNumeric === null || commentNumeric === null || commentUserNumeric === null || !commentUrl) {
+    return null
+  }
+
+  const issueAuthorId = issueAuthorNumeric.toString()
+  const commentId = commentNumeric.toString()
+  const commentUserId = commentUserNumeric.toString()
+
+  return {
+    type: 'general',
+    issueNumber,
+    issueAuthorId,
+    commentId,
+    commentBody,
+    commentUserId,
+    commentUrl,
+    commentCreatedAt,
+  }
 }
 
 /**
@@ -281,32 +355,52 @@ export const isValidNumber = (value: unknown): value is number => {
 }
 
 /**
- * Limits a string to 100 characters total.
- * If the string exceeds 100 characters, it is truncated to 97 characters and "..." is appended,
- * ensuring the final string length is exactly 100 characters.
+ * Truncates a string to a specified maximum length.
+ *
+ * If the provided `input` exceeds `limit` characters, the string is truncated and an ellipsis ("...")
+ * is appended. The function ensures that the total length of the returned string does not exceed `limit`.
+ *
+ * Behavior notes:
+ * - If `limit` is omitted, it defaults to 100.
+ * - If `limit` is less than or equal to 0, an empty string is returned.
+ * - If `limit` is less than or equal to 3, the function will return the first `limit` characters
+ *   without appending an ellipsis (since there isn't room for it).
+ *
+ * @param input - The input string to truncate.
+ * @param limit - Maximum allowed length of the output string (including the ellipsis when applied).
  */
-export const limitStringTo100Characters = (input: string): string => {
-  if (input.length <= 100) {
-    return input
-  }
-  return input.substring(0, 97) + '...'
+export const truncateStringToLength = (input: string, limit = 100): string => {
+  if (!input) return ''
+  if (limit <= 0) return ''
+  if (input.length <= limit) return input
+  if (limit <= 3) return input.slice(0, limit)
+  const safeLimit = limit - 3
+  return `${input.slice(0, safeLimit)}...`
 }
 
 /**
- * Attempts to coerce various input formats (numbers, raw strings, "app/123", etc.) into a numeric Steam app ID.
- * Returns null when the value cannot be parsed into a finite number.
+ * Attempts to coerce various input formats (numbers, raw strings, "app/123", etc.) into a finite number.
+ * Returns null when the value cannot be parsed.
  */
-export const parseAppIdNumber = (value: string | number | null | undefined): number | null => {
+export const parseNumberOrNull = (value: unknown): number | null => {
   if (value === null || value === undefined) {
     return null
   }
-  const stringValue = typeof value === 'number' ? value.toString() : value
-  if (!stringValue) {
-    return null
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
   }
-  const numericPart = stringValue.includes('/') ? stringValue.split('/')[1] : stringValue
-  const parsed = Number(numericPart)
-  return Number.isFinite(parsed) ? parsed : null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return null
+    }
+    const candidate = trimmed.includes('/')
+      ? trimmed.slice(trimmed.lastIndexOf('/') + 1)
+      : trimmed
+    const parsed = Number(candidate)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
 }
 
 /**
@@ -539,7 +633,7 @@ export const generateGameRatingsSummary = async (
 
   if (!protonSummary && !steamDeckCompatibilitySummary) {
     return {
-      appId: parseAppIdNumber(normalizedAppId),
+      appId: parseNumberOrNull(normalizedAppId),
       gameName: (steamCompatibilitySummaryRaw as any)?.name || gameName || null,
       lastChecked: new Date().toISOString(),
       protonDb: null,
@@ -548,7 +642,7 @@ export const generateGameRatingsSummary = async (
   }
 
   return {
-    appId: parseAppIdNumber(normalizedAppId) ?? parseAppIdNumber((steamCompatibilitySummaryRaw as any)?.steam_appid),
+    appId: parseNumberOrNull(normalizedAppId) ?? parseNumberOrNull((steamCompatibilitySummaryRaw as any)?.steam_appid),
     gameName: (steamCompatibilitySummaryRaw as any)?.name || gameName || null,
     lastChecked: new Date().toISOString(),
     protonDb: protonSummary,

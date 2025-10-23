@@ -10,7 +10,9 @@ import {
   convertWattageToNumber,
   extractNumbersFromString,
   extractYouTubeVideoIds,
-  limitStringTo100Characters, numberValueFromString, parseGameSettingsToMarkdown,
+   numberValueFromString,
+  parseGameSettingsToMarkdown,
+  truncateStringToLength,
 } from '../helpers'
 import { fetchHardwareInfo } from './decksettings/hw_info'
 
@@ -169,11 +171,8 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
           : youtubeSection
       }
 
-      const summary = limitStringTo100Characters(
-        review.excerpt.rendered
-          ? review.excerpt.rendered.replace(/<[^>]+>/g, '')
-          : review.title.rendered,
-      )
+      const summarySource = review.excerpt.rendered ? review.excerpt.rendered.replace(/<[^>]+>/g, '') : review.title.rendered
+      const summary = truncateStringToLength(summarySource, 100)
       const assumedDevice = 'Valve Steam Deck LCD (256GB/512GB)'
       const averagePowerDraw = convertWattageToNumber(optimizedSettings?.projected_battery_usage_and_temperature?.wattage)
       const hardwareInfo = await fetchHardwareInfo()
