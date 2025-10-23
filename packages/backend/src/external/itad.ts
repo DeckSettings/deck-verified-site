@@ -4,7 +4,7 @@ import {
 import logger from '../logger'
 import config from '../config'
 import type { GamePriceDeal, GamePriceSummary } from '../../../shared/src/game'
-import { parseAppIdNumber, toIsoDateString } from '../helpers'
+import { parseNumberOrNull, toIsoDateString } from '../helpers'
 
 interface IsThereAnyDealPriceEntry {
   price_new?: number;
@@ -141,7 +141,7 @@ const lookupIsThereAnyDealGame = async (options: {
   params.set('key', config.isThereAnyDealApiKey)
 
   const candidateAppId = options.appId ?? null
-  const parsedAppId = parseAppIdNumber(candidateAppId ?? null)
+  const parsedAppId = parseNumberOrNull(candidateAppId ?? null)
   if (parsedAppId !== null) {
     params.set('appid', parsedAppId.toString())
   }
@@ -432,7 +432,7 @@ export const generateIsThereAnyDealPriceSummary = async (options: {
     return null
   }
 
-  const resolvedAppId = parseAppIdNumber(appId)
+  const resolvedAppId = parseNumberOrNull(appId)
 
   const lookupResult = await lookupIsThereAnyDealGame({
     appId,

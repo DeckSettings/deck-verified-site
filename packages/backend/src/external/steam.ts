@@ -7,7 +7,7 @@ import {
 } from '../../../shared/src/game'
 import { storeGameInRedis, redisCacheExtData, redisLookupExtData } from '../redis'
 import logger from '../logger'
-import { generateImageLinksFromAppId, parseAppIdNumber, toIsoDateString } from '../helpers'
+import { generateImageLinksFromAppId } from '../helpers'
 
 interface AjaxCompatResponse {
   success: number;
