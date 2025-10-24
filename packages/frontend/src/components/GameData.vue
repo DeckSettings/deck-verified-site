@@ -8,6 +8,7 @@ import {
   simProtondb,
   simPcgamingwiki,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
+import sdhqLogo from 'src/assets/icons/sdhq.svg'
 import { useGameStore } from 'src/stores/game-store'
 import { useGameMarketStore } from 'src/stores/game-market-store'
 import { useAuthStore } from 'src/stores/auth-store'
@@ -87,6 +88,7 @@ const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-
 
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
+const externalLinksDialogOpen = ref(false)
 const dialogAutoOpened = ref(false)
 
 const includeExternalReports = ref(route.query.include_external === 'true')
@@ -622,8 +624,9 @@ useMeta(() => {
         </div>
         <div v-else-if="gameData">
           <!-- START EXTERNAL LINKS -->
-          <div class="row q-col-gutter-xs"
-               :class="($q.screen.lt.md && !$q.platform.isMobileUi) ? 'justify-center' : ''">
+          <div v-if="!$q.platform.isMobileUi"
+               class="row q-col-gutter-xs"
+               :class="$q.screen.lt.md ? 'justify-center' : ''">
             <SecondaryButton v-if="githubProjectSearchLink"
                              :icon="simGithub"
                              label="GitHub Reports"
@@ -656,13 +659,176 @@ useMeta(() => {
                              :href="sdhqLink"
                              target="_blank" rel="noopener">
               <q-avatar size="20px" class="q-mr-sm">
-                <img src="~/assets/icons/sdhq.svg">
+                <img :src="sdhqLogo" alt="Steam Deck HQ logo" />
               </q-avatar>
               <span>SteamDeckHQ</span>
               <q-tooltip>View Game Review on SteamDeckHQ</q-tooltip>
             </SecondaryButton>
           </div>
+          <div v-else class="row justify-center">
+            <PrimaryButton
+              class="q-mt-sm"
+              full-width
+              icon="link"
+              label="External Links"
+              @click="externalLinksDialogOpen = true"
+            />
+            <q-dialog v-model="externalLinksDialogOpen" backdrop-filter="blur(2px)">
+              <q-card class="dv-dialog-card">
+                <q-card-section class="dv-dialog-content">
+                  <q-card flat class="dv-dialog-inner-card">
+                    <q-card-section class="dv-dialog-header row items-center justify-between no-wrap">
+                      <div class="text-h6">
+                        External Links
+                      </div>
+                    </q-card-section>
+
+                    <q-separator dark />
+
+                    <q-card-section class="dv-dialog-body scroll q-pa-lg q-gutter-lg">
+                      <q-list>
+                        <q-item
+                          v-if="githubProjectSearchLink"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="githubProjectSearchLink"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <q-icon :name="simGithub" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              GitHub Reports
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-if="appId"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="`https://store.steampowered.com/app/${appId}`"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <q-icon :name="simSteam" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              Steam Store
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-if="appId"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="`https://www.protondb.com/app/${appId}?device=steamDeck`"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <q-icon :name="simProtondb" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              ProtonDB
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-if="gameName"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="getPCGamingWikiUrlFromGameName(gameName)"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <q-icon :name="simPcgamingwiki" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              PCGamingWiki
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-if="sdhqLink"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="sdhqLink"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <img :src="sdhqLogo" alt="Steam Deck HQ logo" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              SteamDeckHQ
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-card-section>
+
+                    <q-card-actions align="right">
+                      <primaryButton
+                        dense
+                        color="primary"
+                        label="Close"
+                        icon="close"
+                        v-close-popup />
+                    </q-card-actions>
+                  </q-card>
+                </q-card-section>
+              </q-card>
+            </q-dialog>
+          </div>
           <!-- END EXTERNAL LINKS -->
+
           <!-- START SUBMIT REPORT BUTTON -->
           <div class="row justify-center">
             <PrimaryButton v-if="!useLocalReportForm"
@@ -885,70 +1051,84 @@ useMeta(() => {
                   </div>
                 </div>
 
-                <q-dialog
-                  v-model="filterDialogOpen"
-                  backdrop-filter="blur(2px)"
-                  transition-show="scale"
-                  transition-hide="scale">
-                  <q-card flat bordered class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
-                    <q-card-section class="text-subtitle1 text-weight-medium">
-                      Filters
+                <q-dialog v-model="filterDialogOpen" backdrop-filter="blur(2px)">
+                  <q-card class="dv-dialog-card">
+                    <q-card-section class="dv-dialog-content">
+                      <q-card flat class="dv-dialog-inner-card">
+                        <q-card-section class="dv-dialog-header row items-center justify-between no-wrap">
+                          <div class="text-h6">
+                            Filters
+                          </div>
+                        </q-card-section>
+
+                        <q-separator dark />
+
+                        <q-card-section class="dv-dialog-body scroll q-pa-lg q-gutter-lg">
+                          <q-select v-model="selectedDevice" label="Device"
+                                    dense outlined emit-value map-options
+                                    :options="deviceOptions" />
+                          <q-select v-model="selectedLauncher" label="Launcher"
+                                    dense outlined emit-value map-options
+                                    :options="launcherOptions" />
+                          <q-toggle
+                            v-if="hasDuplicateReports"
+                            v-model="hideDuplicateReports"
+                            dense
+                            color="warning"
+                            label="Hide duplicates" />
+                        </q-card-section>
+                        <q-card-actions align="between">
+                          <SecondaryButton dense color="primary" label="Clear"
+                                           @click="selectedDevice = 'all'; selectedLauncher = 'all'; hideDuplicateReports = false" />
+                          <primaryButton dense color="primary" label="Apply" icon="filter_alt"
+                                         v-close-popup />
+                        </q-card-actions>
+                      </q-card>
                     </q-card-section>
-                    <q-card-section class="q-gutter-md">
-                      <q-select v-model="selectedDevice" label="Device"
-                                dense outlined emit-value map-options
-                                :options="deviceOptions" />
-                      <q-select v-model="selectedLauncher" label="Launcher"
-                                dense outlined emit-value map-options
-                                :options="launcherOptions" />
-                      <q-toggle
-                        v-if="hasDuplicateReports"
-                        v-model="hideDuplicateReports"
-                        dense
-                        color="warning"
-                        label="Hide duplicates" />
-                    </q-card-section>
-                    <q-card-actions align="between">
-                      <SecondaryButton dense color="primary" label="Clear"
-                                       @click="selectedDevice = 'all'; selectedLauncher = 'all'; hideDuplicateReports = false" />
-                      <primaryButton dense color="primary" label="Apply" icon="filter_alt"
-                                     v-close-popup />
-                    </q-card-actions>
                   </q-card>
                 </q-dialog>
-                <q-dialog
-                  v-model="sortDialogOpen"
-                  backdrop-filter="blur(2px)"
-                  transition-show="scale"
-                  transition-hide="scale">
-                  <q-card flat bordered class="q-pa-md" style="width: calc(100vw - 48px); max-width: 360px;">
-                    <q-card-section class="text-subtitle1 text-weight-medium">
-                      Sort
+
+
+                <q-dialog v-model="sortDialogOpen" backdrop-filter="blur(2px)">
+                  <q-card class="dv-dialog-card">
+                    <q-card-section class="dv-dialog-content">
+                      <q-card flat class="dv-dialog-inner-card">
+                        <q-card-section class="dv-dialog-header row items-center justify-between no-wrap">
+                          <div class="text-h6">
+                            Sort
+                          </div>
+                        </q-card-section>
+
+                        <q-separator dark />
+
+                        <q-card-section class="dv-dialog-body scroll q-pa-lg q-gutter-lg">
+                          <q-list bordered separator>
+                            <q-item clickable v-ripple @click="toggleSortOrder('updated')">
+                              <q-item-section>Last Updated</q-item-section>
+                              <q-item-section side>
+                                <q-icon
+                                  :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
+                                  :color="(sortOption === 'updated' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
+                              </q-item-section>
+                            </q-item>
+                            <q-item clickable v-ripple @click="toggleSortOrder('reactions')">
+                              <q-item-section>Most Liked</q-item-section>
+                              <q-item-section side>
+                                <q-icon
+                                  :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
+                                  :color="(sortOption === 'reactions' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+                        <q-card-actions align="between">
+                          <SecondaryButton dense color="primary" label="Clear"
+                                           @click="clearSort" />
+                          <primaryButton dense color="primary" label="Apply" icon="segment"
+                                         v-close-popup />
+                        </q-card-actions>
+                      </q-card>
                     </q-card-section>
-                    <q-list bordered separator>
-                      <q-item clickable v-ripple @click="toggleSortOrder('updated')">
-                        <q-item-section>Last Updated</q-item-section>
-                        <q-item-section side>
-                          <q-icon
-                            :name="(sortOrder === 'asc' && sortOption === 'updated') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'updated') ? 'arrow_downward' : 'sort')"
-                            :color="(sortOption === 'updated' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
-                        </q-item-section>
-                      </q-item>
-                      <q-item clickable v-ripple @click="toggleSortOrder('reactions')">
-                        <q-item-section>Most Liked</q-item-section>
-                        <q-item-section side>
-                          <q-icon
-                            :name="(sortOrder === 'asc' && sortOption === 'reactions') ? 'arrow_upward' : ((sortOrder === 'desc' && sortOption === 'reactions') ? 'arrow_downward' : 'sort')"
-                            :color="(sortOption === 'reactions' && sortOrder !== 'off') ? 'primary' : 'grey-5'" />
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                    <q-card-actions align="between">
-                      <SecondaryButton dense color="primary" label="Clear"
-                                       @click="clearSort" />
-                      <primaryButton dense color="primary" label="Apply" icon="segment"
-                                     v-close-popup />
-                    </q-card-actions>
                   </q-card>
                 </q-dialog>
               </div>

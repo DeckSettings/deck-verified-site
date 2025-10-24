@@ -242,11 +242,11 @@ defineExpose({
         transition-hide="slide-left"
       >
         <q-card
-          class="side-dialog-card"
+          class="dv-side-dialog-card"
           v-touch-swipe.touch.left="closeMobileMenu"
         >
           <q-card-section
-            class="header-user-menu-dialog-header side-dialog-header row items-center justify-between no-wrap">
+            class="header-user-menu-dialog-header dv-side-dialog-header row items-center justify-between no-wrap">
             <div class="row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
@@ -280,7 +280,7 @@ defineExpose({
               <template v-if="isLoggedIn">
                 <q-list dark>
                   <q-item clickable v-ripple
-                          class="side-dialog-menu-list-item"
+                          class="dv-dialog-menu-list-button"
                           :to="{ name: 'user-reports' }"
                   >
                     <q-item-section avatar>
@@ -294,7 +294,7 @@ defineExpose({
                     </q-item-section>
                   </q-item>
                   <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
-                          class="side-dialog-menu-list-item"
+                          class="dv-dialog-menu-list-button"
                           @click="isSettingsDialogOpen = true"
                   >
                     <q-item-section avatar>
@@ -318,7 +318,7 @@ defineExpose({
               <template v-else>
                 <q-list dark>
                   <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
-                          class="side-dialog-menu-list-item"
+                          class="dv-dialog-menu-list-button"
                           @click="isSettingsDialogOpen = true"
                   >
                     <q-item-section avatar>
@@ -376,10 +376,10 @@ defineExpose({
         transition-hide="slide-down"
         transition-duration="100"
       >
-        <q-card class="side-dialog-card"
+        <q-card class="dv-side-dialog-card"
                 :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
         >
-          <q-card-section class="side-dialog-content">
+          <q-card-section class="dv-dialog-content">
             <AppSettings />
           </q-card-section>
         </q-card>

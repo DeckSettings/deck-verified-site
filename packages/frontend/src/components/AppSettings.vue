@@ -62,8 +62,8 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 </script>
 
 <template>
-  <q-card flat class="side-dialog-inner-card">
-    <q-card-section class="side-dialog-header row items-center justify-between no-wrap">
+  <q-card flat class="dv-dialog-inner-card">
+    <q-card-section class="dv-side-dialog-header row items-center justify-between no-wrap">
 
       <div class="text-subtitle1 text-weight-bold">App Settings</div>
       <q-btn
@@ -84,7 +84,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
         <q-list>
           <q-item
             clickable v-ripple
-            class="side-dialog-menu-list-item"
+            class="dv-dialog-menu-list-button"
             @click="toggleHomeWelcome"
           >
             <q-item-section avatar>
@@ -117,7 +117,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
             v-for="feed in feeds"
             :key="feed.key"
             clickable v-ripple
-            class="side-dialog-menu-list-item"
+            class="dv-dialog-menu-list-button"
             @click="toggleFeed(feed.key)"
           >
             <q-item-section avatar>
@@ -154,7 +154,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
         <q-list>
           <q-item
             clickable v-ripple
-            class="side-dialog-menu-list-item"
+            class="dv-dialog-menu-list-button"
             @click="toggleHideDuplicates"
           >
             <q-item-section avatar>
@@ -192,7 +192,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
         <q-list>
           <q-item
             clickable v-ripple
-            class="side-dialog-menu-list-item"
+            class="dv-dialog-menu-list-button"
             @click="isAboutDialogOpen = true"
           >
             <q-item-section avatar>
@@ -224,12 +224,12 @@ const discordLink = 'https://streamingtech.co.nz/discord'
     transition-hide="slide-down"
     transition-duration="100"
   >
-    <q-card class="side-dialog-card"
+    <q-card class="dv-side-dialog-card"
             :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
     >
-      <q-card-section class="side-dialog-content">
-        <q-card flat class="side-dialog-inner-card">
-          <q-card-section class="side-dialog-header row items-center justify-between no-wrap">
+      <q-card-section class="dv-dialog-content">
+        <q-card flat class="dv-dialog-inner-card">
+          <q-card-section class="dv-side-dialog-header row items-center justify-between no-wrap">
 
             <div class="text-subtitle1 text-weight-bold">About</div>
             <q-btn
@@ -243,7 +243,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
           <q-separator dark />
 
-          <q-card-section class="side-dialog-body scroll q-pa-lg q-gutter-lg">
+          <q-card-section class="dv-dialog-body scroll q-pa-lg q-gutter-lg">
             <section>
               <div class="text-h6 text-weight-bold q-mb-sm">About This Project</div>
               <p class="text-body2">
@@ -305,7 +305,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
               <q-list>
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   :href="websiteLink"
                   target="_blank"
@@ -327,7 +327,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   :href="discordLink"
                   target="_blank"
@@ -359,7 +359,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
               <q-list>
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://store.steampowered.com/"
                   target="_blank"
@@ -385,7 +385,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://www.protondb.com/"
                   target="_blank"
@@ -411,7 +411,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://steamdeckhq.com/"
                   target="_blank"
@@ -437,7 +437,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://steamdb.info/"
                   target="_blank"
@@ -463,7 +463,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://isthereanydeal.com/"
                   target="_blank"
@@ -489,7 +489,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
 
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   href="https://www.pcgamingwiki.com/wiki/Home"
                   target="_blank"
@@ -520,7 +520,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
               <q-list>
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   :href="privacyPolicyLink"
                   target="_blank"
@@ -545,7 +545,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 </q-item>
                 <q-item
                   clickable v-ripple
-                  class="side-dialog-menu-list-item"
+                  class="dv-dialog-menu-list-button"
                   tag="a"
                   :href="termsOfServiceLink"
                   target="_blank"

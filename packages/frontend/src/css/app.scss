@@ -108,17 +108,37 @@ body .q-item.q-router-link--exact-active .q-icon {
   z-index: 1000;
 }
 
-.side-dialog-card {
-  min-height: 100vh;
-  min-width: 550px;
+/* Popup Dialogs */
+.dv-dialog-card {
+  /*width: calc(100vw - 48px); max-width: 360px;*/
+  min-width: 400px;
+  width: 400px;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--q-dark) 92%, transparent);
   padding: 0;
-
 }
 
-.side-dialog-header {
+.dv-dialog-header {
+  min-height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: inherit;
+}
+
+/* Side Dialogs */
+.dv-side-dialog-card {
+  min-height: 100vh;
+  min-width: 600px;
+  width: 600px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--q-dark) 92%, transparent);
+  padding: 0;
+}
+
+.dv-side-dialog-header {
   min-height: 80px;
   position: sticky;
   top: 0;
@@ -126,28 +146,28 @@ body .q-item.q-router-link--exact-active .q-icon {
   background: inherit;
 }
 
-.side-dialog-content {
+.dv-dialog-content {
   flex: 1;
   display: flex;
   min-height: 0;
   padding: 0;
 }
 
-.side-dialog-inner-card {
+.dv-dialog-inner-card {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.side-dialog-body {
+.dv-dialog-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.side-dialog-menu-list-item {
+.dv-dialog-menu-list-button {
   margin-left: 0;
   padding-left: 8px;
   background-color: color-mix(in srgb, var(--q-primary) 5%, transparent);
@@ -156,24 +176,29 @@ body .q-item.q-router-link--exact-active .q-icon {
   margin-top: 3px;
 }
 
-.side-dialog-menu-list-item .q-avatar {
+.dv-dialog-menu-list-button .q-avatar {
   font-size: 40px;
 }
 
-.side-dialog-menu-list-item .q-avatar .q-icon {
+.dv-dialog-menu-list-button .q-avatar .q-icon {
   font-size: 25px;
 }
 
 @media (max-width: 599.98px) {
-  .side-dialog-card {
+  .dv-dialog-card {
+    min-width: 90vw;
+  }
+
+  .dv-side-dialog-card {
     min-width: 90vw;
     width: 90vw;
   }
 }
 
 @media (max-width: 280px) {
-  .side-dialog-card {
+  .dv-side-dialog-card {
     min-width: 0;
     width: 100vw;
   }
 }
+
