@@ -147,15 +147,24 @@ watch(
 const resultsGap = 0
 const searchResultsTop = computed(() => {
   const topBarHeight = mobileTopBarHeight?.value ?? 60
-  if ($q.screen.lt.md || $q.platform.isMobileUi) {
-    return `${topBarHeight + resultsGap}px`
+  if ($q.screen.width > 900) {
+    // We are showing the dialog as position:absolute
+    if ($q.platform.isMobileUi) {
+      return `${topBarHeight - 10 + resultsGap}px`
+    }
+    return `${topBarHeight + 5 + resultsGap}px`
   }
-  return `${searchContainerHeight.value + resultsGap}px`
+  // MobileUI has a thin header
+  if ($q.platform.isMobileUi) {
+    return `${topBarHeight + 1 + resultsGap}px`
+  }
+  // When screen width is less than 900px, we are showing the dialog as position:fixed
+  if ($q.screen.lt.sm) {
+    // If the screen is less than sm, then the header is larger
+    return `${topBarHeight + 55 + resultsGap}px`
+  }
+  return `${topBarHeight + 29 + resultsGap}px`
 })
-
-const searchResultsStyle = computed(() => ({
-  top: searchResultsTop.value,
-}))
 </script>
 
 <template>
@@ -180,7 +189,7 @@ const searchResultsStyle = computed(() => ({
       ref="searchResultsRef"
       class="search-results"
       :class="{ 'search-results-mobile': $q.platform.isMobileUi }"
-      :style="searchResultsStyle"
+      :style="{top: searchResultsTop}"
     >
       <q-scroll-area class="scroll-area" :style="scrollAreaStyle">
         <q-list>
@@ -273,7 +282,8 @@ const searchResultsStyle = computed(() => ({
   }
 }
 
-@media (max-width: 799.98px) {
+/* NOTE: Update searchResultsTop offsets for search-results if the max-width is changed */
+@media (max-width: 900px) {
   .game-search-container {
     width: inherit;
   }
