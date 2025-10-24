@@ -353,7 +353,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
             <section>
               <div class="text-h6 text-weight-bold q-mb-sm">Acknowledgments</div>
               <div class="text-body2 q-mb-sm">
-                Deck Verified proudly integrates logos, links, and data from several great resources that support the
+                This app integrates logos, links, and data from several great resources that support the
                 handheld gaming community:
               </div>
               <q-list>
@@ -536,7 +536,7 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                       Privacy Policy
                     </q-item-label>
                     <q-item-label caption class="text-grey-5">
-                      Learn how Deck Verified handles your data.
+                      Learn how Deck Verified Games and the Deck Settings project handles your data.
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side>

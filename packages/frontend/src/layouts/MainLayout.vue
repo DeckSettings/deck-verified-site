@@ -12,7 +12,7 @@
 
           <div class="logo-container">
             <router-link to="/">
-              <img src="~/assets/logo-dark.png" alt="Logo">
+              <PageIcon :size="$q.screen.width < 440 ? 36 : 30" :short-mode="$q.screen.width < 440" />
             </router-link>
           </div>
         </div>
@@ -34,7 +34,7 @@
       <div class="footer-inner row items-start q-col-gutter-xl q-px-md q-py-lg">
         <!-- Left brand + socials -->
         <div class="col-12 col-md-6">
-          <div class="text-h5 q-mb-sm">Deck Verified</div>
+          <div class="text-h5 q-mb-sm">Deck Verified Games</div>
           <div class="text-subtitle2 q-mb-md">Community reports and settings for handheld PCs.</div>
 
           <div class="row items-center q-gutter-sm">
@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import HeaderSearch from 'components/HeaderSearch.vue'
 import HeaderUserMenu from 'components/HeaderUserMenu.vue'
+import PageIcon from 'components/elements/PageIcon.vue'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { simGithubsponsors, simKofi, simPatreon } from 'quasar-extras-svg-icons/simple-icons-v14'
 

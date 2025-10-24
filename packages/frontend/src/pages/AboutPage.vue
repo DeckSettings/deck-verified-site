@@ -2,14 +2,14 @@
 import { useMeta } from 'quasar'
 
 useMeta({
-  title: 'About – Deck Verified',
+  title: 'About – Deck Verified Games',
   meta: {
     description: {
       name: 'description',
       content:
-        'Deck Verified and the Deck Settings reports project collect handheld game settings, performance tweaks, and compatibility notes for Steam Deck, ROG Ally, Legion Go, and more.',
+        'Deck Verified Games and the Deck Settings reports project collect handheld game settings, performance tweaks, and compatibility notes for Steam Deck, ROG Ally, Legion Go, and more.',
     },
-    ogTitle: { property: 'og:title', content: 'About – Deck Verified' },
+    ogTitle: { property: 'og:title', content: 'About – Deck Verified Games' },
     ogDescription: {
       property: 'og:description',
       content:
@@ -24,10 +24,10 @@ useMeta({
     <div class="q-pa-xl">
 
       <!-- Hero -->
-      <h1 class="text-h4 q-mb-sm">About Deck Verified</h1>
+      <h1 class="text-h4 q-mb-sm">About Deck Verified Games</h1>
       <p>
-        Deck Verified is the website companion to <strong>Deck Settings</strong> — a community-driven repository of
-        game settings, performance tweaks, and compatibility reports for handheld gaming devices like Steam Deck,
+        Deck Verified Games is the website companion to <strong>Deck Settings</strong> — a community-driven repository
+        of game settings, performance tweaks, and compatibility reports for handheld gaming devices like Steam Deck,
         ROG Ally, Lenovo Legion Go, and other portable PCs. By sharing reports, you help others optimise performance,
         troubleshoot issues, and build a central knowledge base for handheld gaming.
       </p>

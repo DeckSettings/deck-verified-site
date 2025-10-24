@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMeta } from 'quasar'
 
-useMeta({ title: 'Terms of Service - Deck Verified' })
+useMeta({ title: 'Terms of Service - Deck Verified Games' })
 </script>
 
 <template>
@@ -12,13 +12,13 @@ useMeta({ title: 'Terms of Service - Deck Verified' })
 
       <h2 class="text-h6 q-mt-lg q-mb-sm">1. Acceptance of Terms</h2>
       <p>
-        By accessing or using Deck Verified (the “Service”), you agree to these Terms of Service. If you do not agree,
+        By accessing or using Deck Verified Games (the “Service”), you agree to these Terms of Service. If you do not agree,
         do not use the Service.
       </p>
 
       <h2 class="text-h6 q-mt-lg q-mb-sm">2. What the Service Does</h2>
       <p>
-        Deck Verified is a community‑driven resource for sharing device and game compatibility information, performance
+        Deck Verified Games is a community‑driven resource for sharing device and game compatibility information, performance
         reports, and configuration tips for handheld PCs.
       </p>
 

@@ -40,18 +40,18 @@ onBeforeUnmount(() => {
 
 /*METADATA*/
 const metaTitle = ref('Site & API Stats')
-const metaDescription = ref('Discover detailed statistics about Deck Verified’s website and API. Explore metrics on game requests, usage trends, and performance data to gain insights into platform activity and user behavior.')
+const metaDescription = ref('Discover detailed statistics about the Deck Verified Games website and API. Explore metrics on game requests, usage trends, and performance data to gain insights into platform activity and user behavior.')
 const metaLink = ref('https://deckverified.games/site-stats')
 const metaLogo = ref('https://deckverified.games/logo2.png')
 const metaImage = ref('https://deckverified.games/hero-image.png')
-const metaAlt = ref('Deck Verified Site Statistics')
+const metaAlt = ref('Deck Verified Games Site Statistics')
 const metaImageType = ref('image/png')
 const metaImageWidth = ref('700')
 const metaImageHeight = ref('330')
 useMeta(() => {
   return {
     title: metaTitle.value,
-    titleTemplate: title => `${title} - Deck Verified`,
+    titleTemplate: title => `${title} - Deck Verified Games`,
     meta: {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
@@ -62,7 +62,7 @@ useMeta(() => {
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
       // Open Graph (Facebook, Discord, etc.)
-      ogTitle: { property: 'og:title', content: `${metaTitle.value} - Deck Verified` },
+      ogTitle: { property: 'og:title', content: `${metaTitle.value} - Deck Verified Games` },
       ogType: { property: 'og:type', content: 'website' },
       ogImage: { property: 'og:image', content: metaImage.value },
       ogImageType: { property: 'og:image:type', content: metaImageType.value },
@@ -75,7 +75,7 @@ useMeta(() => {
       // Twitter Card (X)
       twitterCard: { name: 'twitter:card', content: 'summary_large_image' },
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
-      twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
+      twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified Games` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
       twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
@@ -88,13 +88,13 @@ useMeta(() => {
         innerHTML: JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'WebSite',
-          'name': 'Deck Verified',
+          'name': 'Deck Verified Games',
           'url': metaLink.value,
           'description': metaDescription.value,
           'image': metaImage.value,
           'publisher': {
             '@type': 'Organization',
-            'name': 'Deck Verified',
+            'name': 'Deck Verified Games',
             'logo': {
               '@type': 'ImageObject',
               'url': metaLogo.value,

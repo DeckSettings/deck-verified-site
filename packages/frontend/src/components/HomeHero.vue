@@ -52,9 +52,9 @@ onUnmounted(() => {
         Handheld Game Settings & Performance Reports
       </h1>
       <p class="hero-description text-body1">
-        <strong>Deck Verified</strong> is a fully open-source project that helps gamers optimise performance on handheld
-        gaming PCs such as the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong>, <strong>Lenovo Legion
-        Go</strong>, and other handheld gaming PCs — with new device support added via community request.
+        <strong>Deck Verified Games</strong> is a fully open-source project that helps gamers optimise performance on
+        handheld gaming PCs such as the <strong>Steam Deck</strong>, <strong>ASUS ROG Ally</strong>, <strong>Lenovo
+        Legion Go</strong>, and other handheld gaming PCs — with new device support added via community request.
       </p>
       <p class="hero-description text-body1">
         Whether you're aiming for smooth 60 FPS gameplay or battery-efficient settings, this community-driven resource

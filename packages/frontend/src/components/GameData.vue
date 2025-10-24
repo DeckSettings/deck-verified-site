@@ -464,7 +464,7 @@ watch(gameBanner, (newUrl) => {
 useMeta(() => {
   return {
     title: metaTitle.value,
-    titleTemplate: title => `${title} - Deck Verified`,
+    titleTemplate: title => `${title} - Deck Verified Games`,
     meta: {
       description: { name: 'description', content: metaDescription.value },
       keywords: {
@@ -474,7 +474,7 @@ useMeta(() => {
       equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' },
 
       // Open Graph (Facebook, Discord, etc.)
-      ogTitle: { property: 'og:title', content: `${metaTitle.value} - Deck Verified` },
+      ogTitle: { property: 'og:title', content: `${metaTitle.value} - Deck Verified Games` },
       ogType: { property: 'og:type', content: 'website' },
       ogImage: { property: 'og:image', content: metaImage.value },
       ogImageType: { property: 'og:image:type', content: metaImageType.value },
@@ -487,7 +487,7 @@ useMeta(() => {
       // Twitter Card (X)
       twitterCard: { name: 'twitter:card', content: 'summary_large_image' },
       twitterSite: { name: 'twitter:site', content: '@jsunnex' },
-      twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified` },
+      twitterTitle: { name: 'twitter:title', content: `${metaTitle.value} - Deck Verified Games` },
       twitterDescription: { name: 'twitter:description', content: metaDescription.value },
       twitterImage: { name: 'twitter:image', content: metaImage.value },
     },
@@ -508,7 +508,7 @@ useMeta(() => {
           sameAs: appId.value ? [`https://store.steampowered.com/app/${appId.value}`] : undefined,
           publisher: {
             '@type': 'Organization',
-            name: 'Deck Verified',
+            name: 'Deck Verified Games',
             logo: {
               '@type': 'ImageObject',
               'url': metaLogo.value,

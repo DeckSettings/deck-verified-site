@@ -254,7 +254,7 @@ defineExpose({
               </q-avatar>
               <div class="column">
                 <span class="text-subtitle1 text-weight-medium">
-                  {{ isLoggedIn ? userDisplayName : 'Deck Verified' }}
+                  {{ isLoggedIn ? userDisplayName : 'Deck Verified Games' }}
                 </span>
                 <span class="text-caption text-grey-5">
                   {{ isLoggedIn ? userHandle : 'Sign in to personalise' }}

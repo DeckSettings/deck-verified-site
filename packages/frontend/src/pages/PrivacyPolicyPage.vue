@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMeta } from 'quasar'
 
-useMeta({ title: 'Privacy Policy - Deck Verified' })
+useMeta({ title: 'Privacy Policy - Deck Verified Games' })
 </script>
 
 <template>
@@ -11,8 +11,8 @@ useMeta({ title: 'Privacy Policy - Deck Verified' })
       <div class="text-caption q-mb-md">Last updated: Sep 15, 2025</div>
 
       <p>
-        We respect your privacy. This policy explains what information Deck Verified collects and how we use it when you
-        access our website and related services.
+        We respect your privacy. This policy explains what information Deck Verified Games and Deck Settings collects
+        and how we use it when you access our website and related services.
       </p>
 
       <h2 class="text-h6 q-mt-lg q-mb-sm">What We Collect</h2>

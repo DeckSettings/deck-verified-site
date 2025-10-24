@@ -125,9 +125,9 @@ const manualSteps = [
 ]
 
 /*METADATA*/
-const metaTitle = ref('Deck Settings — Decky Plugin • Deck Verified')
+const metaTitle = ref('Deck Settings — Decky Plugin • Deck Verified Games')
 const metaDescription = ref(
-  'Instructions to install and use the Deck Settings plugin for Decky Loader — browse Deck Verified reports directly from your handheld.',
+  'Instructions to install and use the Deck Settings plugin for Decky Loader — browse Deck Settings reports directly from your handheld.',
 )
 
 useMeta(() => ({
@@ -196,7 +196,7 @@ useMeta(() => ({
             <div class="col-md-8 col-12">
               <h2 class="text-h4 q-mb-sm">Deck Settings — Decky Plugin</h2>
               <p class="text-body1 q-mb-none">
-                Browse Deck Verified reports directly from Decky Loader. The plugin pulls curated settings,
+                Browse Deck Settings reports directly from Decky Loader. The plugin pulls curated settings,
                 performance notes, and quick links for your favourite handheld titles so you can fine-tune games
                 without leaving Gaming Mode.
               </p>
@@ -495,6 +495,9 @@ useMeta(() => ({
         </q-card-actions>
       </q-card>
     </div>
+
+    <!-- NOTE: This is only here as a previous version of the Decky plugin is pointing to it and this builds the asset into the SPA... My bad -->
+    <img src="~/assets/logo-dark.png" class="hidden" />
     <ScrollToTop />
   </q-page>
 </template>
