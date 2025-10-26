@@ -395,6 +395,10 @@ defineExpose({
   align-items: center;
 }
 
+.header-user-menu--hamburger {
+  margin-right: 3px;
+}
+
 .header-user-menu-wrapper {
   display: flex;
   align-items: center;

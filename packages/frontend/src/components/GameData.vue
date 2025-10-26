@@ -538,7 +538,7 @@ useMeta(() => {
        :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
   <div
     v-if="hasReportsToCompare"
-    class="compare-dialog-trigger"
+    class="compare-dialog-trigger help-highlight-element"
   >
     <q-btn
       class="compare-dialog-trigger-button"
@@ -555,6 +555,7 @@ useMeta(() => {
         Compare ({{ compareReports.length }})
       </span>
     </q-btn>
+    <span class="help-tooltip help-tooltip-left">Click here to view reports in comparison table</span>
   </div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
@@ -1225,7 +1226,7 @@ useMeta(() => {
                         </q-tooltip>
                       </q-chip>
                       <q-btn
-                        class="compare-select-btn"
+                        class="compare-select-btn help-highlight-element"
                         :class="{ 'compare-select-btn-selected': isReportSelectedForCompare(report.id) }"
                         round dense flat
                         size="sm"
@@ -1239,6 +1240,7 @@ useMeta(() => {
                           <span v-if="isReportSelectedForCompare(report.id)">Already in comparison list</span>
                           <span v-else>Add to comparison</span>
                         </q-tooltip>
+                        <span class="help-tooltip help-tooltip-right">Add report for comparison</span>
                       </q-btn>
                       <q-item-section class="gt-xs">
                         <!-- Wrapper for the layout -->
@@ -1621,6 +1623,7 @@ useMeta(() => {
   top: 125px;
   right: 0;
   z-index: 20;
+  border-radius: 16px 0 0 16px;
 }
 
 .compare-dialog-trigger-button {

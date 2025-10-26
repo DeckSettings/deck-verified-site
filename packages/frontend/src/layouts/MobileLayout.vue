@@ -13,6 +13,7 @@
           class="header-hamburger"
         />
         <HeaderSearch class="top-bar-search" />
+        <HelpToggle />
       </div>
     </div>
 
@@ -49,6 +50,7 @@ import { ref, computed, onMounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import HeaderSearch from 'components/HeaderSearch.vue'
 import HeaderUserMenu from 'components/HeaderUserMenu.vue'
+import HelpToggle from 'components/elements/HelpToggle.vue'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 
 const headerUserMenu = ref<InstanceType<typeof HeaderUserMenu> | null>(null)
