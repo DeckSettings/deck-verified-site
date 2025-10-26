@@ -13,7 +13,7 @@
           class="header-hamburger"
         />
         <HeaderSearch class="top-bar-search" />
-        <HelpToggle />
+        <HelpToggle v-if="enableHelpOverlay" />
       </div>
     </div>
 
@@ -42,6 +42,7 @@
                      to="/submit-report" exact />
       </q-tabs>
     </div>
+    <div class="help-blur-overlay"></div>
   </q-layout>
 </template>
 
@@ -55,7 +56,7 @@ import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 
 const headerUserMenu = ref<InstanceType<typeof HeaderUserMenu> | null>(null)
 
-const { enableLogin } = useFeatureFlags()
+const { enableLogin, enableHelpOverlay } = useFeatureFlags()
 const route = useRoute()
 
 const topBar = ref<HTMLElement | null>(null)

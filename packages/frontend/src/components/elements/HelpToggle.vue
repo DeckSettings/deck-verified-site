@@ -132,7 +132,6 @@ onBeforeUnmount(() => {
       page help overlay
     </q-tooltip>
   </q-btn>
-  <div class="help-blur-overlay"></div>
 </template>
 
 <style scoped>

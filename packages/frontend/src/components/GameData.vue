@@ -1136,11 +1136,12 @@ useMeta(() => {
               <template v-else>
                 <!-- Filters (Top Left) -->
                 <div class="filters col-xs-12 col-md-8">
-                  <div class="filter-container">
+                  <div class="filter-container help-highlight-element">
                     <q-select v-model="selectedDevice" label="Device"
                               dense square borderless
                               class="filter-select"
                               :options="deviceOptions" emit-value map-options />
+                    <span class="help-tooltip help-tooltip-top">Filter the list of reports</span>
                   </div>
                   <div class="filter-container">
                     <q-select v-model="selectedLauncher" label="Launcher"

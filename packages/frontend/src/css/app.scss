@@ -226,26 +226,12 @@ body .q-item.q-router-link--exact-active .q-icon {
   pointer-events: none !important;
 }
 
-.help-tooltip::after {
-  content: "";
-  position: absolute;
-  border-width: 5px;
-  border-style: solid;
-}
-
 /* Top */
 .help-tooltip-top {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 5px;
-}
-
-.help-tooltip-top::after {
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-color: black transparent transparent transparent;
 }
 
 /* Bottom */
@@ -256,26 +242,12 @@ body .q-item.q-router-link--exact-active .q-icon {
   margin-top: 5px;
 }
 
-.help-tooltip-bottom::after {
-  bottom: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-color: transparent transparent black transparent;
-}
-
 /* Left */
 .help-tooltip-left {
   right: 100%;
   top: 50%;
   transform: translateY(-50%);
   margin-right: 5px;
-}
-
-.help-tooltip-left::after {
-  left: 100%;
-  top: 50%;
-  margin-top: -5px;
-  border-color: transparent transparent transparent black;
 }
 
 /* Right */
@@ -286,12 +258,6 @@ body .q-item.q-router-link--exact-active .q-icon {
   margin-left: 5px;
 }
 
-.help-tooltip-right::after {
-  right: 100%;
-  top: 50%;
-  margin-top: -5px;
-  border-color: transparent black transparent transparent;
-}
 
 /* Display */
 .show-help-btn {
@@ -317,6 +283,7 @@ html.show-help .help-highlight-element {
   box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.7);
   /* disable pointer events so highlighted controls cannot be activated while help is active */
   pointer-events: none;
+  position: absolute;
 }
 
 .help-blur-overlay {
