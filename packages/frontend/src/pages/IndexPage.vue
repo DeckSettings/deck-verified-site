@@ -11,7 +11,9 @@ import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 import HomeAndroidAppComponent from 'components/HomeAndroidAppComponent.vue'
+import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 
+const { enableMobileAppLink } = useFeatureFlags()
 
 // Quasar preFetch (SSR + client) to ensure game data is loaded before render
 defineOptions({
@@ -167,7 +169,7 @@ useMeta(() => {
       </HomePageSection>
     </div>
 
-    <div class="android-app-section">
+    <div v-if="enableMobileAppLink" class="android-app-section">
       <HomePageSection
         :add-debug-markers="false"
         section-title="android"
