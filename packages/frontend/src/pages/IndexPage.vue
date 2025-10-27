@@ -10,6 +10,7 @@ import HomePageSection from 'components/HomePageSection.vue'
 import HomeReportsList from 'components/HomeReportsList.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
+import HomeAndroidAppComponent from 'components/HomeAndroidAppComponent.vue'
 
 
 // Quasar preFetch (SSR + client) to ensure game data is loaded before render
@@ -166,6 +167,17 @@ useMeta(() => {
       </HomePageSection>
     </div>
 
+    <div class="android-app-section">
+      <HomePageSection
+        :add-debug-markers="false"
+        section-title="android"
+        bg-show-start-pos="top bottom-=200px"
+        background-colour="var(--q-primary)"
+        :background-image="getSectionBackground(4)">
+        <HomeAndroidAppComponent />
+      </HomePageSection>
+    </div>
+
     <ScrollToTop />
   </q-page>
 </template>
@@ -177,6 +189,10 @@ useMeta(() => {
 
 .decky-plugin-section {
   margin-top: 100px;
+}
+
+.android-app-section {
+  margin-top: 300px;
 }
 
 @media (max-width: 1023.98px) {
