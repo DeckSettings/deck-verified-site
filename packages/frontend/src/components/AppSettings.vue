@@ -9,9 +9,10 @@ import sdhqLogo from 'src/assets/icons/sdhq.svg'
 import itadLogo from 'src/assets/icons/itad-icon.svg'
 import protondbLogo from 'src/assets/icons/protondb.svg'
 import steamLogo from 'src/assets/icons/steam.svg'
+import { COUNTRY_OPTIONS, CURRENCY_OPTIONS } from 'src/constants/localisation'
 
 const configStore = useConfigStore()
-const { isHydrated, showHomeWelcomeCard, hideDuplicateReports } = storeToRefs(configStore)
+const { isHydrated, showHomeWelcomeCard, hideDuplicateReports, country, currency } = storeToRefs(configStore)
 const isAboutDialogOpen = ref(false)
 
 const closeAboutDialog = () => {
@@ -59,6 +60,16 @@ const websiteLink = computed(() => apiUrl('/'))
 const privacyPolicyLink = computed(() => apiUrl('/privacy-policy'))
 const termsOfServiceLink = computed(() => apiUrl('/terms-of-service'))
 const discordLink = 'https://streamingtech.co.nz/discord'
+
+const setCountry = (value: string | null) => {
+  if (!isHydrated.value || typeof value !== 'string') return
+  configStore.setCountry(value)
+}
+
+const setCurrency = (value: string | null) => {
+  if (!isHydrated.value || typeof value !== 'string') return
+  configStore.setCurrency(value)
+}
 </script>
 
 <template>
@@ -179,6 +190,68 @@ const discordLink = 'https://streamingtech.co.nz/discord'
                 :disable="!isHydrated"
                 @update:model-value="handleHideDuplicatesToggle"
                 @click.stop
+              />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </section>
+    </q-card-section>
+
+    <q-card-section class="q-gutter-lg">
+      <section>
+        <div class="text-subtitle2 text-weight-bold q-mb-sm">Localisation</div>
+        <q-list>
+          <q-item class="dv-dialog-menu-list-button">
+            <q-item-section avatar>
+              <q-avatar color="primary">
+                <q-icon name="language" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-body1 text-weight-medium">Country / Store</q-item-label>
+              <q-item-label caption class="text-grey-5">Select the country/store to use with ITAD. This determines the
+                store to query on ITAD.
+              </q-item-label>
+              <q-select
+                class="q-mt-sm"
+                :options="COUNTRY_OPTIONS"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                :model-value="country"
+                :disable="!isHydrated"
+                dense
+                outlined
+                @update:model-value="setCountry"
+              />
+            </q-item-section>
+          </q-item>
+
+          <q-item class="dv-dialog-menu-list-button">
+            <q-item-section avatar>
+              <q-avatar color="primary">
+                <q-icon name="attach_money" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-body1 text-weight-medium">Currency</q-item-label>
+              <q-item-label caption class="text-grey-5">Select the currency used when presenting prices from ITAD.
+              </q-item-label>
+              <q-select
+                class="q-mt-sm"
+                :options="CURRENCY_OPTIONS"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                :model-value="currency"
+                :disable="!isHydrated"
+                dense
+                outlined
+                @update:model-value="setCurrency"
               />
             </q-item-section>
           </q-item>

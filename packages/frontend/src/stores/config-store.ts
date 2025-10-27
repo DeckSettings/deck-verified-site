@@ -8,12 +8,16 @@ export const useConfigStore = defineStore('config', () => {
     hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
     showHomeWelcomeCard: DEFAULT_CONFIG.showHomeWelcomeCard,
     disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
+    country: DEFAULT_CONFIG.country,
+    currency: DEFAULT_CONFIG.currency,
   })
   const isHydrated = ref(false)
 
   const hideDuplicateReports = toRef(state, 'hideDuplicateReports')
   const showHomeWelcomeCard = toRef(state, 'showHomeWelcomeCard')
   const disabledFeeds = toRef(state, 'disabledFeeds')
+  const country = toRef(state, 'country')
+  const currency = toRef(state, 'currency')
 
   const setHideDuplicateReports = (value: boolean) => {
     hideDuplicateReports.value = value
@@ -31,6 +35,14 @@ export const useConfigStore = defineStore('config', () => {
     showHomeWelcomeCard.value = !showHomeWelcomeCard.value
   }
 
+  const setCountry = (value: string) => {
+    country.value = value
+  }
+
+  const setCurrency = (value: string) => {
+    currency.value = value
+  }
+
   const hydrate = async () => {
     if (typeof window === 'undefined') {
       isHydrated.value = true
@@ -42,10 +54,14 @@ export const useConfigStore = defineStore('config', () => {
         state.hideDuplicateReports = result.hideDuplicateReports
         state.showHomeWelcomeCard = result.showHomeWelcomeCard
         state.disabledFeeds = [...result.disabledFeeds]
+        state.country = typeof result.country === 'string' ? result.country : DEFAULT_CONFIG.country
+        state.currency = typeof result.currency === 'string' ? result.currency : DEFAULT_CONFIG.currency
       } else {
         state.hideDuplicateReports = DEFAULT_CONFIG.hideDuplicateReports
         state.showHomeWelcomeCard = DEFAULT_CONFIG.showHomeWelcomeCard
         state.disabledFeeds = [...DEFAULT_CONFIG.disabledFeeds]
+        state.country = DEFAULT_CONFIG.country
+        state.currency = DEFAULT_CONFIG.currency
       }
     } catch (error) {
       console.warn('[config-store] Failed to hydrate', error)
@@ -73,6 +89,8 @@ export const useConfigStore = defineStore('config', () => {
       hideDuplicateReports: state.hideDuplicateReports,
       showHomeWelcomeCard: state.showHomeWelcomeCard,
       disabledFeeds: state.disabledFeeds,
+      country: state.country,
+      currency: state.currency,
     }),
     async (value) => {
       if (!isHydrated.value) return
@@ -80,6 +98,8 @@ export const useConfigStore = defineStore('config', () => {
         hideDuplicateReports: value.hideDuplicateReports,
         showHomeWelcomeCard: value.showHomeWelcomeCard,
         disabledFeeds: [...value.disabledFeeds],
+        country: typeof value.country === 'string' ? value.country : DEFAULT_CONFIG.country,
+        currency: typeof value.currency === 'string' ? value.currency : DEFAULT_CONFIG.currency,
       }
       try {
         await saveConfig(payload)
@@ -100,6 +120,10 @@ export const useConfigStore = defineStore('config', () => {
     disabledFeeds,
     setFeedDisabled,
     isFeedDisabled,
+    country,
+    setCountry,
+    currency,
+    setCurrency,
     isHydrated,
   }
 })
