@@ -33,6 +33,47 @@ const ONE_HOUR = 60 * 60 * 1000
 const MAX_ITEMS_PER_FEED = 12
 const INITIAL_OG_STATUS: OgImageStatus = 'idle'
 
+const OG_IMAGE_CACHE_KEY = 'dv:ogImageCache:v1'
+
+const loadOgImageCache = (): Record<string, string> => {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return {}
+    const raw = localStorage.getItem(OG_IMAGE_CACHE_KEY)
+    return raw ? JSON.parse(raw) as Record<string, string> : {}
+  } catch (e) {
+    console.warn('[rss-feed] Failed to load OG image cache', e)
+    return {}
+  }
+}
+
+const saveOgImageCache = (cache: Record<string, string>) => {
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return
+    localStorage.setItem(OG_IMAGE_CACHE_KEY, JSON.stringify(cache))
+  } catch (e) {
+    console.warn('[rss-feed] Failed to save OG image cache', e)
+  }
+}
+
+const getCachedOgImage = (link: string): string | null => {
+  try {
+    const cache = loadOgImageCache()
+    return cache[link] ?? null
+  } catch {
+    return null
+  }
+}
+
+const setCachedOgImage = (link: string, url: string) => {
+  try {
+    const cache = loadOgImageCache()
+    cache[link] = url
+    saveOgImageCache(cache)
+  } catch {
+    // Ignore
+  }
+}
+
 const normaliseWhitespace = (text: string) => text.replace(/\s+/g, ' ').trim()
 
 const encodeBase64 = (value: string): string => {
@@ -273,6 +314,18 @@ export const useRssFeedStore = defineStore('rss-feed', {
       if (item.ogImageStatus === 'loading' || item.ogImageStatus === 'loaded') {
         return
       }
+
+      try {
+        const cached = getCachedOgImage(link)
+        if (cached) {
+          item.ogImage = cached
+          item.ogImageStatus = 'loaded'
+          return
+        }
+      } catch {
+        // Ignore and continue
+      }
+
       if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
         item.ogImageStatus = 'error'
         return
@@ -294,21 +347,52 @@ export const useRssFeedStore = defineStore('rss-feed', {
         const html = await response.text()
         const parser = new DOMParser()
         const doc = parser.parseFromString(html, 'text/html')
-        const meta = doc.querySelector('meta[property="og:image"], meta[name="og:image"]')
-        const content = meta?.getAttribute('content')?.trim()
+
         let resolved: string | null = null
 
-        if (content && content.length > 0) {
-          try {
-            resolved = new URL(content, link).href
-          } catch (urlError) {
-            console.warn('[rss-feed] Unable to resolve OG image URL, using raw value', urlError)
-            resolved = content
+        try {
+          // Handle ITAD extraction
+          const isItad = /(?:https?:\/\/)?(?:www\.)?isthereanydeal\.com/i.test(link)
+          if (isItad) {
+            // look for the cover image used in their page markup; be slightly permissive with selector
+            const itadImg = doc.querySelector('img.cover, img[class*="cover"]') as HTMLImageElement | null
+            const itadSrc = itadImg?.getAttribute('src')?.trim()
+            if (itadSrc) {
+              try {
+                resolved = new URL(itadSrc, link).href
+              } catch {
+                resolved = itadSrc
+              }
+            }
+          }
+        } catch {
+          // Ignore
+        }
+
+        // Fall back to standard OG meta if we didn't get a site-specific image
+        if (!resolved) {
+          const meta = doc.querySelector('meta[property="og:image"], meta[name="og:image"]')
+          const content = meta?.getAttribute('content')?.trim()
+          if (content && content.length > 0) {
+            try {
+              resolved = new URL(content, link).href
+            } catch (urlError) {
+              console.warn('[rss-feed] Unable to resolve OG image URL, using raw value', urlError)
+              resolved = content
+            }
           }
         }
 
         item.ogImage = resolved
         item.ogImageStatus = 'loaded'
+
+        if (resolved) {
+          try {
+            setCachedOgImage(link, resolved)
+          } catch {
+            // Ignore
+          }
+        }
       } catch (error) {
         console.error(`[rss-feed] Failed to fetch OG image for ${link}`, error)
         item.ogImageStatus = 'error'
