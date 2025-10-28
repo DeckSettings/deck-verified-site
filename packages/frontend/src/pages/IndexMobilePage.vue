@@ -148,12 +148,38 @@ dayjs.extend(relativeTime)
 
 const feedStore = useRssFeedStore()
 const configStore = useConfigStore()
-const { disabledFeeds, showHomeWelcomeCard } = storeToRefs(configStore)
+const { disabledFeeds, showHomeWelcomeCard, country } = storeToRefs(configStore)
 const carouselModels = reactive<Record<string, number>>({})
 const isMounted = ref(false)
 
+const resolveFeedLogo = (logo: string | null | undefined) => {
+  if (!logo) return null
+  if (/^https?:\/\//i.test(logo)) return logo
+
+  const normalizedPath = logo
+    .replace(/^src\//, '../')
+    .replace(/^[@~]\//, '../')
+
+  try {
+    return new URL(normalizedPath, import.meta.url).href
+  } catch (error) {
+    console.warn('[IndexMobilePage] Failed to resolve feed logo path', logo, error)
+    return null
+  }
+}
+
+const resolveFeedUrl = (url: string) => {
+  return url.replace('{country}', country.value)
+}
+
 const enabledFeedDefinitions = computed(() =>
-  APP_FEEDS.filter(feed => !disabledFeeds.value.includes(feed.key)),
+  APP_FEEDS
+    .filter(feed => !disabledFeeds.value.includes(feed.key))
+    .map(feed => ({
+      ...feed,
+      url: resolveFeedUrl(feed.url),
+      logo: resolveFeedLogo(feed.logo),
+    })),
 )
 
 watch(

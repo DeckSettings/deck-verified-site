@@ -24,8 +24,15 @@ export const APP_FEEDS: AppFeedDefinition[] = [
   {
     key: 'sdhq-news',
     url: 'https://steamdeckhq.com/feed/',
-    title: 'News',
+    title: 'Handheld Gaming News',
     subtitle: 'The latest Steam Deck updates, game patches, deals, device reviews, and community highlights',
     logo: 'https://steamdeckhq.com/wp-content/uploads/2022/06/cropped-sdhq-icon-32x32.png',
+  },
+  {
+    key: 'itad-giveaways',
+    url: 'https://isthereanydeal.com/feeds/{country}/giveaways.rss',
+    title: 'PC Game Giveaways',
+    subtitle: 'Latest free PC game giveaways and offers',
+    logo: 'src/assets/icons/itad-icon.svg',
   },
 ]

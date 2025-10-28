@@ -8,5 +8,5 @@ export interface ConfigPayload {
 
 export const CONFIG_STORAGE_KEY = 'deckVerified.pageConfig'
 
-export const DEFAULT_COUNTRY = 'USA'
+export const DEFAULT_COUNTRY = 'US'
 export const DEFAULT_CURRENCY = 'USD'

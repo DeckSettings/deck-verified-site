@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { fetchService } from 'src/utils/api'
+import { apiUrl, fetchService } from 'src/utils/api'
 
 export interface FeedItem {
   title: string
@@ -34,6 +34,35 @@ const MAX_ITEMS_PER_FEED = 12
 const INITIAL_OG_STATUS: OgImageStatus = 'idle'
 
 const normaliseWhitespace = (text: string) => text.replace(/\s+/g, ' ').trim()
+
+const encodeBase64 = (value: string): string => {
+  type BufferLike = {
+    from(input: string, encoding: string): { toString(encoding: string): string }
+  }
+  const bufferCtor: BufferLike | undefined = typeof globalThis !== 'undefined'
+    ? (globalThis as typeof globalThis & { Buffer?: BufferLike }).Buffer
+    : undefined
+
+  if (bufferCtor) {
+    return bufferCtor.from(value, 'utf-8').toString('base64')
+  }
+
+  if (typeof TextEncoder !== 'undefined' && typeof btoa === 'function') {
+    const bytes = new TextEncoder().encode(value)
+    let binary = ''
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte)
+    })
+    return btoa(binary)
+  }
+
+  throw new Error('Base64 encoding is not supported in this environment')
+}
+
+const buildProxiedFeedUrl = (feedUrl: string): string => {
+  const encoded = encodeBase64(feedUrl)
+  return apiUrl(`/deck-verified/api/v1/rss?feed=${encodeURIComponent(encoded)}`)
+}
 
 const safeQuerySelector = (element: ParentNode | null, selector: string) => {
   if (!element) return null
@@ -195,7 +224,8 @@ export const useRssFeedStore = defineStore('rss-feed', {
       feed.error = null
 
       try {
-        const response = await fetchService(feed.url, {
+        const proxiedUrl = buildProxiedFeedUrl(feed.url)
+        const response = await fetchService(proxiedUrl, {
           headers: {
             Accept: 'application/rss+xml, application/xml, text/xml',
           },

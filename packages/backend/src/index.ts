@@ -61,6 +61,7 @@ import {
   IGNORE_GAME_NAME_REGEX,
 } from './external/steam'
 import { generateSDHQReviewData } from './external/sdhq'
+import { fetchProxiedRssFeed, RssProxyError } from './external/rssproxy'
 import { fetchBlogReviewSummary } from './external/bloggerapi'
 import { fetchRepoIssueLabels } from './external/decksettings/repo_issue_labels'
 import { fetchReportBodySchema } from './external/decksettings/report_body_schema'
@@ -683,6 +684,39 @@ app.get('/deck-verified/api/v1/health', async (req: Request, res: Response) => {
     referer: req.headers['referer'] || '-',
     user_agent: req.headers['user-agent'] || '',
   })
+})
+
+/**
+ * Proxy and cache approved RSS feeds with CORS-friendly headers.
+ *
+ * @queryParam feed {string} - Base64 encoded RSS feed URL.
+ *
+ * @returns {string} 200 - RSS feed XML.
+ * @returns {object} 4xx/5xx - Error response.
+ */
+app.get('/deck-verified/api/v1/rss', async (req: Request, res: Response) => {
+  try {
+    const feed = typeof req.query.feed === 'string' ? req.query.feed : undefined
+    const result = await fetchProxiedRssFeed(feed)
+    const contentType = result.contentType ?? 'application/xml; charset=utf-8'
+
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.setHeader('X-Deck-Verified-Cache', result.fromCache ? 'HIT' : 'MISS')
+
+    return res.status(200).send(result.content)
+  } catch (error) {
+    if (error instanceof RssProxyError) {
+      logger.warn('RSS Proxy Request failed', {
+        message: error.message,
+        statusCode: error.statusCode,
+      })
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+
+    logger.error('Unexpected error', error)
+    return res.status(500).json({ error: 'internal_error' })
+  }
 })
 
 /**

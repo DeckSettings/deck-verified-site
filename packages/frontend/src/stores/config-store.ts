@@ -3,15 +3,38 @@ import { reactive, ref, toRef, watch } from 'vue'
 import { DEFAULT_CONFIG, loadConfig, saveConfig } from 'src/utils/config'
 import type { ConfigPayload } from 'src/utils/config'
 
+const cloneConfig = (config: ConfigPayload): ConfigPayload => ({
+  hideDuplicateReports: config.hideDuplicateReports,
+  showHomeWelcomeCard: config.showHomeWelcomeCard,
+  disabledFeeds: [...config.disabledFeeds],
+  country: config.country,
+  currency: config.currency,
+})
+
+const resolveInitialConfig = async (): Promise<{ state: ConfigPayload; hydrated: boolean }> => {
+  const fallback = cloneConfig(DEFAULT_CONFIG)
+
+  if (typeof window === 'undefined') {
+    return { state: fallback, hydrated: false }
+  }
+
+  try {
+    const result = await loadConfig()
+    if (!result) {
+      return { state: fallback, hydrated: true }
+    }
+    return { state: cloneConfig(result), hydrated: true }
+  } catch (error) {
+    console.warn('[config-store] Failed to resolve initial config', error)
+    return { state: fallback, hydrated: false }
+  }
+}
+
+const initial = await resolveInitialConfig()
+
 export const useConfigStore = defineStore('config', () => {
-  const state = reactive<ConfigPayload>({
-    hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
-    showHomeWelcomeCard: DEFAULT_CONFIG.showHomeWelcomeCard,
-    disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
-    country: DEFAULT_CONFIG.country,
-    currency: DEFAULT_CONFIG.currency,
-  })
-  const isHydrated = ref(false)
+  const state = reactive<ConfigPayload>(cloneConfig(initial.state))
+  const isHydrated = ref(typeof window === 'undefined' ? true : initial.hydrated)
 
   const hideDuplicateReports = toRef(state, 'hideDuplicateReports')
   const showHomeWelcomeCard = toRef(state, 'showHomeWelcomeCard')
@@ -46,6 +69,9 @@ export const useConfigStore = defineStore('config', () => {
   const hydrate = async () => {
     if (typeof window === 'undefined') {
       isHydrated.value = true
+      return
+    }
+    if (initial.hydrated) {
       return
     }
     try {
