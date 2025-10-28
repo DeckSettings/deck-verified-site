@@ -85,6 +85,7 @@ function closeInfo() {
 <template>
   <q-chip
     v-if="tierLabel"
+    v-bind="$attrs"
     dense square
     clickable
     :style="chipStyle"
@@ -106,6 +107,7 @@ function closeInfo() {
 
   <q-chip
     v-else
+    v-bind="$attrs"
     dense square
     clickable
     :style="chipStyle"

@@ -3,26 +3,12 @@ import { computed } from 'vue'
 import { getItadUrlFromGameSlug } from 'src/utils/external-links'
 import { QTooltip } from 'quasar'
 
-/**
- * PriceBadge
- *
- * Props:
- *  - itadSlug: string - optional slug for ITAD link
- *  - priceNew: number - new (discounted) price. If null/undefined, treated as absent.
- *  - priceOld: number - original price (required for display)
- *  - priceCut: number - percent discount (integer like 10 for 10%)
- *
- * Behavior:
- *  - When priceCut > 0 and priceNew is provided: show discount box on the left (green),
- *    original price (strike-through) above the discounted price in larger font.
- *  - If no discount (priceCut falsy): show a single compact chip with the price.
- */
-
 const props = defineProps<{
   itadSlug?: string | null
   priceNew?: number | null
   priceOld?: number | null
   priceCut?: number | null
+  currency?: string | null
 }>()
 
 /* Helpers / computed values */
@@ -35,11 +21,33 @@ const itadLink = computed(() => {
 })
 
 const formatCurrency = (n?: number | null) => {
-  // Try a safe fallback to locale-aware numeric formatting and prefix with USD symbol
+  if (n === null || n === undefined) return ''
+  const amount = Number(n)
+  if (props.currency && typeof props.currency === 'string' && props.currency.trim() !== '') {
+    const code = props.currency.trim().toUpperCase()
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: code,
+        currencyDisplay: 'code',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount)
+    } catch {
+      // If Intl fails for some reason, fall back to a simple "CODE 12.34" format
+      try {
+        return `${code} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      } catch {
+        return `${code} ${amount.toFixed(2)}`
+      }
+    }
+  }
+
+  // Fallback to basic USD format
   try {
-    return `$${(n as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   } catch {
-    return `$${(n as number).toFixed(2)}`
+    return `$${amount.toFixed(2)}`
   }
 }
 

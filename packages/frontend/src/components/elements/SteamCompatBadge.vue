@@ -67,6 +67,7 @@ function closeInfo() {
 
 <template>
   <q-chip
+    v-bind="$attrs"
     dense square
     clickable
     :style="chipStyle"

@@ -5,6 +5,7 @@ import logger from '../logger'
 import config from '../config'
 import type { GamePriceDeal, GamePriceSummary } from '../../../shared/src/game'
 import { parseNumberOrNull, toIsoDateString } from '../helpers'
+import { fetchFxRates } from './fxrates'
 
 interface IsThereAnyDealPriceEntry {
   price_new?: number;
@@ -114,6 +115,141 @@ interface IsThereAnyDealSearchResponse {
     results?: IsThereAnyDealSearchEntry[];
   };
 }
+
+const storeIds = [
+  {
+    id: 19,
+    title: '2game',
+  },
+  {
+    id: 2,
+    title: 'AllYouPlay',
+  },
+  {
+    id: 4,
+    title: 'Blizzard',
+  },
+  {
+    id: 13,
+    title: 'DLGamer',
+  },
+  {
+    id: 15,
+    title: 'Dreamgame',
+  },
+  {
+    id: 52,
+    title: 'EA Store',
+  },
+  {
+    id: 16,
+    title: 'Epic Game Store',
+  },
+  {
+    id: 6,
+    title: 'Fanatical',
+  },
+  {
+    id: 17,
+    title: 'FireFlower',
+  },
+  {
+    id: 20,
+    title: 'GameBillet',
+  },
+  {
+    id: 68,
+    title: 'Gamer Thor',
+  },
+  {
+    id: 24,
+    title: 'GamersGate',
+  },
+  {
+    id: 25,
+    title: 'Gamesload',
+  },
+  {
+    id: 27,
+    title: 'GamesPlanet DE',
+  },
+  {
+    id: 28,
+    title: 'GamesPlanet FR',
+  },
+  {
+    id: 26,
+    title: 'GamesPlanet UK',
+  },
+  {
+    id: 29,
+    title: 'GamesPlanet US',
+  },
+  {
+    id: 35,
+    title: 'GOG',
+  },
+  {
+    id: 36,
+    title: 'GreenManGaming',
+  },
+  {
+    id: 37,
+    title: 'Humble Store',
+  },
+  {
+    id: 42,
+    title: 'IndieGala Store',
+  },
+  {
+    id: 65,
+    title: 'JoyBuggy',
+  },
+  {
+    id: 47,
+    title: 'MacGameStore',
+  },
+  {
+    id: 48,
+    title: 'Microsoft Store',
+  },
+  {
+    id: 49,
+    title: 'Newegg',
+  },
+  {
+    id: 66,
+    title: 'Noctre',
+  },
+  {
+    id: 50,
+    title: 'Nuuvem',
+  },
+  {
+    id: 73,
+    title: 'PlanetPlay',
+  },
+  {
+    id: 70,
+    title: 'Playsum',
+  },
+  {
+    id: 61,
+    title: 'Steam',
+  },
+  {
+    id: 62,
+    title: 'Ubisoft Store',
+  },
+  {
+    id: 64,
+    title: 'WinGameStore',
+  },
+  {
+    id: 72,
+    title: 'ZOOM Platform',
+  },
+]
 
 const sanitizeItadSearchKey = (value: string): string => value.trim().toLowerCase()
 
@@ -244,7 +380,7 @@ const fetchIsThereAnyDealSearch = async (query: string): Promise<IsThereAnyDealS
 /**
  * Fetches price overview data by POSTing the ITAD game UUID to the v2 overview endpoint, using Redis caching.
  */
-const fetchIsThereAnyDealPrices = async (gameId: string | null): Promise<IsThereAnyDealPriceResponse | null> => {
+const fetchIsThereAnyDealPrices = async (gameId: string | null, country?: string | null): Promise<IsThereAnyDealPriceResponse | null> => {
   if (!config.isThereAnyDealApiKey) {
     logger.warn('IsThereAnyDeal API key not configured; skipping price lookup.')
     return null
@@ -261,24 +397,32 @@ const fetchIsThereAnyDealPrices = async (gameId: string | null): Promise<IsThere
     return null
   }
 
-  const cacheKey = `prices:id:${normalizedGameId}`
+  const params = new URLSearchParams()
+  params.set('key', config.isThereAnyDealApiKey)
+
+  // Allow the request country to override config value
+  const itadCountry = typeof country === 'string' && country.trim().length > 0
+    ? country.trim()
+    : config.isThereAnyDealCountry
+  params.set('country', itadCountry)
+
+  // Include country in the cache key (lowercased) so results are namespaced per market.
+  const itadCountryKey = itadCountry ? itadCountry.toLowerCase() : 'us'
+  const cacheKey = `prices:country:${itadCountryKey}:id:${normalizedGameId}`
 
   const cachedData = await redisLookupIsThereAnyDealResponse(cacheKey)
   if (cachedData !== null) {
     return cachedData as IsThereAnyDealPriceResponse
   }
 
-  const params = new URLSearchParams()
-  params.set('key', config.isThereAnyDealApiKey)
-  if (config.isThereAnyDealCountry) {
-    params.set('country', config.isThereAnyDealCountry)
-  }
+  // Define a list of shops that we care about (I added them all to storeIds)
+  //params.set('shops', '35')
 
   const url = `https://api.isthereanydeal.com/games/overview/v2?${params.toString()}`
   const requestBody = JSON.stringify([normalizedGameId])
 
   try {
-    logger.info(`Fetching IsThereAnyDeal prices for key "${cacheKey}"...`)
+    logger.info(`Fetching IsThereAnyDeal prices for key "${cacheKey}" with country="${itadCountry}"...`)
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -418,6 +562,8 @@ const buildGamePriceDeals = (entries: IsThereAnyDealPriceEntry[] | undefined): G
 export const generateIsThereAnyDealPriceSummary = async (options: {
   appId?: string | null;
   gameName?: string | null;
+  country?: string | null;
+  currency?: string | null;
 }): Promise<GamePriceSummary | null> => {
   const appId = options.appId?.toString().trim() || null
   const name = options.gameName?.trim() || null
@@ -450,13 +596,57 @@ export const generateIsThereAnyDealPriceSummary = async (options: {
     return null
   }
 
-  const priceResponse = await fetchIsThereAnyDealPrices(resolvedGameId)
+  const priceResponse = await fetchIsThereAnyDealPrices(resolvedGameId, options.country ?? null)
   if (!priceResponse || Object.keys(priceResponse).length === 0) {
     return null
   }
 
-  const deals = buildGamePriceDeals(priceResponse.data?.list)
-  const bestDeal = deals.length > 0 ? deals[0] : null
+  let deals = buildGamePriceDeals(priceResponse.data?.list)
+  let bestDeal = deals.length > 0 ? deals[0] : null
+
+  // If a currency was provided in request, attempt to convert from USD -> targetCurrency using FX rates.
+  const requestedCurrency = options.currency && typeof options.currency === 'string' && options.currency.trim().length > 0
+    ? options.currency.trim().toUpperCase()
+    : null
+
+  if (requestedCurrency && requestedCurrency !== 'USD' && deals.length > 0) {
+    try {
+      const fx = await fetchFxRates()
+      let multiplier: number | null = null
+
+      if (fx && fx.rates) {
+        const rates = fx.rates
+        const base = fx.base ? String(fx.base).toUpperCase() : undefined
+
+        // This should work if the base currency from that API ever changes
+        if (typeof rates['USD'] === 'number' && typeof rates[requestedCurrency] === 'number') {
+          multiplier = rates[requestedCurrency] / rates['USD']
+        }
+      }
+
+      if (multiplier !== null && !Number.isNaN(multiplier) && multiplier > 0) {
+        deals = deals.map((d) => {
+          const newDeal: GamePriceDeal = { ...d }
+          if (typeof newDeal.priceNew === 'number') {
+            newDeal.priceNew = Math.round((newDeal.priceNew * multiplier + Number.EPSILON) * 100) / 100
+          }
+          if (typeof newDeal.priceOld === 'number') {
+            newDeal.priceOld = Math.round((newDeal.priceOld * multiplier + Number.EPSILON) * 100) / 100
+          }
+          newDeal.currency = requestedCurrency
+          return newDeal
+        })
+
+        // Re-define the bestDeal
+        bestDeal = deals.length > 0 ? deals[0] : null
+      } else {
+        logger.info('FX rates not available or conversion not possible; leaving prices in USD.')
+      }
+    } catch (err) {
+      logger.error('Error converting ITAD prices via FX rates:', err)
+      // Note: On any FX error we will just leave prices as is in USD
+    }
+  }
 
   const summary: GamePriceSummary = {
     appId: resolvedAppId ?? null,

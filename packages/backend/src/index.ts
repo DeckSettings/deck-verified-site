@@ -1234,13 +1234,20 @@ app.get('/deck-verified/api/v1/game_details', async (req: Request, res: Response
 app.get('/deck-verified/api/v1/game_prices', async (req: Request, res: Response) => {
   const appId = typeof req.query['appid'] === 'string' ? req.query['appid'] : null
   const gameName = typeof req.query['name'] === 'string' ? req.query['name'] : null
+  const country = typeof req.query['country'] === 'string' ? req.query['country'] : null
+  const currency = typeof req.query['currency'] === 'string' ? req.query['currency'] : null
 
   if (!appId && !gameName) {
     return res.status(400).json({ error: 'appid or name is required' })
   }
 
   try {
-    const summary = await generateIsThereAnyDealPriceSummary({ appId, gameName })
+    const summary = await generateIsThereAnyDealPriceSummary({
+      appId,
+      gameName,
+      country,
+      currency,
+    })
     if (!summary) {
       return res.status(204).json({})
     }

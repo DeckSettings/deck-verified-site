@@ -53,7 +53,7 @@ const gameStore = useGameStore()
 const marketStore = useGameMarketStore()
 const authStore = useAuthStore()
 const configStore = useConfigStore()
-const { hideDuplicateReports } = storeToRefs(configStore)
+const { hideDuplicateReports, country, currency } = storeToRefs(configStore)
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
@@ -212,6 +212,7 @@ const priceSummary = ref<GamePriceSummary | null>(null)
 const priceNew = computed(() => priceSummary.value?.bestDeal?.priceNew ?? null)
 const priceOld = computed(() => priceSummary.value?.bestDeal?.priceOld ?? priceSummary.value?.deals?.[0]?.priceOld ?? null)
 const priceCut = computed(() => priceSummary.value?.bestDeal?.priceCut ?? null)
+const priceCurrency = computed(() => priceSummary.value?.bestDeal?.currency ?? null)
 const ratingsSummary = ref<GameRatingsSummary | null>(null)
 const protonTier = computed<string | null>(() => {
   const tier = ratingsSummary.value?.protonDb?.tier
@@ -221,25 +222,57 @@ const steamCompat = computed<SteamDeckCompatibilitySummary | null>(() => {
   const compat = ratingsSummary.value?.steamDeckCompatibility
   return compat ? compat : null
 })
-watch([appId], async ([newAppId]) => {
-  if (!newAppId) {
+let isActive = false
+
+const loadMarketData = async (id?: string | null) => {
+  const currentId = id ?? appId.value
+  if (!currentId) {
     priceSummary.value = null
     ratingsSummary.value = null
     return
   }
 
   try {
-
     const [priceResult, ratingsResult] = await Promise.all([
-      marketStore.loadPriceSummary({ appId: newAppId }),
-      marketStore.loadRatingsSummary({ appId: newAppId }),
+      marketStore.loadPriceSummary({ appId: currentId, currency: currency.value, country: country.value }),
+      marketStore.loadRatingsSummary({ appId: currentId }),
     ])
+    if (!isActive) return
     priceSummary.value = priceResult ?? null
     ratingsSummary.value = ratingsResult ?? null
-  } catch {
+  } catch (error) {
+    if (!isActive) return
     priceSummary.value = null
     ratingsSummary.value = null
+    console.warn('[GameData] Failed to load market data', error)
   }
+}
+
+const ensureClientGameData = async () => {
+  if (!gameData.value && typeof gameStore.ensureLoaded === 'function') {
+    if (ajaxBar.value) {
+      ajaxBar.value.start()
+    }
+    try {
+      const githubToken = authStore && authStore.isLoggedIn && authStore.accessToken ? authStore.accessToken : null
+      await gameStore.ensureLoaded(route, githubToken)
+    } finally {
+      if (ajaxBar.value) {
+        ajaxBar.value.stop()
+      }
+    }
+  }
+}
+
+watch([appId, country, currency], async (values) => {
+  const [newAppId] = values
+  if (!newAppId) {
+    priceSummary.value = null
+    ratingsSummary.value = null
+    return
+  }
+  await ensureClientGameData()
+  await loadMarketData(newAppId)
 }, { immediate: true })
 
 const hasReports = computed(() => {
@@ -402,6 +435,8 @@ const onPopState = () => {
 
 // Client-only effects
 onMounted(async () => {
+  isActive = true
+
   if (isClient) {
     window.addEventListener('popstate', onPopState)
 
@@ -418,25 +453,13 @@ onMounted(async () => {
     }
   }
 
-  // Ensure data exists on first client render as well (SSR already fetched via onServerPrefetch)
-  if (!gameData.value && typeof gameStore.ensureLoaded === 'function') {
-    // Trigger Ajax par
-    if (ajaxBar.value) {
-      ajaxBar.value.start()
-    }
-    try {
-      // Trigger game data load if not already in store
-      const githubToken = authStore && authStore.isLoggedIn && authStore.accessToken ? authStore.accessToken : null
-      await gameStore.ensureLoaded(route, githubToken)
-    } finally {
-      // Ensure we stop the ajax bar after loading
-      if (ajaxBar.value) {
-        ajaxBar.value.stop()
-      }
-    }
+  await ensureClientGameData()
+  if (appId.value) {
+    await loadMarketData(appId.value)
   }
 })
 onBeforeUnmount(() => {
+  isActive = false
   if (isClient) {
     window.removeEventListener('popstate', onPopState)
   }
@@ -590,10 +613,12 @@ useMeta(() => {
 
             <!-- compatibility badges (top-left) -->
             <div class="game-banner-badges absolute-top-left column q-gutter-xs">
-              <ProtonBadge v-if="protonTier" class="q-mb-none"
-                           :app-id="appId"
-                           :game-name="gameName"
-                           :tier="protonTier" />
+              <ProtonBadge
+                v-if="protonTier" class="q-mb-none"
+                :key="`ProtonBadge-${appId}-${gameName}-protonTier`"
+                :app-id="appId"
+                :game-name="gameName"
+                :tier="protonTier" />
               <SteamCompatBadge v-if="steamCompat" class="q-mt-none"
                                 :game-name="gameName"
                                 :steam-deck-compatibility="steamCompat" />
@@ -601,11 +626,14 @@ useMeta(() => {
 
             <!-- price badges (top-right) -->
             <div class="game-banner-badges absolute-top-right column">
-              <PriceBadge v-if="priceSummary"
-                          :itad-slug="priceSummary.itadSlug"
-                          :price-new="priceNew"
-                          :price-old="priceOld"
-                          :price-cut="priceCut" />
+              <PriceBadge
+                v-if="priceSummary"
+                :key="`PriceBadge-${priceSummary.lastChecked}-${priceNew}-${priceOld}`"
+                :itad-slug="priceSummary.itadSlug"
+                :price-new="priceNew"
+                :price-old="priceOld"
+                :price-cut="priceCut"
+                :currency="priceCurrency" />
             </div>
           </div>
         </div>

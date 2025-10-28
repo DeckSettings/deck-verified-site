@@ -13,14 +13,18 @@ interface CacheEntry<T> {
 interface MarketParams {
   appId?: string | null;
   gameName?: string | null;
+  currency?: string;
+  country?: string;
 }
 
-const buildCacheKey = (appId?: string | null, gameName?: string | null): string | null => {
+const buildCacheKey = (appId?: string | null, gameName?: string | null, country?: string, currency?: string): string | null => {
+  const countryKey = country ? country : 'default'
+  const currencyKey = currency ? currency : 'default'
   if (appId) {
-    return `app:${appId}`
+    return `app:${appId}:country:${countryKey}:currency:${currencyKey}`
   }
   if (gameName) {
-    return `name:${gameName.trim().toLowerCase()}`
+    return `name:${gameName.trim().toLowerCase()}:country:${countryKey}:currency:${currencyKey}`
   }
   return null
 }
@@ -58,7 +62,7 @@ export const useGameMarketStore = defineStore('gameMarket', () => {
   }
 
   const loadPriceSummary = async (params: MarketParams): Promise<GamePriceSummary | null> => {
-    const key = buildCacheKey(params.appId, params.gameName)
+    const key = buildCacheKey(params.appId, params.gameName, params.country, params.currency)
     if (!key) {
       return null
     }

@@ -40,6 +40,8 @@ export type {
 interface MarketQueryParams {
   appId?: string | null;
   gameName?: string | null;
+  country?: string;
+  currency?: string;
 }
 
 export interface HomeReport {
@@ -124,13 +126,27 @@ const buildHomeReport = (report: GameReport): HomeReport => {
  */
 export const fetchGamePriceSummary = async (params: MarketQueryParams): Promise<GamePriceSummary | null> => {
   let url = apiUrl('/deck-verified/api/v1/game_prices')
+  const { country = 'US', currency = 'USD' } = params
+
+  const queryParts: string[] = []
   if (params.appId) {
-    url += `?appid=${params.appId}`
+    queryParts.push(`appid=${params.appId}`)
   } else if (params.gameName) {
-    url += `?name=${encodeURIComponent(params.gameName)}`
+    queryParts.push(`name=${encodeURIComponent(params.gameName)}`)
   } else {
     console.error('fetchGamePriceSummary called without appId or gameName')
     return null
+  }
+
+  if (country && country.trim() !== '') {
+    queryParts.push(`country=${encodeURIComponent(country)}`)
+  }
+  if (currency && currency.trim() !== '') {
+    queryParts.push(`currency=${encodeURIComponent(currency)}`)
+  }
+
+  if (queryParts.length > 0) {
+    url += `?${queryParts.join('&')}`
   }
 
   try {
@@ -285,7 +301,7 @@ export const fetchGameData = async (gameName: string | null, appId: string | nul
     if (!text) return null
     const data = JSON.parse(text) as GameDetails
     if (data) {
-      console.debug('Game data:', JSON.stringify(data))
+      // console.debug('Game data:', JSON.stringify(data))
       return data
     } else {
       console.error('Unable to find game data by AppID/Game Name')
