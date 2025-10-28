@@ -11,36 +11,86 @@ const cloneConfig = (config: ConfigPayload): ConfigPayload => ({
   currency: config.currency,
 })
 
-const resolveInitialConfig = async (): Promise<{ state: ConfigPayload; hydrated: boolean }> => {
-  const fallback = cloneConfig(DEFAULT_CONFIG)
+interface InitialConfigState {
+  state: ConfigPayload
+  hydrated: boolean
+}
+
+const createInitialState = (config: ConfigPayload, hydrated: boolean): InitialConfigState => ({
+  state: cloneConfig(config),
+  hydrated,
+})
+
+const defaultInitialState = (): InitialConfigState =>
+  createInitialState(DEFAULT_CONFIG, typeof window === 'undefined')
+
+let resolvedInitial: InitialConfigState | null = typeof window === 'undefined' ? defaultInitialState() : null
+let initialPromise: Promise<InitialConfigState> | null = null
+
+const resolveInitialConfig = async (): Promise<InitialConfigState> => {
+  const fallback = defaultInitialState()
 
   if (typeof window === 'undefined') {
-    return { state: fallback, hydrated: false }
+    return fallback
   }
 
   try {
     const result = await loadConfig()
     if (!result) {
-      return { state: fallback, hydrated: true }
+      return createInitialState(DEFAULT_CONFIG, true)
     }
-    return { state: cloneConfig(result), hydrated: true }
+    return createInitialState(result, true)
   } catch (error) {
     console.warn('[config-store] Failed to resolve initial config', error)
-    return { state: fallback, hydrated: false }
+    return createInitialState(DEFAULT_CONFIG, false)
   }
 }
 
-const initial = await resolveInitialConfig()
+const ensureInitialConfig = async (): Promise<InitialConfigState> => {
+  if (resolvedInitial?.hydrated) {
+    return resolvedInitial
+  }
+
+  if (!initialPromise) {
+    initialPromise = resolveInitialConfig().then((result) => {
+      resolvedInitial = result
+      initialPromise = null
+      return result
+    })
+  }
+
+  return initialPromise
+}
+
+if (typeof window !== 'undefined') {
+  void ensureInitialConfig()
+}
 
 export const useConfigStore = defineStore('config', () => {
-  const state = reactive<ConfigPayload>(cloneConfig(initial.state))
-  const isHydrated = ref(typeof window === 'undefined' ? true : initial.hydrated)
+  const baseInitial = resolvedInitial ?? defaultInitialState()
+  const state = reactive<ConfigPayload>(cloneConfig(baseInitial.state))
+  const isHydrated = ref(baseInitial.hydrated)
 
   const hideDuplicateReports = toRef(state, 'hideDuplicateReports')
   const showHomeWelcomeCard = toRef(state, 'showHomeWelcomeCard')
   const disabledFeeds = toRef(state, 'disabledFeeds')
   const country = toRef(state, 'country')
   const currency = toRef(state, 'currency')
+
+  const applyConfig = (config: ConfigPayload) => {
+    state.hideDuplicateReports = config.hideDuplicateReports
+    state.showHomeWelcomeCard = config.showHomeWelcomeCard
+    state.disabledFeeds = [...config.disabledFeeds]
+    state.country = config.country
+    state.currency = config.currency
+  }
+
+  if (!resolvedInitial && typeof window !== 'undefined') {
+    void ensureInitialConfig().then(({ state: initialState, hydrated }) => {
+      applyConfig(initialState)
+      isHydrated.value = hydrated
+    })
+  }
 
   const setHideDuplicateReports = (value: boolean) => {
     hideDuplicateReports.value = value
@@ -71,24 +121,15 @@ export const useConfigStore = defineStore('config', () => {
       isHydrated.value = true
       return
     }
-    if (initial.hydrated) {
-      return
-    }
     try {
-      const result = await loadConfig()
-      if (result) {
-        state.hideDuplicateReports = result.hideDuplicateReports
-        state.showHomeWelcomeCard = result.showHomeWelcomeCard
-        state.disabledFeeds = [...result.disabledFeeds]
-        state.country = typeof result.country === 'string' ? result.country : DEFAULT_CONFIG.country
-        state.currency = typeof result.currency === 'string' ? result.currency : DEFAULT_CONFIG.currency
-      } else {
-        state.hideDuplicateReports = DEFAULT_CONFIG.hideDuplicateReports
-        state.showHomeWelcomeCard = DEFAULT_CONFIG.showHomeWelcomeCard
-        state.disabledFeeds = [...DEFAULT_CONFIG.disabledFeeds]
-        state.country = DEFAULT_CONFIG.country
-        state.currency = DEFAULT_CONFIG.currency
+      if (resolvedInitial?.hydrated) {
+        applyConfig(resolvedInitial.state)
+        isHydrated.value = true
+        return
       }
+      const result = await ensureInitialConfig()
+      applyConfig(result.state)
+      isHydrated.value = result.hydrated
     } catch (error) {
       console.warn('[config-store] Failed to hydrate', error)
     } finally {
