@@ -1,3 +1,5 @@
+import itadIconUrl from 'src/assets/icons/itad-icon.svg?url'
+
 export interface AppFeedDefinition {
   key: string;
   url: string;
@@ -33,6 +35,6 @@ export const APP_FEEDS: AppFeedDefinition[] = [
     url: 'https://isthereanydeal.com/feeds/{country}/giveaways.rss',
     title: 'PC Game Giveaways',
     subtitle: 'Latest free PC game giveaways and offers',
-    logo: 'src/assets/icons/itad-icon.svg',
+    logo: itadIconUrl,
   },
 ]
