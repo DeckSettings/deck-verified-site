@@ -125,12 +125,25 @@ export const fetchProxiedRssFeed = async (encodedFeedUrl: string | undefined): P
     return { ...cached, fromCache: true }
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 20000) // 20s timeout
+
   try {
     const response = await fetch(feedUrl.toString(), {
       headers: {
         Accept: 'application/rss+xml, application/xml, text/xml',
       },
+      signal: controller.signal,
     })
+
+    const content = await response.text()
+    logger.info('RSS proxy response', {
+      url: feedUrl.toString(),
+      status: response.status,
+      statusText: response.statusText,
+      content,
+    })
+
     if (!response.ok) {
       logger.warn('Upstream RSS feed returned non-OK status', {
         url: feedUrl.toString(),
@@ -140,7 +153,6 @@ export const fetchProxiedRssFeed = async (encodedFeedUrl: string | undefined): P
       throw new RssProxyError('upstream_feed_error', status)
     }
 
-    const content = await response.text()
     const contentType = response.headers.get('content-type')
     const payload: CachedRssPayload = {
       content,
@@ -155,10 +167,23 @@ export const fetchProxiedRssFeed = async (encodedFeedUrl: string | undefined): P
       fromCache: false,
     }
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      logger.error('Failed to fetch RSS feed due to timeout', { url: feedUrl.toString() })
+      throw new RssProxyError('failed_to_fetch_feed_timeout', 504) // 504 Gateway Timeout
+    }
+
     if (error instanceof RssProxyError) {
       throw error
     }
-    logger.error('Failed to fetch RSS feed', { url: feedUrl.toString(), error })
+    logger.error('Failed to fetch RSS feed', {
+      url: feedUrl.toString(),
+      error,
+      errorMessage: error instanceof Error ? error.message : 'unknown',
+      errorStack: error instanceof Error ? error.stack : 'unknown',
+      errorCause: error instanceof Error && 'cause' in error ? error.cause : 'unknown',
+    })
     throw new RssProxyError('failed_to_fetch_feed', 502)
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

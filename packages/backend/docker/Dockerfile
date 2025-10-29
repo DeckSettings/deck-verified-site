@@ -23,4 +23,6 @@ WORKDIR /app
 
 EXPOSE 9022
 
+ENV NODE_OPTIONS="--no-network-family-autoselection"
+
 CMD ["npm", "run", "serve"]
