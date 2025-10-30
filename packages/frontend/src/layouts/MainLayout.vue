@@ -252,6 +252,7 @@ const { enableLogin } = useFeatureFlags()
   .logo-container {
     width: auto;
     margin-bottom: 0;
+    margin-right: 45px;
   }
 
   .header-actions {
