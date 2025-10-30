@@ -198,6 +198,7 @@ const searchResultsTop = computed(() => {
             :key="result.appId"
             clickable
             v-ripple
+            class="search-result-item"
             @click="(e) => goToGamePage(e, result.appId ? `/app/${result.appId}` : `/game/${encodeURIComponent(result.gameName)}`)">
             <q-item-section avatar>
               <q-img
@@ -218,8 +219,8 @@ const searchResultsTop = computed(() => {
                 alt="Game Image">
               </q-img>
             </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ result.gameName }}</q-item-label>
+            <q-item-section class="game-details">
+              <q-item-label class="ellipsis">{{ result.gameName }}</q-item-label>
               <q-item-label caption>
                 ({{ result.reportCount }} reports)
                 <template v-if="result.appId && Number(result.appId) > 0">
@@ -254,6 +255,13 @@ const searchResultsTop = computed(() => {
   justify-content: flex-end;
 }
 
+.search-result-item {
+  max-width: 399px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .search-results {
   position: absolute;
   left: 0;
@@ -278,7 +286,11 @@ const searchResultsTop = computed(() => {
 
 @media (min-width: 1023.98px) {
   .game-search-container {
-    width: 400px;
+    width: 560px;
+  }
+
+  .search-result-item {
+    max-width: 559px;
   }
 }
 
