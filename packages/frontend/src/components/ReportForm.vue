@@ -1207,7 +1207,7 @@ watch(formValues, () => {
                             @dragover.prevent
                             @drop.prevent="onDropNotes"
                           >
-                            <div>Drag images here or</div>
+                            <div v-if="!$q.platform.isMobileUi">Drag images here or</div>
                             <q-btn color="primary" dense label="Choose images" @click="openNotesPicker" />
                             <input
                               ref="notesFileInput"
@@ -1281,7 +1281,7 @@ watch(formValues, () => {
                               @dragover.prevent
                               @drop.prevent="onDropInGame"
                             >
-                              <div>Drag images here or</div>
+                              <div v-if="!$q.platform.isMobileUi">Drag images here or</div>
                               <q-btn color="primary" dense label="Choose images" @click="openInGamePicker" />
                               <input
                                 ref="inGameFileInput"
