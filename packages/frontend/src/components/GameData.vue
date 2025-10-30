@@ -249,7 +249,19 @@ const loadMarketData = async (id?: string | null) => {
 }
 
 const ensureClientGameData = async () => {
-  if (!gameData.value && typeof gameStore.ensureLoaded === 'function') {
+  const routeAppId = route.params.appId as string
+  const routeGameName = route.params.gameName as string
+
+  let needsLoading = false
+  if (!gameData.value) {
+    needsLoading = true
+  } else if (routeAppId && gameStore.appId !== routeAppId) {
+    needsLoading = true
+  } else if (routeGameName && gameStore.gameName !== routeGameName) {
+    needsLoading = true
+  }
+
+  if (needsLoading) {
     if (ajaxBar.value) {
       ajaxBar.value.start()
     }
@@ -263,6 +275,8 @@ const ensureClientGameData = async () => {
     }
   }
 }
+
+watch(() => route.fullPath, ensureClientGameData)
 
 watch([appId, country, currency], async (values) => {
   const [newAppId] = values
