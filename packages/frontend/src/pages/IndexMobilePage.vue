@@ -100,12 +100,15 @@
                     />
                   </div>
                   <div class="feed-slide-caption">
-                    <div class="text-h6 text-weight-bold">{{ item.title }}</div>
+                    <div class="text-h6 text-weight-bold cursor-pointer" @click="openWindow(item.link)">
+                      {{ item.title }}
+                    </div>
                     <div class="text-caption text-grey-4">
                       <span v-if="item.author">{{ item.author }}</span>
                       <span v-if="item.author && item.pubDate">&nbsp;•&nbsp;</span>
-                      <span v-if="item.pubDate">{{ formatRelative(item.pubDate) }} ({{ formatDate(item.pubDate)
-                        }})</span>
+                      <span v-if="item.pubDate">
+                        {{ formatRelative(item.pubDate) }} ({{ formatDate(item.pubDate) }})
+                      </span>
                     </div>
                     <div class="text-body2">{{ truncate(item.description) }}</div>
                   </div>
@@ -239,6 +242,12 @@ const formatRelative = (iso?: string | null) => {
   if (!iso) return ''
   const parsed = dayjs(iso)
   return parsed.isValid() ? parsed.fromNow() : ''
+}
+
+const openWindow = (url?: string) => {
+  if (url) {
+    window.open(url, '_blank', 'noopener')
+  }
 }
 
 const handleRefresh = async (done: () => void) => {
