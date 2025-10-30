@@ -40,13 +40,13 @@ const numericSize = computed<number>(() => {
 
 const sizeCss = computed<string>(() => `${numericSize.value}px`)
 
-const iconSizeCss = computed<string>(() => `${numericSize.value * 0.8}px`)
+const iconSizeCss = computed<string>(() => `${numericSize.value * 0.7}px`)
 </script>
 
 <style scoped>
 .page-icon {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   white-space: nowrap;
   vertical-align: middle;
 }
