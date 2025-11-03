@@ -7,6 +7,7 @@ import {
 } from '../../redis'
 import { fetchReportBodySchema } from './report_body_schema'
 import { fetchHardwareInfo } from './hw_info'
+import { fetchProjectsByAppIdOrGameName } from './projects'
 import {
   generateImageLinksFromAppId,
   parseReportBody,
@@ -321,6 +322,36 @@ export const fetchRecentReports = async (
     if (reports && reports?.items?.length > 0) {
       const returnData = await parseGameReport(reports)
       await redisCacheRecentGameReports(returnData, count, validatedSort)
+      // Refresh the first 5 games in the background
+      returnData.slice(0, 5).forEach((report) => {
+        if (report.data.app_id || report.data.game_name) {
+          // Fire-and-forget background fetch. Avoid unhandled rejection noise.
+          ;(async () => {
+            try {
+              logger.info(
+                `(BG TASK) Refreshing game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`,
+              )
+              await fetchProjectsByAppIdOrGameName(
+                report.data.app_id ? String(report.data.app_id) : null,
+                report.data.game_name,
+                authToken,
+                true,
+              )
+              logger.info(
+                `(BG TASK) Refreshed game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`,
+              )
+            } catch (err) {
+              logger.error(
+                `(BG TASK) Background refresh failed for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`,
+              )
+            }
+          })().catch((err) => {
+            logger.error(
+              `(BG TASK) Background refresh task rejected for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`,
+            )
+          })
+        }
+      })
       return returnData
     }
 
