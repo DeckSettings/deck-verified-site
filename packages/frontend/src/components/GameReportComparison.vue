@@ -13,6 +13,7 @@ import PrimaryButton from 'components/elements/PrimaryButton.vue'
 import { useGameStore } from 'src/stores/game-store'
 import type { QTableColumn } from 'quasar'
 import { standardizeGameSettingsKey } from 'src/constants/game-settings-key-map'
+import { isSameValue } from 'src/constants/game-settings-value-map'
 
 interface ComparisonRow {
   id: string;
@@ -462,11 +463,16 @@ function determineRowStatus(values: string[]): 'same' | 'different' {
   if (!values.length) return 'different'
   const normalized = values.map(value => value.trim()).filter(value => value)
   if (normalized.length === 0) return 'different'
+
+  // If there's only one report with a value, there's nothing to compare it to, so we can call it 'same'
+  if (normalized.length === 1 && values.length === 1) return 'same'
+  // If some reports have values and others don't, they are different
   if (normalized.length !== values.length) return 'different'
+
   const [first, ...rest] = normalized
   if (!first) return 'different'
-  const baseline = first.toLowerCase()
-  const allEqual = rest.every(value => value.toLowerCase() === baseline)
+
+  const allEqual = rest.every(value => isSameValue(first, value))
   return allEqual ? 'same' : 'different'
 }
 
