@@ -16,14 +16,132 @@ import type {
   GameReport,
   GameMetadata,
   GithubIssuesSearchResult,
+  GithubIssuesSearchResultItems,
   GitHubIssueLabel,
 } from '../../../../shared/src/game'
 
 /**
- * Fetches reports from a GitHub repository using the search API.
- * Filters and sorts issues based on specified criteria.
+ * Fetches reports from a GitHub repository using the issues API.
+ * Note: This method is preferred when filtering by author to avoid issues with private users.
  */
-export const fetchReports = async (
+export const fetchReportsWithIssuesApi = async (
+  repoName: string = 'game-reports-steamos',
+  filterState: 'open' | 'closed' | null = 'open',
+  filterAuthor: string | null = null,
+  filterLabels: string[] | null = null,
+  sort: 'created' | 'updated' | 'comments' = 'updated',
+  direction: 'asc' | 'desc' = 'desc',
+  limit: number | null = null,
+  excludeInvalid: boolean = true,
+  excludeLabels: string[] | null = null,
+  accessToken: string | null = null,
+): Promise<GithubIssuesSearchResult | null> => {
+  const repoOwner = 'DeckSettings'
+
+  const params = new URLSearchParams({
+    sort: sort,
+    direction,
+  })
+
+  if (filterState) {
+    params.set('state', filterState)
+  }
+  if (filterAuthor) {
+    params.set('creator', filterAuthor)
+  }
+  if (filterLabels && filterLabels.length > 0) {
+    params.set('labels', filterLabels.join(','))
+  }
+
+  let url = `https://api.github.com/repos/${repoOwner}/${repoName}/issues?${params.toString()}`
+
+  try {
+    const headers: HeadersInit = {}
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
+    }
+
+    let allIssues: any[] = []
+    if (limit !== null && limit <= 0) {
+      // No need to fetch if limit is 0 or less.
+    } else if (limit !== null) {
+      // Fetch up to the limit.
+      url += `&per_page=${limit}`
+      const response = await fetch(url, { headers, cache: 'no-store' })
+      if (!response.ok) {
+        const errorBody = await response.text()
+        logger.error(
+          `GitHub API request failed with status ${response.status} when fetching reports with issues API: ${errorBody}`,
+        )
+        return null
+      }
+      allIssues = await response.json()
+    } else {
+      // limit is null, fetch all pages.
+      let page = 1
+      let fetchMore = true
+      while (fetchMore) {
+        const pagedUrl = `${url}&page=${page}&per_page=100`
+        const response = await fetch(pagedUrl, { headers, cache: 'no-store' })
+
+        if (!response.ok) {
+          const errorBody = await response.text()
+          logger.error(
+            `GitHub API request failed with status ${response.status} on page ${page} with issues API: ${errorBody}`,
+          )
+          return null
+        }
+
+        const issues: any[] = await response.json()
+        if (!Array.isArray(issues)) {
+          logger.error(`GitHub API response is not an array when fetching with issues API`)
+          return null
+        }
+
+        allIssues.push(...issues)
+
+        if (issues.length < 100) {
+          fetchMore = false
+        } else {
+          page++
+        }
+      }
+    }
+
+    // Filter out issues by label after the query as the issus api is not as good at this as the search api in fetchReportsWithSearchApi
+    let filteredIssues = allIssues
+    if (excludeLabels && excludeLabels.length > 0) {
+      filteredIssues = filteredIssues.filter(
+        (issue) => !issue.labels.some((label: GitHubIssueLabel) => excludeLabels.includes(label.name)),
+      )
+    }
+    if (excludeInvalid) {
+      filteredIssues = filteredIssues.filter(
+        (issue) => !issue.labels.some((label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete'),
+      )
+    }
+
+    const mappedIssues: GithubIssuesSearchResultItems[] = filteredIssues.map((issue: any) => ({
+      ...issue,
+      score: 0,
+    }))
+
+    return {
+      total_count: mappedIssues.length,
+      incomplete_results: false,
+      items: mappedIssues,
+    }
+  } catch (error) {
+    logger.error(`Error fetching reports with issues API: ${error}`)
+    return null
+  }
+}
+
+/**
+ * Fetches reports from a GitHub repository using the search API.
+ * Note: This method supports more complex queries and sorting, however, it will fail for searching on private users.
+ */
+export const fetchReportsWithSearchApi = async (
   repoName: string = 'game-reports-steamos',
   filterState: 'open' | 'closed' | null = 'open',
   filterAuthor: string | null = null,
@@ -68,9 +186,6 @@ export const fetchReports = async (
     query += '+-label:invalid:template-incomplete'
   }
   let url = `https://api.github.com/search/issues?q=${query}&sort=${encodedSort}&order=${direction}`
-  if (limit !== null) {
-    url += `&per_page=${limit}`
-  }
 
   try {
     const headers: HeadersInit = {}
@@ -78,17 +193,64 @@ export const fetchReports = async (
       headers['Authorization'] = `Bearer ${accessToken}`
     }
 
-    const response = await fetch(url, {
-      headers,
-      cache: 'no-store',
-    })
+    if (limit !== null) {
+      url += `&per_page=${limit}`
+      const response = await fetch(url, {
+        headers,
+        cache: 'no-store',
+      })
 
-    if (!response.ok) {
-      const errorBody = await response.text()
-      logger.error(`GitHub API request failed with status ${response.status} when fetching reports using query '${query}': ${errorBody}`)
-      return null
+      if (!response.ok) {
+        const errorBody = await response.text()
+        logger.error(`GitHub API request failed with status ${response.status} when fetching reports using query '${query}': ${errorBody}`)
+        return null
+      }
+      const result: GithubIssuesSearchResult = await response.json()
+      return result
     }
-    return await response.json()
+
+    // Pagination logic for when limit is null
+    let allItems: GithubIssuesSearchResultItems[] = []
+    let page = 1
+    let fetchedAll = false
+    let total_count = 0
+    let incomplete_results = false
+
+    while (!fetchedAll) {
+      const pagedUrl = `${url}&per_page=100&page=${page}`
+      const response = await fetch(pagedUrl, { headers, cache: 'no-store' })
+
+      if (!response.ok) {
+        const errorBody = await response.text()
+        logger.error(`GitHub API request failed with status ${response.status} on page ${page} for query '${query}': ${errorBody}`)
+        return null
+      }
+
+      const result: GithubIssuesSearchResult = await response.json()
+      total_count = result.total_count
+      incomplete_results = result.incomplete_results
+
+      if (result.items) {
+        allItems.push(...result.items)
+      }
+
+      if (!result.items || result.items.length === 0 || allItems.length >= result.total_count || allItems.length >= 1000) {
+        fetchedAll = true
+      } else {
+        page++
+      }
+    }
+
+    if (total_count > 1000) {
+      logger.warn(`Search query returned ${total_count} results, but GitHub API is limited to 1000 results.`)
+      incomplete_results = true
+    }
+
+    return {
+      total_count: total_count,
+      incomplete_results: incomplete_results,
+      items: allItems,
+    }
   } catch (error) {
     logger.error(`Error fetching reports: ${error}`)
     return null
@@ -307,7 +469,7 @@ export const fetchRecentReports = async (
       }
     }
 
-    const reports = await fetchReports(
+    const reports = await fetchReportsWithSearchApi(
       undefined,
       'open',
       null,
@@ -382,7 +544,7 @@ export const fetchPopularReports = async (
       }
     }
 
-    const reports = await fetchReports(
+    const reports = await fetchReportsWithSearchApi(
       undefined,
       'open',
       null,
@@ -423,7 +585,7 @@ export const fetchAuthorReportCount = async (
       return cachedData
     }
 
-    const reports = await fetchReports(
+    const reports = await fetchReportsWithIssuesApi(
       undefined,
       'open',
       author,

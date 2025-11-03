@@ -321,9 +321,9 @@ export interface GithubIssuesSearchResultItems {
   labels: GitHubIssueLabel[];
   state: string;
   locked: boolean;
-  assignee: null; // Could be typed if details provided
-  assignees: any[]; // Array of objects if details provided
-  milestone: null; // Could be typed if details provided
+  assignee: null;
+  assignees: any[];
+  milestone: null;
   comments: number;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
@@ -344,7 +344,7 @@ export interface GithubIssuesSearchResultItems {
     eyes: number;
   };
   timeline_url: string;
-  performed_via_github_app: null; // Could be typed if details provided
+  performed_via_github_app: null;
   state_reason: string | null;
   score: number;
 }

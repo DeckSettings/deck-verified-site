@@ -65,7 +65,7 @@ import { fetchProxiedRssFeed, RssProxyError } from './external/rssproxy'
 import { fetchBlogReviewSummary } from './external/bloggerapi'
 import { fetchRepoIssueLabels } from './external/decksettings/repo_issue_labels'
 import { fetchReportBodySchema } from './external/decksettings/report_body_schema'
-import { fetchPopularReports, fetchRecentReports, fetchReports } from './external/decksettings/reports'
+import { fetchPopularReports, fetchRecentReports, fetchReportsWithIssuesApi } from './external/decksettings/reports'
 import { fetchProjectsByAppIdOrGameName } from './external/decksettings/projects'
 import { fetchHardwareInfo } from './external/decksettings/hw_info'
 import { fetchGameReportTemplate } from './external/decksettings/game_report_template'
@@ -568,7 +568,7 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
   }
 
   try {
-    const reports = await fetchReports(
+    const reports = await fetchReportsWithIssuesApi(
       undefined,
       null,
       identity.login,
