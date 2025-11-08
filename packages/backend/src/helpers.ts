@@ -161,7 +161,7 @@ export const extractHeadingValue = async (
 
   const sectionLines: string[] = []
   for (let i = headingIndex + 1; i < lines.length; i++) {
-    const currentLine = lines[i]?.trim()
+    const currentLine = lines[i]
     if (currentLine === undefined) {
       continue
     }

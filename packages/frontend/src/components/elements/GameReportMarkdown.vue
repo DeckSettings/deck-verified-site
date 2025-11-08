@@ -290,6 +290,10 @@ export default defineComponent({
   padding: 0;
 }
 
+::v-deep(.report-markdown ul p) {
+  margin: 0;
+}
+
 ::v-deep(.report-markdown-lists ul li) {
   padding: 12px 5px;
   display: flex;
