@@ -701,7 +701,8 @@ app.get('/deck-verified/api/v1/rss', async (req: Request, res: Response) => {
     const contentType = result.contentType ?? 'application/xml; charset=utf-8'
 
     res.setHeader('Content-Type', contentType)
-    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=1800, stale-while-revalidate=30, stale-if-error=86400')
+    res.setHeader('Vary', 'Accept-Encoding')
     res.setHeader('X-Deck-Verified-Cache', result.fromCache ? 'HIT' : 'MISS')
 
     return res.status(200).send(result.content)
