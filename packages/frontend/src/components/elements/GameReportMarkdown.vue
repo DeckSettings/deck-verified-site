@@ -15,6 +15,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    inlineImages: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props) {
     const youTubeVideoId = ref('')
@@ -71,6 +75,9 @@ export default defineComponent({
       const { href: src, text: alt = '' } = image
       if (typeof src === 'string') {
         if (isWhitelistedAttachment(src)) {
+          if (props.inlineImages) {
+            return `<img src="${src}" alt="${alt || ''}" style="display: block; max-width: 100%; height: auto; margin: 1rem auto;" />`
+          }
           // Capture approved attachments to render below the markdown block
           additionalImages.value.push({ src, alt })
           return ''
@@ -94,6 +101,9 @@ export default defineComponent({
         const [, src = '', alt = ''] = imgMatch
         // Collect whitelisted attachment domains for out-of-band rendering
         if (isWhitelistedAttachment(src)) {
+          if (props.inlineImages) {
+            return `<img src="${src}" alt="${alt || ''}" style="display: block; max-width: 100%; height: auto; margin: 1rem auto;" />`
+          }
           additionalImages.value.push({ src, alt })
         }
       }
@@ -147,7 +157,7 @@ export default defineComponent({
           'h6',
           'img',
         ],
-        ALLOWED_ATTR: ['class', 'src', 'href', 'alt'],
+        ALLOWED_ATTR: ['class', 'src', 'href', 'alt', 'style'],
       })
     }
 
