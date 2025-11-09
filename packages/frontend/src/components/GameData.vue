@@ -44,6 +44,7 @@ import PriceBadge from 'components/elements/PriceBadge.vue'
 import PageHeader from 'components/elements/PageHeader.vue'
 import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import GameReportComparison from 'components/GameReportComparison.vue'
+import LoginPromptDialog from 'components/LoginPromptDialog.vue'
 
 dayjs.extend(relativeTime)
 
@@ -98,6 +99,7 @@ const externalLinksDialogOpen = ref(false)
 const dialogAutoOpened = ref(false)
 const commentsDialogOpen = ref(false)
 const reportIssueDialogOpen = ref(false)
+const loginPromptDialogOpen = ref(false)
 const commentsTargetReportId = ref<number | null>(null)
 
 const $q = useQuasar()
@@ -524,6 +526,10 @@ const closeCommentsDialog = () => {
 }
 
 const openReportIssueDialog = (report?: ExtendedGameReport | ExternalGameReview) => {
+  if (!authStore.isLoggedIn) {
+    loginPromptDialogOpen.value = true
+    return
+  }
   reportIssueDialogOpen.value = true
   reportIssueSelectedOption.value = 'request-clarification'
   reportIssueMessage.value = ''
@@ -1322,7 +1328,6 @@ useMeta(() => {
                   </q-card>
                 </q-dialog>
 
-
                 <q-dialog v-model="sortDialogOpen" backdrop-filter="blur(2px)">
                   <q-card class="dv-dialog-card">
                     <q-card-section class="dv-dialog-content">
@@ -1727,7 +1732,7 @@ useMeta(() => {
 
                       <div class="report-footer row items-center justify-between q-mt-lg q-mb-md q-pa-none">
                         <!-- Left: Author/Report section -->
-                        <div class="row items-center left-block author-source-row">
+                        <div class="row items-center author-block author-source-row">
                           <!-- Author group (entire block clickable when report is not external) -->
                           <q-item
                             v-if="!report.external"
@@ -1773,6 +1778,7 @@ useMeta(() => {
                             </q-item-section>
                           </q-item>
                           <q-space />
+                          <q-separator v-if="$q.screen.gt.sm" vertical inset class="q-mr-sm" />
                           <!-- Source group -->
                           <div class="source-col">
                             <q-item class="q-ma-none q-pa-none">
@@ -1781,7 +1787,7 @@ useMeta(() => {
                                   <a v-if="!report.external"
                                      :href="report.html_url" target="_blank" rel="noopener"
                                      style="text-decoration: none;">
-                                    <q-chip square clickable class="q-ma-none q-pr-xs">
+                                    <q-chip square clickable class="q-ma-none q-pr-xs q-pl-xs">
                                       <q-avatar icon="fab fa-github" text-color="white" />
                                       source
                                     </q-chip>
@@ -1789,7 +1795,7 @@ useMeta(() => {
                                   <a v-else
                                      :href="report.html_url" target="_blank" rel="noopener"
                                      style="text-decoration: none;">
-                                    <q-chip square clickable class="q-ma-none q-pr-xs">
+                                    <q-chip square clickable class="q-ma-none q-pr-xs q-pl-xs">
                                       <q-avatar text-color="white">
                                         <img :src="report.user.avatar_url">
                                       </q-avatar>
@@ -1797,7 +1803,7 @@ useMeta(() => {
                                     </q-chip>
                                   </a>
                                 </q-item-label>
-                                <q-item-label caption class="q-pt-xs">
+                                <q-item-label caption class="q-pt-xs q-pr-xs">
                                   <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
                                 </q-item-label>
                               </q-item-section>
@@ -1937,6 +1943,8 @@ useMeta(() => {
                           </q-card-actions>
                         </q-card>
                       </q-dialog>
+
+                      <LoginPromptDialog :show="loginPromptDialogOpen" @update:show="loginPromptDialogOpen = $event" />
 
                       <!-- Flag / Report Issue dialog -->
                       <q-dialog v-model="reportIssueDialogOpen" class="q-ma-none q-pa-none report-issue-dialog"
@@ -2394,7 +2402,7 @@ useMeta(() => {
   flex-wrap: nowrap;
 }
 
-.report-footer .left-block {
+.report-footer .author-block {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2432,6 +2440,7 @@ useMeta(() => {
   min-width: 0;
   flex: 1 1 0;
   overflow: hidden;
+  margin-top: 6px;
 }
 
 .report-footer .author-group {
@@ -2462,6 +2471,7 @@ useMeta(() => {
 .report-footer .author-count {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
+  margin-top: 10px;
 }
 
 .report-footer .source-col {
@@ -2470,7 +2480,7 @@ useMeta(() => {
   justify-content: center;
   min-width: 0;
   flex: 0 0 auto;
-  text-align: right;
+  text-align: left;
 }
 
 .report-footer .social-buttons {
@@ -2500,7 +2510,7 @@ useMeta(() => {
     align-items: stretch;
   }
 
-  .report-footer .left-block {
+  .report-footer .author-block {
     display: flex;
     justify-content: flex-start;
     align-items: center;
@@ -2551,7 +2561,7 @@ useMeta(() => {
     align-items: stretch;
   }
 
-  .report-footer .left-block {
+  .report-footer .author-block {
     order: 1;
     width: 100%;
     display: flex;
@@ -2560,6 +2570,10 @@ useMeta(() => {
     gap: 12px;
     padding-bottom: 8px;
     flex-wrap: nowrap;
+  }
+
+  .report-footer .source-col {
+    text-align: right;
   }
 
   .report-footer .social-buttons {
