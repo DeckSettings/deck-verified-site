@@ -39,6 +39,7 @@ export interface GameReport {
   data: GameReportData;
   metadata: GameMetadata;
   reactions: GameReportReactions;
+  comments: number;
   labels: {
     name: string;
     color: string;
@@ -446,6 +447,7 @@ export interface ExternalGameReview {
     avatar_url: string;
     report_count: number | null;
   };
+  comments: number;
   created_at: string; // ISO 8601 formatted date string
   updated_at: string; // ISO 8601 formatted date string
 }

@@ -90,6 +90,9 @@ const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const externalLinksDialogOpen = ref(false)
 const dialogAutoOpened = ref(false)
+const commentsDialogOpen = ref(false)
+const reportIssueDialogOpen = ref(false)
+const commentsTargetReportId = ref<number | null>(null)
 
 const includeExternalReports = ref(route.query.include_external === 'true')
 const sdhqLink = ref('')
@@ -387,6 +390,7 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
             background: gd.metadata.background,
           },
           reactions: { reactions_thumbs_up: 0, reactions_thumbs_down: 0 },
+          comments: 0,
           labels: [],
           external: true,
         })
@@ -443,8 +447,56 @@ const closeDialog = () => {
     history.back()
   }
 }
+
+const openCommentsDialog = (reportId?: number) => {
+  // (PLACEHOLDER)
+  // TODO: Opens a comments dialog where users can chat/comment about the report
+  commentsTargetReportId.value = reportId ?? null
+  commentsDialogOpen.value = true
+  if (isClient && 'history' in window) history.pushState({ commentsDialog: true }, '')
+}
+const closeCommentsDialog = () => {
+  commentsDialogOpen.value = false
+  commentsTargetReportId.value = null
+  if (isClient && history.state && history.state.commentsDialog) history.back()
+}
+
+const openReportIssueDialog = () => {
+  // (PLACEHOLDER)
+  // TODO: Opens a small dialog to report issues with this report
+  reportIssueDialogOpen.value = true
+  if (isClient && 'history' in window) history.pushState({ reportIssueDialog: true }, '')
+}
+const closeReportIssueDialog = () => {
+  reportIssueDialogOpen.value = false
+  if (isClient && history.state && history.state.reportIssueDialog) history.back()
+}
+
+const copyReportLink = (reportId: number) => {
+  if (!isClient) return
+  const url = `${window.location.origin}${route.path}?expandedId=${reportId}`
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).catch(() => {
+      // Ignore
+    })
+  } else {
+    const ta = document.createElement('textarea')
+    ta.value = url
+    document.body.appendChild(ta)
+    ta.select()
+    try {
+      document.execCommand('copy')
+    } catch {
+      // ignore
+    }
+    document.body.removeChild(ta)
+  }
+}
+
 const onPopState = () => {
   if (reportFormDialogOpen.value) closeDialog()
+  if (commentsDialogOpen.value) closeCommentsDialog()
+  if (reportIssueDialogOpen.value) closeReportIssueDialog()
 }
 
 // Client-only effects
@@ -1533,70 +1585,177 @@ useMeta(() => {
                           </q-card>
                         </div>
                       </div>
-                      <div class="row items-center q-mt-lg q-mb-md q-pa-none">
-                        <!-- Author Section -->
-                        <div class="col-auto">
-                          <q-item v-if="!report.external"
-                                  :clickable="!report.external"
-                                  v-ripple="!report.external"
-                                  tag="a"
-                                  :href="`${githubListReportsLink}+author%3A${report.user.login}` "
-                                  target="_blank" rel="noopener"
-                                  class="q-ma-none q-pa-none q-pl-xs">
-                            <q-item-section side>
-                              <q-avatar rounded size="48px">
-                                <img :src="report.user.avatar_url" />
+
+                      <div class="report-footer row items-center justify-between q-mt-lg q-mb-md q-pa-none">
+                        <!-- Left: Author/Report section -->
+                        <div class="row items-center left-block author-source-row">
+                          <!-- Author group (entire block clickable when report is not external) -->
+                          <q-item
+                            v-if="!report.external"
+                            class="author-group q-ma-none q-pa-none author-link"
+                            clickable
+                            v-ripple
+                            tag="a"
+                            :href="`${githubListReportsLink}+author%3A${encodeURIComponent(report.user.login)}`"
+                            target="_blank"
+                            rel="noopener"
+                            :aria-label="`View reports by ${report.user.login} on GitHub`"
+                            style="display:flex; align-items:center; flex:0 1 auto; min-width:0;"
+                          >
+                            <q-item-section side class="author-avatar-col">
+                              <q-avatar rounded class="author-avatar">
+                                <img :src="report.user.avatar_url" alt="Author avatar" />
                               </q-avatar>
                             </q-item-section>
-                            <q-item-section>
-                              <q-item-label>{{ report.user.login }}</q-item-label>
-                              <q-item-label caption>{{ report.user.report_count }} reports</q-item-label>
+                            <q-item-section class="author-meta-col">
+                              <q-item-label class="author-name" :title="report.user.login">{{ report.user.login }}
+                              </q-item-label>
+                              <q-item-label caption class="author-count">{{ report.user.report_count }} reports
+                              </q-item-label>
                             </q-item-section>
                           </q-item>
-                          <q-item v-else
-                                  class="q-ma-none q-pa-none q-pl-xs">
-                            <q-item-section side>
-                              <q-avatar rounded size="48px">
-                                <img :src="report.user.avatar_url" />
+
+                          <q-item
+                            v-else
+                            class="author-group q-ma-none q-pa-none"
+                            style="display:flex; align-items:center; flex:0 1 auto; min-width:0;"
+                          >
+                            <q-item-section side class="author-avatar-col">
+                              <q-avatar rounded class="author-avatar">
+                                <img :src="report.user.avatar_url" alt="Author avatar" />
                               </q-avatar>
                             </q-item-section>
-                            <q-item-section>
-                              <q-item-label>{{ report.user.login }}</q-item-label>
-                              <q-item-label caption>{{ report.user.report_count }} reports</q-item-label>
+
+                            <q-item-section class="author-meta-col">
+                              <q-item-label class="author-name" :title="report.user.login">{{ report.user.login }}
+                              </q-item-label>
+                              <q-item-label caption class="author-count">{{ report.user.report_count }} reports
+                              </q-item-label>
                             </q-item-section>
                           </q-item>
+                          <q-space />
+                          <!-- Source group -->
+                          <div class="source-col">
+                            <q-item class="q-ma-none q-pa-none">
+                              <q-item-section>
+                                <q-item-label caption>
+                                  <a v-if="!report.external"
+                                     :href="report.html_url" target="_blank" rel="noopener"
+                                     style="text-decoration: none;">
+                                    <q-chip square clickable class="q-ma-none q-pr-xs">
+                                      <q-avatar icon="fab fa-github" text-color="white" />
+                                      source
+                                    </q-chip>
+                                  </a>
+                                  <a v-else
+                                     :href="report.html_url" target="_blank" rel="noopener"
+                                     style="text-decoration: none;">
+                                    <q-chip square clickable class="q-ma-none q-pr-xs">
+                                      <q-avatar text-color="white">
+                                        <img :src="report.user.avatar_url">
+                                      </q-avatar>
+                                      source
+                                    </q-chip>
+                                  </a>
+                                </q-item-label>
+                                <q-item-label caption class="q-pt-xs">
+                                  <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </div>
                         </div>
-                        <!-- Last Updated Section -->
-                        <div class="col text-right">
-                          <q-item class="q-ma-none q-pa-none q-pr-xs">
-                            <q-item-section>
-                              <q-item-label caption>
-                                <a v-if="!report.external"
-                                   :href="report.html_url" target="_blank" rel="noopener"
-                                   style="text-decoration: none;">
-                                  <q-chip square clickable class="q-ma-none q-pr-xs">
-                                    <q-avatar icon="fab fa-github" text-color="white" />
-                                    source
-                                  </q-chip>
-                                </a>
-                                <a v-else
-                                   :href="report.html_url" target="_blank" rel="noopener"
-                                   style="text-decoration: none;">
-                                  <q-chip square clickable class="q-ma-none q-pr-xs">
-                                    <q-avatar text-color="white">
-                                      <img :src="report.user.avatar_url">
-                                    </q-avatar>
-                                    source
-                                  </q-chip>
-                                </a>
-                              </q-item-label>
-                              <q-item-label caption class="q-pr-xs">
-                                <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
-                              </q-item-label>
-                            </q-item-section>
-                          </q-item>
+
+                        <!-- Right: Social action group -->
+                        <div class="col-auto row items-center social-buttons q-gutter-sm">
+                          <q-btn flat round icon="thumb_up" size="sm" aria-label="Like report" @click.stop>
+                            <q-tooltip>Like this report</q-tooltip>
+                            <q-badge color="green" floating>
+                              {{ report.reactions.reactions_thumbs_up }}
+                            </q-badge>
+                          </q-btn>
+
+                          <q-btn flat round icon="chat_bubble" size="sm" aria-label="Open comments"
+                                 @click.stop="openCommentsDialog(report.id)">
+                            <q-tooltip>Open comments</q-tooltip>
+                            <q-badge color="blue" floating>
+                              {{ report.comments }}
+                            </q-badge>
+                          </q-btn>
+
+                          <q-btn flat round icon="share" size="sm" aria-label="Share report">
+                            <q-tooltip>Share this report</q-tooltip>
+                            <q-menu>
+                              <q-list style="min-width: 160px">
+                                <q-item clickable v-close-popup @click="copyReportLink(report.id)">
+                                  <q-item-section>Copy link (with expandedId)</q-item-section>
+                                </q-item>
+                                <q-separator />
+                                <q-item clickable v-close-popup>
+                                  <q-item-section>Share to X</q-item-section>
+                                </q-item>
+                                <q-item clickable v-close-popup>
+                                  <q-item-section>Share to Reddit</q-item-section>
+                                </q-item>
+                                <q-item clickable v-close-popup>
+                                  <q-item-section>Share to Facebook</q-item-section>
+                                </q-item>
+                                <q-item clickable v-close-popup>
+                                  <q-item-section>Share to Bluesky</q-item-section>
+                                </q-item>
+                              </q-list>
+                            </q-menu>
+                          </q-btn>
+
+                          <q-btn flat round icon="flag" size="sm" aria-label="Report issue with this report"
+                                 @click.stop="openReportIssueDialog()">
+                            <q-tooltip>Report an issue with this report</q-tooltip>
+                          </q-btn>
                         </div>
                       </div>
+
+                      <!-- Comments dialog (PLACEHOLDER) -->
+                      <q-dialog v-model="commentsDialogOpen" class="q-ma-none q-pa-none report-comments-dialog"
+                                persistent>
+                        <q-card>
+                          <q-card-section>
+                            <div class="text-h6">Comments</div>
+                          </q-card-section>
+
+                          <q-separator />
+
+                          <q-card-section>
+                            <!-- Placeholder for comments UI; will be implemented later -->
+                            <p class="text-caption">Comments UI coming soon. This dialog will show the conversation for
+                              this report (report id: {{ commentsTargetReportId }}).</p>
+                          </q-card-section>
+
+                          <q-card-actions align="right">
+                            <q-btn flat label="Close" color="primary" @click="closeCommentsDialog" />
+                          </q-card-actions>
+                        </q-card>
+                      </q-dialog>
+
+                      <!-- Report Issue dialog (PLACEHOLDER) -->
+                      <q-dialog v-model="reportIssueDialogOpen" class="q-ma-none q-pa-none report-issue-dialog"
+                                persistent>
+                        <q-card>
+                          <q-card-section>
+                            <div class="text-h6">Report an issue with this report</div>
+                          </q-card-section>
+
+                          <q-separator />
+
+                          <q-card-section>
+                            <p class="text-caption">This will allow users to flag problems such as typos, incorrect
+                              values, or anything that affects calculations. (Placeholder dialog.)</p>
+                          </q-card-section>
+
+                          <q-card-actions align="right">
+                            <q-btn flat label="Close" color="primary" @click="closeReportIssueDialog" />
+                          </q-card-actions>
+                        </q-card>
+                      </q-dialog>
                     </div>
                   </q-expansion-item>
                 </q-item>
@@ -1960,7 +2119,6 @@ useMeta(() => {
   min-width: 100px;
 }
 
-/* Rotate arrow when expanded */
 .rotate-down {
   transform: rotate(0deg);
   transition: transform 0.3s ease;
@@ -1979,6 +2137,104 @@ useMeta(() => {
   transition: all 0.3s ease-in-out;
 }
 
+.report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.report-footer .left-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-footer .author-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-footer .author-avatar-col {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.report-footer .author-avatar {
+  width: 48px;
+  height: 48px;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.report-footer .author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-footer .author-meta-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.report-footer .author-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.report-footer .author-link {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.report-footer .author-name {
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.report-footer .author-count {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.report-footer .source-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.report-footer .social-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.report-footer .social-buttons .q-badge {
+  transform-origin: center;
+}
+
 @media (max-width: 299.98px) {
   .game-banner-badges {
     display: none !important;
@@ -1989,6 +2245,49 @@ useMeta(() => {
   .duplicate-chip-text {
     display: none;
   }
+
+  .report-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-footer .left-block {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+
+  .report-footer .social-buttons {
+    order: 2;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    padding-top: 8px;
+    padding-bottom: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .report-footer .social-buttons q-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .report-footer .author-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .report-footer .author-name {
+    font-size: 0.95rem;
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+  }
 }
 
 @media (max-width: 1023.98px) {
@@ -1996,6 +2295,38 @@ useMeta(() => {
     width: 100%;
     margin-left: 0;
     margin-top: 8px;
+  }
+
+  .report-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-footer .left-block {
+    order: 1;
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .report-footer .social-buttons {
+    order: 2;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .report-footer .social-buttons q-btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }
 

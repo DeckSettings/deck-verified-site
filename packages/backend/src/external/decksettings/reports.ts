@@ -341,6 +341,7 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         },
         created_at: report.created_at,
         updated_at: report.updated_at,
+        comments: report.comments || 0,
       }
     }),
   )
