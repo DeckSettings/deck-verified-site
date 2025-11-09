@@ -26,6 +26,8 @@ import type {
   SteamDeckCompatibilitySummary,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
+import { useQuasar } from 'quasar'
+import { submitCommunityFlagComment } from 'src/utils/gh-api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
@@ -93,6 +95,62 @@ const dialogAutoOpened = ref(false)
 const commentsDialogOpen = ref(false)
 const reportIssueDialogOpen = ref(false)
 const commentsTargetReportId = ref<number | null>(null)
+
+const $q = useQuasar()
+const reportIssueSelectedOption = ref<string>('request-clarification')
+const reportIssueMessage = ref<string>('')
+const reportIssueDuplicateTarget = ref<number | null>(null)
+const currentReportNumber = ref<number | null>(null)
+const currentReportAuthor = ref<string | null>(null)
+const reportIssueDuplicateOptions = ref<{ label: string; value: number }[]>([])
+const reportIssueOptions = [
+  {
+    value: 'request-clarification',
+    label: 'Need more details',
+    description: 'This flag should be used to ask the author for additional details that clarify the report. For example: where the FPS was measured, which scene or run produced the minimum FPS, or what exact steps were used to collect the metric.',
+  },
+  {
+    value: 'suggest-config-review',
+    label: 'Suggest re-checking configuration details',
+    description: 'This flag should be used to suggest the author re-check configuration and environment settings. Use it when a game, driver, or OS update may have altered behavior, or when reported config values (TDP, frame limits, compatibility tool) look inconsistent and a re-test is recommended.',
+  },
+  {
+    value: 'suggest-improvements',
+    label: 'Request extra information or media',
+    description: 'This flag should be used to request additional supporting information or media (screenshots, logs, video clips, power/battery measurements) that help others reproduce, validate, or troubleshoot the reported results.',
+  },
+  {
+    value: 'suggest-spelling-check',
+    label: 'Typos or grammar',
+    description: 'This flag should be used to point out spelling, grammar, or formatting issues in headings, descriptions, or data fields so the report is clearer and easier for others to read.',
+  },
+  {
+    value: 'suggest-verification',
+    label: 'Recommend verification',
+    description: 'This flag should be used to recommend the author double-check numeric values or conclusions when they appear inconsistent, improbable, or likely mistyped (for example: a reported 5 W that seems like it should be 15 W).',
+  },
+  {
+    value: 'mark-duplicate',
+    label: 'Mark report as a duplicate',
+    description: 'This flag should be used only when the same author has submitted the same report more than with the same data. Select which of the author’s other reports this duplicates so they can merge or close the redundant submission. Reports flagged by the community as duplicates can be filtered out in the website and apps.',
+  },
+]
+
+const reportIssueOptionsEffective = computed(() => {
+  const author = currentReportAuthor.value
+  if (!author) return reportIssueOptions
+  const authorReportsCount = (gameData.value?.reports ?? []).filter(r => (r.user?.login ?? '') === author).length
+  if (authorReportsCount <= 1) {
+    return reportIssueOptions.filter(o => o.value !== 'mark-duplicate')
+  }
+  return reportIssueOptions
+})
+
+const reportIssueDescription = computed(() => {
+  const selected = reportIssueSelectedOption.value
+  const opt = reportIssueOptions.find(o => o.value === selected)
+  return opt?.description ?? ''
+})
 
 const includeExternalReports = ref(route.query.include_external === 'true')
 const sdhqLink = ref('')
@@ -461,15 +519,60 @@ const closeCommentsDialog = () => {
   if (isClient && history.state && history.state.commentsDialog) history.back()
 }
 
-const openReportIssueDialog = () => {
-  // (PLACEHOLDER)
-  // TODO: Opens a small dialog to report issues with this report
+const openReportIssueDialog = (report?: ExtendedGameReport | ExternalGameReview) => {
   reportIssueDialogOpen.value = true
+  reportIssueSelectedOption.value = 'request-clarification'
+  reportIssueMessage.value = ''
+  reportIssueDuplicateTarget.value = null
+
+  const reportNumber = (report as unknown as { number?: number })?.number ?? null
+  currentReportNumber.value = reportNumber
+  const authorLogin = (report as unknown as { user?: { login?: string } })?.user?.login ?? null
+  currentReportAuthor.value = authorLogin
+
+  const allReports = gameData.value?.reports ?? []
+  reportIssueDuplicateOptions.value = (allReports || [])
+    .filter(r => authorLogin ? (r.user?.login === authorLogin && r.number !== reportNumber) : false)
+    .map(r => ({ label: `[${r.user?.login}] Report #${r.number} — ${r.data?.summary}`, value: r.number }))
+
   if (isClient && 'history' in window) history.pushState({ reportIssueDialog: true }, '')
 }
 const closeReportIssueDialog = () => {
   reportIssueDialogOpen.value = false
+  // Reset form state
+  reportIssueSelectedOption.value = 'request-clarification'
+  reportIssueMessage.value = ''
+  reportIssueDuplicateTarget.value = null
+  reportIssueDuplicateOptions.value = []
+  currentReportNumber.value = null
+  currentReportAuthor.value = null
+
   if (isClient && history.state && history.state.reportIssueDialog) history.back()
+}
+
+const submitReportIssue = async () => {
+  try {
+    if (!currentReportNumber.value) {
+      $q.notify({ type: 'negative', message: 'No target report selected.' })
+      return
+    }
+
+    const cmd = reportIssueSelectedOption.value
+    let finalMessage = ''
+
+    if (cmd === 'mark-duplicate') {
+      finalMessage = `This looks like a duplicate of #${reportIssueDuplicateTarget.value}\nLet's keep the discussion there to avoid splitting feedback.`
+    } else {
+      finalMessage = reportIssueMessage.value || ''
+    }
+
+    await submitCommunityFlagComment(currentReportNumber.value, cmd, finalMessage)
+    $q.notify({ type: 'positive', message: 'Report submitted.' })
+    closeReportIssueDialog()
+  } catch (err) {
+    console.error('Failed to submit reportbot comment', err)
+    $q.notify({ type: 'negative', message: 'Failed to submit report. Please try again.' })
+  }
 }
 
 const copyReportLink = (reportId: number) => {
@@ -1707,9 +1810,9 @@ useMeta(() => {
                             </q-menu>
                           </q-btn>
 
-                          <q-btn flat round icon="flag" size="sm" aria-label="Report issue with this report"
-                                 @click.stop="openReportIssueDialog()">
-                            <q-tooltip>Report an issue with this report</q-tooltip>
+                          <q-btn flat round icon="flag" size="sm" aria-label="Flag report"
+                                 @click.stop="openReportIssueDialog(report)">
+                            <q-tooltip>Flag this report</q-tooltip>
                           </q-btn>
                         </div>
                       </div>
@@ -1736,23 +1839,70 @@ useMeta(() => {
                         </q-card>
                       </q-dialog>
 
-                      <!-- Report Issue dialog (PLACEHOLDER) -->
+                      <!-- Flag / Report Issue dialog -->
                       <q-dialog v-model="reportIssueDialogOpen" class="q-ma-none q-pa-none report-issue-dialog"
                                 persistent>
-                        <q-card>
+                        <q-card style="min-width: 320px; max-width: 720px;">
                           <q-card-section>
-                            <div class="text-h6">Report an issue with this report</div>
+                            <div class="text-h6">Flag report</div>
                           </q-card-section>
 
                           <q-separator />
 
                           <q-card-section>
-                            <p class="text-caption">This will allow users to flag problems such as typos, incorrect
-                              values, or anything that affects calculations. (Placeholder dialog.)</p>
+                            <div class="q-gutter-sm">
+                              <q-select
+                                v-model="reportIssueSelectedOption"
+                                :options="reportIssueOptionsEffective"
+                                option-value="value"
+                                option-label="label"
+                                label="Reason"
+                                emit-value
+                                map-options
+                                outlined
+                              />
+
+                              <div v-if="reportIssueDescription" class="q-my-lg q-mx-md">
+                                <div class="text-subtitle2">Explanation:</div>
+                                <div class="text-caption q-mt-sm">{{ reportIssueDescription }}</div>
+                              </div>
+
+                              <div v-if="reportIssueSelectedOption === 'mark-duplicate'">
+                                <q-select
+                                  v-model="reportIssueDuplicateTarget"
+                                  :options="reportIssueDuplicateOptions"
+                                  option-value="value"
+                                  option-label="label"
+                                  label="Select duplicate report"
+                                  emit-value
+                                  map-options
+                                  outlined
+                                />
+                              </div>
+
+                              <div v-if="reportIssueSelectedOption !== 'mark-duplicate'">
+                                <q-input
+                                  v-model="reportIssueMessage"
+                                  type="textarea"
+                                  rows="3"
+                                  label="Brief Message (explain why you're raising this)"
+                                  outlined
+                                  :rules="[val => !!val || 'Message is required']"
+                                  hint="Be specific so the report author knows what to change"
+                                />
+                              </div>
+                            </div>
                           </q-card-section>
 
                           <q-card-actions align="right">
-                            <q-btn flat label="Close" color="primary" @click="closeReportIssueDialog" />
+                            <q-btn flat label="Cancel" color="primary" @click="closeReportIssueDialog" />
+                            <q-btn
+                              flat
+                              label="Submit"
+                              color="primary"
+                              :disable="(reportIssueSelectedOption !== 'mark-duplicate' && !reportIssueMessage) || (reportIssueSelectedOption === 'mark-duplicate' && !reportIssueDuplicateTarget)"
+                              @click="submitReportIssue"
+                            />
                           </q-card-actions>
                         </q-card>
                       </q-dialog>

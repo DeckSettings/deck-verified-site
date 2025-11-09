@@ -41,7 +41,7 @@ export const deleteIssue = async (issueNumber: number): Promise<void> => {
       'Accept': 'application/vnd.github+json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ body: '@/reportbot delete confirm' }),
+    body: JSON.stringify({ body: '/reportbot delete confirm' }),
   })
 
   if (!response.ok) {
@@ -60,6 +60,44 @@ export const deleteIssue = async (issueNumber: number): Promise<void> => {
     })
   } catch (err) {
     console.warn('Failed to start GitHub actions delete monitor', err)
+  }
+}
+
+export const submitCommunityFlagComment = async (issueNumber: number, command: string, message: string): Promise<void> => {
+  const authStore = useAuthStore()
+  if (!authStore.isLoggedIn) {
+    throw new Error('Not logged in')
+  }
+  const accessToken = authStore.accessToken
+
+  const url = `https://api.github.com/repos/DeckSettings/game-reports-steamos/issues/${issueNumber}/comments`
+  const bodyText = `/reportbot ${command}\n${message}`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ body: bodyText }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    throw new Error(`Failed to post reportbot comment: ${response.statusText} ${JSON.stringify(errorBody)}`)
+  }
+
+  try {
+    const { monitorIssue } = useGithubActionsMonitor()
+    void monitorIssue({
+      issueNumber,
+      issueUrl: `https://github.com/DeckSettings/game-reports-steamos/issues/${issueNumber}`,
+      createdAt: new Date().toISOString(),
+      workflowType: 'operations',
+      operation: 'apply-community-flag',
+    })
+  } catch (err) {
+    console.warn('Failed to start GitHub actions reportbot monitor', err)
   }
 }
 

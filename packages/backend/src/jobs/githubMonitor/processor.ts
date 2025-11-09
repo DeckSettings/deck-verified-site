@@ -198,6 +198,36 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
           done: true,
           variant: 'positive',
         })
+        if (appId || gameName) {
+          try {
+            logger.info(`Forcing cache refresh for game after delete: appId=${appId}, gameName=${gameName}`)
+            await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+          } catch (error) {
+            logger.error('Failed to force refresh game data after delete operation', error)
+          }
+        }
+        return
+      }
+
+      // Check for community flag application operation
+      if (workflowType === 'operations' && operation === 'apply-community-flag') {
+        await updateProgress(payload, {
+          status: 'completed',
+          icon: 'check_circle',
+          title: 'Report flagged',
+          message: 'The community flag has been applied to the report via GitHub Actions.',
+          progress: 100,
+          done: true,
+          variant: 'positive',
+        })
+        if (appId || gameName) {
+          try {
+            logger.info(`Forcing cache refresh for game after community flag: appId=${appId}, gameName=${gameName}`)
+            await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+          } catch (error) {
+            logger.error('Failed to force refresh game data after apply-community-flag operation', error)
+          }
+        }
         return
       }
 
@@ -289,7 +319,7 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
         }
       }
     } else if (workflowType === 'operations') {
-      // Handle operations workflows. For now, support the 'delete' operation.
+      // Handle operations workflows. For now, support the 'delete' operation and community flag application.
       if (operation === 'delete') {
         // If the issue was missing (handled earlier), we already returned success. Here the issue exists,
         // which means the delete workflow completed but the issue is still present.
@@ -310,6 +340,43 @@ export async function run(job: Job<GithubMonitorJobData>): Promise<void> {
           link: payload.issueUrl,
           linkTooltip: 'Open report on GitHub',
         })
+        if (appId || gameName) {
+          try {
+            logger.info(`Forcing cache refresh for game after delete check: appId=${appId}, gameName=${gameName}`)
+            await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+          } catch (error) {
+            logger.error('Failed to force refresh game data after delete check', error)
+          }
+        }
+      }
+
+      // If an apply-community-flag operation was run for this issue, report success and notify the user.
+      if (operation === 'apply-community-flag') {
+        await updateProgress(payload, {
+          status: 'completed',
+          icon: 'check_circle',
+          title: 'Report flagged',
+          message: 'The community flag has been applied to the report via GitHub Actions.',
+          progress: 100,
+          done: true,
+          variant: 'positive',
+        })
+        await sendNotification(payload.userId, {
+          icon: 'check_circle',
+          title: 'Report flagged',
+          body: 'The community flag has been applied to the report via GitHub Actions.',
+          variant: 'positive',
+          link: payload.issueUrl,
+          linkTooltip: 'Open report on GitHub',
+        })
+        if (appId || gameName) {
+          try {
+            logger.info(`Forcing cache refresh for game after community flag: appId=${appId}, gameName=${gameName}`)
+            await fetchProjectsByAppIdOrGameName(appId ? String(appId) : null, gameName, payload.githubToken, true)
+          } catch (error) {
+            logger.error('Failed to force refresh game data after apply-community-flag', error)
+          }
+        }
       }
     }
   } catch (error) {
