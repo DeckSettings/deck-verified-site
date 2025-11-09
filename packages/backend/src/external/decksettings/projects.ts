@@ -235,8 +235,13 @@ export const fetchProject = async (
                       closed
                       createdAt
                       updatedAt
-                      comments {
+                      comments(first: 100) {
                         totalCount
+                        nodes {
+                          author {
+                            login
+                          }
+                        }
                       }
                     }
                     ... on PullRequest {
@@ -371,6 +376,15 @@ export const fetchProject = async (
               // Ignore any issues that are closed
               continue
             }
+
+            const ignoredUsers = ['github-actions', 'DeckSettings-ReportBot']
+            const comments = node.content.comments
+            const totalComments = comments.totalCount
+            const commentsToIgnore = comments.nodes.filter((commentNode: { author: { login: string } | null }) =>
+              commentNode.author && ignoredUsers.includes(commentNode.author.login),
+            ).length
+            const adjustedCommentCount = totalComments - commentsToIgnore
+
             projectData.issues.push({
               id: node.content.databaseId,
               number: node.content.number,
@@ -386,7 +400,7 @@ export const fetchProject = async (
               closed: node.content.closed,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
-              comments: node.content.comments.totalCount,
+              comments: adjustedCommentCount,
             })
           }
         }
