@@ -1807,15 +1807,30 @@ useMeta(() => {
 
                         <!-- Right: Social action group -->
                         <div class="col-auto row items-center social-buttons q-gutter-sm">
-                          <q-btn flat round icon="thumb_up" size="sm" aria-label="Like report" @click.stop>
+                          <q-btn
+                            v-if="false"
+                            flat round
+                            size="sm"
+                            icon="thumb_up"
+                            aria-label="Like report"
+                            @click.stop>
                             <q-tooltip>Like this report</q-tooltip>
-                            <q-badge color="green" floating>
+                            <q-badge
+                              v-if="report.reactions.reactions_thumbs_up > 0"
+                              color="green"
+                              floating
+                              style="transform: translate(6px, 3px);">
                               {{ report.reactions.reactions_thumbs_up }}
                             </q-badge>
                           </q-btn>
 
-                          <q-btn flat round icon="chat_bubble" size="sm" aria-label="Open comments"
-                                 @click.stop="openCommentsDialog(report.id)">
+                          <q-btn
+                            v-if="false"
+                            flat round
+                            size="sm"
+                            icon="chat_bubble"
+                            aria-label="Open comments"
+                            @click.stop="openCommentsDialog(report.id)">
                             <q-tooltip>Open comments</q-tooltip>
                             <q-badge color="blue" floating>
                               {{ report.comments }}
