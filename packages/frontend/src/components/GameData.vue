@@ -7,6 +7,10 @@ import {
   simSteam,
   simProtondb,
   simPcgamingwiki,
+  simReddit,
+  simBluesky,
+  simX,
+  simFacebook,
 } from 'quasar-extras-svg-icons/simple-icons-v14'
 import sdhqLogo from 'src/assets/icons/sdhq.svg'
 import { useGameStore } from 'src/stores/game-store'
@@ -594,6 +598,38 @@ const copyReportLink = (reportId: number) => {
     }
     document.body.removeChild(ta)
   }
+}
+
+const shareUrlForReport = (reportId: number) => {
+  if (!isClient) return ''
+  return `${window.location.origin}${route.path}?expandedId=${reportId}`
+}
+
+const shareToX = (report: ExtendedGameReport) => {
+  if (!isClient) return
+  const url = encodeURIComponent(shareUrlForReport(report.id))
+  const text = encodeURIComponent(report.data?.summary ?? '')
+  window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank', 'noopener')
+}
+
+const shareToReddit = (report: ExtendedGameReport) => {
+  if (!isClient) return
+  const url = encodeURIComponent(shareUrlForReport(report.id))
+  const title = encodeURIComponent(report.data?.summary ?? '')
+  window.open(`https://www.reddit.com/submit?url=${url}&title=${title}`, '_blank', 'noopener')
+}
+
+const shareToFacebook = (report: ExtendedGameReport) => {
+  if (!isClient) return
+  const url = encodeURIComponent(shareUrlForReport(report.id))
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener')
+}
+
+const shareToBluesky = (report: ExtendedGameReport) => {
+  if (!isClient) return
+  const summary = report.data?.summary ?? ''
+  const text = encodeURIComponent(`${summary}: ${shareUrlForReport(report.id)}`)
+  window.open(`https://bsky.app/intent/compose?&text=${text}`, '_blank', 'noopener')
 }
 
 const onPopState = () => {
@@ -1786,29 +1822,77 @@ useMeta(() => {
                             </q-badge>
                           </q-btn>
 
-                          <q-btn flat round icon="share" size="sm" aria-label="Share report">
+                          <q-btn-dropdown
+                            flat round
+                            size="sm"
+                            dropdown-icon="share"
+                            no-icon-animation
+                            :content-style="{
+                              minWidth: '100px',
+                              backgroundColor: 'color-mix(in srgb, var(--q-dark) 95%, transparent)',
+                              border: '1px solid rgba(255, 255, 255, 0.5)',
+                              borderRadius: '0px 0px 3px 3px',
+                              boxShadow: '2px 2px 10px rgba(0, 0, 0, 0.9)',
+                            }"
+                            aria-label="Share report"
+                          >
                             <q-tooltip>Share this report</q-tooltip>
-                            <q-menu>
-                              <q-list style="min-width: 160px">
-                                <q-item clickable v-close-popup @click="copyReportLink(report.id)">
-                                  <q-item-section>Copy link (with expandedId)</q-item-section>
-                                </q-item>
-                                <q-separator />
-                                <q-item clickable v-close-popup>
-                                  <q-item-section>Share to X</q-item-section>
-                                </q-item>
-                                <q-item clickable v-close-popup>
-                                  <q-item-section>Share to Reddit</q-item-section>
-                                </q-item>
-                                <q-item clickable v-close-popup>
-                                  <q-item-section>Share to Facebook</q-item-section>
-                                </q-item>
-                                <q-item clickable v-close-popup>
-                                  <q-item-section>Share to Bluesky</q-item-section>
-                                </q-item>
-                              </q-list>
-                            </q-menu>
-                          </q-btn>
+                            <q-list>
+                              <q-item clickable v-close-popup @click="copyReportLink(report.id)">
+                                <q-item-section avatar>
+                                  <q-avatar icon="content_copy" />
+                                </q-item-section>
+                                <q-item-section>Copy link</q-item-section>
+                                <q-item-section side>
+                                  <q-icon name="open_in_new" />
+                                </q-item-section>
+                              </q-item>
+
+                              <q-separator />
+
+                              <q-item clickable v-close-popup @click="shareToReddit(report)">
+                                <q-item-section avatar>
+                                  <q-avatar>
+                                    <q-avatar :icon="simReddit" />
+                                  </q-avatar>
+                                </q-item-section>
+                                <q-item-section>Share to Reddit</q-item-section>
+                                <q-item-section side>
+                                  <q-icon name="open_in_new" />
+                                </q-item-section>
+                              </q-item>
+
+                              <q-item clickable v-close-popup @click="shareToX(report)">
+                                <q-item-section avatar>
+                                  <q-avatar :icon="simX" />
+                                </q-item-section>
+                                <q-item-section>Share to X</q-item-section>
+                                <q-item-section side>
+                                  <q-icon name="open_in_new" />
+                                </q-item-section>
+                              </q-item>
+
+                              <q-item clickable v-close-popup @click="shareToBluesky(report)">
+                                <q-item-section avatar>
+                                  <q-avatar :icon="simBluesky" />
+                                </q-item-section>
+                                <q-item-section>Share to Bluesky</q-item-section>
+                                <q-item-section side>
+                                  <q-icon name="open_in_new" />
+                                </q-item-section>
+                              </q-item>
+
+                              <q-item clickable v-close-popup @click="shareToFacebook(report)">
+                                <q-item-section avatar>
+                                  <q-avatar :icon="simFacebook" />
+                                </q-item-section>
+                                <q-item-section>Share to Facebook</q-item-section>
+                                <q-item-section side>
+                                  <q-icon name="open_in_new" />
+                                </q-item-section>
+                              </q-item>
+                            </q-list>
+                          </q-btn-dropdown>
 
                           <q-btn flat round icon="flag" size="sm" aria-label="Flag report"
                                  @click.stop="openReportIssueDialog(report)">
