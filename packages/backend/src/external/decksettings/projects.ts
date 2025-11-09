@@ -134,6 +134,7 @@ export const parseProjectDetails = async (
           reactions_thumbs_up: issue.reactions['+1'] || 0,
           reactions_thumbs_down: issue.reactions['-1'] || 0,
         },
+        comments: issue.comments,
         labels: issue.labels.map((label: GitHubIssueLabel) => ({
           name: label.name,
           color: label.color,
@@ -234,6 +235,9 @@ export const fetchProject = async (
                       closed
                       createdAt
                       updatedAt
+                      comments {
+                        totalCount
+                      }
                     }
                     ... on PullRequest {
                       id
@@ -382,6 +386,7 @@ export const fetchProject = async (
               closed: node.content.closed,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
+              comments: node.content.comments.totalCount,
             })
           }
         }

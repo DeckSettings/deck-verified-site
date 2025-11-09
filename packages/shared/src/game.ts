@@ -278,6 +278,7 @@ export interface GitHubIssue {
   closed: boolean;
   created_at: string;
   updated_at: string;
+  comments: number;
 }
 
 // TODO: Fix the items for this. They should be a different interface

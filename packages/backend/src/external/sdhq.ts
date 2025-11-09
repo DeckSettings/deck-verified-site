@@ -219,6 +219,7 @@ export const generateSDHQReviewData = async (appId: string): Promise<ExternalGam
           avatar_url: 'https://steamdeckhq.com/wp-content/uploads/2022/06/sdhq-holographic-logo.svg',
           report_count: rawReviews.length,
         },
+        comments: 0,
         created_at: review.date || '',
         updated_at: review.modified || '',
       }
