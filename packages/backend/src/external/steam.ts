@@ -46,7 +46,7 @@ export const IGNORE_APP_IDS = [
   2693120,  // XBPlay
 ]
 
-const FALLBACK_MAX_APP_ID = 5_000_000
+const FALLBACK_MAX_APP_ID = 9_000_000
 
 const STEAM_STRINGS_MAP: Record<string, string> = {
   'SteamDeckVerified_TestResult_DefaultControllerConfigFullyFunctional': 'All functionality is accessible when using the default controller configuration',
@@ -236,7 +236,7 @@ export const redisLookupSteamSearchSuggestions = async (
 
 export const redisCacheMaxSteamAppId = async (
   data: MaxSteamAppIdCache,
-  cacheTime: number = 60 * 60 * 24 * 2, // 2 days
+  cacheTime: number = 60 * 60 * 24 * 3, // 3 days
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching max Steam app id.')
@@ -434,10 +434,14 @@ const buildFallbackMaxAppId = (): MaxSteamAppIdCache => ({
   fetchedAt: new Date().toISOString(),
 })
 
-export const getMaxSteamAppId = async (): Promise<MaxSteamAppIdCache> => {
-  // Try cache first
-  const cached = await redisLookupMaxSteamAppId()
-  if (cached) return cached
+export const getMaxSteamAppId = async (forceRefresh: boolean = false): Promise<MaxSteamAppIdCache> => {
+  if (!forceRefresh) {
+    const cachedData = await redisLookupMaxSteamAppId()
+    if (cachedData) {
+      logger.info('Serving Steam max AppID from Redis cache')
+      return cachedData
+    }
+  }
 
   const endpoint = 'https://api.steampowered.com/ISteamApps/GetAppList/v2/'
   const timeoutMs = 30_000
