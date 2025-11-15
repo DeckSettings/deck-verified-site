@@ -46,6 +46,8 @@ export const IGNORE_APP_IDS = [
   2693120,  // XBPlay
 ]
 
+const FALLBACK_MAX_APP_ID = 5_000_000
+
 const STEAM_STRINGS_MAP: Record<string, string> = {
   'SteamDeckVerified_TestResult_DefaultControllerConfigFullyFunctional': 'All functionality is accessible when using the default controller configuration',
   'SteamDeckVerified_TestResult_ControllerGlyphsMatchDeckDevice': 'This game shows Steam Deck controller icons',
@@ -425,6 +427,13 @@ export const fetchSteamDeckCompatibility = async (
   }
 }
 
+const buildFallbackMaxAppId = (): MaxSteamAppIdCache => ({
+  maxAppId: FALLBACK_MAX_APP_ID,
+  name: 'Fallback',
+  totalApps: 0,
+  fetchedAt: new Date().toISOString(),
+})
+
 export const getMaxSteamAppId = async (): Promise<MaxSteamAppIdCache> => {
   // Try cache first
   const cached = await redisLookupMaxSteamAppId()
@@ -474,6 +483,13 @@ export const getMaxSteamAppId = async (): Promise<MaxSteamAppIdCache> => {
     await redisCacheMaxSteamAppId(payload)
 
     return payload
+  } catch (err) {
+    logger.error(`GetAppList lookup failed, using fallback max Steam AppID ${FALLBACK_MAX_APP_ID}`, err)
+    const fallbackPayload = buildFallbackMaxAppId()
+    // Cache result
+    const cacheTime = 60 * 60 * 24 // 1 day
+    await redisCacheMaxSteamAppId(fallbackPayload, cacheTime)
+    return fallbackPayload
   } finally {
     clearTimeout(t)
   }
