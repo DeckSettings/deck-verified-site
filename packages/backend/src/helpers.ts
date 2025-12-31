@@ -449,14 +449,18 @@ export const generateImageLinksFromAppId = async (appId: string): Promise<GameIm
  * Extracts specific heading values from the markdown content.
  */
 export const parseReportBody = async (
-  markdown: string,
+  markdown: string | null,
   schema: GitHubReportIssueBodySchema,
   hardwareInfo: HardwareInfo[],
 ): Promise<GameReportData> => {
   try {
     const data: Partial<GameReportData> = {}
-    const normalizedMarkdown = markdown.replace(/\r\n/g, '\n')
-    const lines = normalizedMarkdown.split('\n')
+    const safeMarkdown = typeof markdown === 'string' ? markdown : ''
+    if (!safeMarkdown) {
+      logger.warn('parseReportBody called with empty or non-string markdown.')
+    }
+    const normalizedMarkdown = safeMarkdown.replace(/\r\n/g, '\n')
+    const lines = normalizedMarkdown.length > 0 ? normalizedMarkdown.split('\n') : []
 
     for (const heading in schema.properties) {
       const valueType = schema.properties[heading]?.type
@@ -474,7 +478,7 @@ export const parseReportBody = async (
 
       // Convert to number if required by schema
       if (valueType === 'number' && value !== null) {
-        const parsedValue = parseFloat(value.replace(/,/g, ''))
+        const parsedValue = parseFloat(String(value).replace(/,/g, ''))
         value = isNaN(parsedValue) ? null : parsedValue
       }
 
@@ -528,7 +532,7 @@ export const parseReportBody = async (
 
     return data as GameReportData
   } catch (error) {
-    logger.error('Error fetching or parsing schema:', error)
+    logger.error('Error parsing report body:', error)
     throw error
   }
 }

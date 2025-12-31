@@ -14,6 +14,7 @@ import {
 } from '../../helpers'
 import type {
   GameReport,
+  GameReportData,
   GameMetadata,
   GithubIssuesSearchResult,
   GithubIssuesSearchResultItems,
@@ -273,9 +274,40 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
     m.hero == null ||
     m.background == null
 
+  const toSnakeCaseHeading = (heading: string): string =>
+    heading
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^\w_]/g, '')
+
+  const isValidReportData = (data: GameReportData): boolean => {
+    if (schema.required && schema.required.length > 0) {
+      return schema.required.every((requiredField) => {
+        const snakeCaseField = toSnakeCaseHeading(requiredField)
+        const value = data[snakeCaseField as keyof GameReportData]
+        return value !== null && value !== undefined && String(value).trim().length > 0
+      })
+    }
+    return Object.keys(schema.properties).some((heading) => {
+      const snakeCaseHeading = toSnakeCaseHeading(heading)
+      const value = data[snakeCaseHeading as keyof GameReportData]
+      return value !== null && value !== undefined && String(value).trim().length > 0
+    })
+  }
+
   return Promise.all(
-    reports.items.map(async (report) => {
-      const parsedIssueData = await parseReportBody(report.body, schema, hardwareInfo)
+    reports.items.map(async (report): Promise<GameReport | null> => {
+      let parsedIssueData: GameReportData
+      try {
+        parsedIssueData = await parseReportBody(report.body ?? null, schema, hardwareInfo)
+      } catch (error) {
+        logger.error(`Failed to parse report body for issue #${report.number}:`, error)
+        return null
+      }
+      if (!isValidReportData(parsedIssueData)) {
+        logger.warn(`Skipping issue #${report.number} due to missing required report fields.`)
+        return null
+      }
       let metadata: Partial<GameMetadata> = {
         banner: null,
         poster: null,
@@ -344,7 +376,7 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         comments: report.comments || 0,
       }
     }),
-  )
+  ).then((items) => items.filter((item): item is GameReport => item !== null))
 }
 
 /* REDIS HELPERS */
