@@ -1,0 +1,389 @@
+# ---------------
+# Deck Verified Site
+#
+# ---------------
+# Config (paste into portainer advance env text input):
+#
+# <config_start>
+#   #@ Placement
+#   #-    Configure a placement constraint to where the container will be run.
+#   #-    Examples:
+#   #-        - node.hostname==<hostname>
+#   #-        - engine.labels.fs-access.<worker-hostname>.mnt==true
+#   #-        - node.role!=manager
+#   PLACEMENT_CONSTRAINT_CACHE=node.hostname==<hostname>
+#   PLACEMENT_CONSTRAINT_TASKS=node.platform.os==linux
+#   PLACEMENT_CONSTRAINT_API=node.role==worker
+#   PLACEMENT_CONSTRAINT_WEB=node.platform.os==linux
+#   #@ Replication
+#   #-    Configure the replication of the services
+#   REPLICAS_API=2
+#   REPLICAS_WEB=2
+#   REPLICAS_WEB_SSR=1
+#   #@ Resource Limits
+#   #-  - Container Memory Limits -
+#   API_MEMLIMIT=150M
+#   #@ Traefik Config
+#   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
+#   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
+#   #@ Container Config
+#   #-  - ENVIRONMENT_NAME -
+#   ENVIRONMENT_NAME
+#   #-  - SENTRY_DSN -
+#   SENTRY_DSN
+#   #-  - SENTRY_ENVIRONMENT -
+#   SENTRY_ENVIRONMENT
+#   #-  - SENTRY_TRACES_SAMPLE_RATE_TASKS -
+#   SENTRY_TRACES_SAMPLE_RATE_TASKS
+#   #-  - SENTRY_PROFILES_SAMPLE_RATE_API -
+#   SENTRY_PROFILES_SAMPLE_RATE_API
+#   #-  - SENTRY_TRACES_SAMPLE_RATE_API -
+#   SENTRY_TRACES_SAMPLE_RATE_API
+#   #-  - SENTRY_PROFILES_SAMPLE_RATE_API -
+#   SENTRY_PROFILES_SAMPLE_RATE_API
+#   #-  - REDIS_PASSWORD -
+#   REDIS_PASSWORD=password
+#   #-  - GITHUB_WORKFLOW_SECRET -
+#   #-    An optional secret used to validate GitHub workflow webhook requests. If not set, workflow updates will be disabled.
+#   GITHUB_WORKFLOW_SECRET=XXXXXXXXXXX
+#   #-  - API_GH_TOKEN -
+#   #-    A GitHub token for read access for the api service to the DeckSettings GitHub org/repo API
+#   API_GH_TOKEN=XXXXXXXXXXX
+#   #-  - TASKS_GH_TOKEN -
+#   #-    A GitHub token for read access for the tasks service to the DeckSettings GitHub org/repo API
+#   TASKS_GH_TOKEN=XXXXXXXXXXX
+#   #-  - DEFAULT_CACHE_TIME -
+#   #-    The default time to cache game information. This mostly is used to avoid GitHub rate limiting.
+#   DEFAULT_CACHE_TIME=21600
+#   #-  - REVERSE_PROXY_COUNT -
+#   #-    A count of reverse proxy's that the service is behind
+#   REVERSE_PROXY_COUNT=0
+#   #-  - DISABLE_RATE_LIMITER -
+#   #-    Disable the rate limiter. Should normally be false for production.
+#   DISABLE_RATE_LIMITER=true
+#   #-  - RUN_SCHEDULED_TASKS_ON_START -
+#   #-    Run the scheduled tasks on container start. Should normally be false for production.
+#   RUN_SCHEDULED_TASKS_ON_START=true
+# <config_end>
+#
+# ---------------
+---
+networks:
+  # Use a previously created public network "swarm-public", shared with other services.
+  # This network should be available to a Traefik service.
+  swarm-public:
+    external: true
+  private-net:
+    driver: overlay
+
+volumes:
+  redis-cache:
+    driver: local
+
+services:
+  # --- REDIS ---
+  redis:
+    image: redis/redis-stack@sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 100M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_CACHE:?}
+    networks:
+      - private-net
+    environment:
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?} --protected-mode yes
+    volumes:
+      - redis-cache:/data
+
+  # --- BACKEND ASYNC TASKS ---
+  tasks:
+    image: ghcr.io/decksettings/deck-verified-api@sha256:ef3391c0f191c1635eceec043c4b516173dd05a5829f0cb5097101aa44021483
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+      update_config:
+        delay: 10s
+        order: stop-first
+      resources:
+        limits:
+          memory: 200M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_TASKS:?}
+      labels:
+        #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        - 'source.env=${ENVIRONMENT_NAME:-test}'
+        - 'source.project=deck-verified-site'
+        - 'source.service=deck-verified-tasks'
+        - 'source.version=a39ac07'
+    user: '1000:1000'
+    command: npm run serve
+    networks:
+      - private-net
+    environment:
+      # -- Application execution
+      NODE_ENV: production
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-21600}
+      RUN_SCHEDULED_TASKS_ON_START: ${RUN_SCHEDULED_TASKS_ON_START:-false}
+      # -- GitHub token (required to increase rate limits on API calls).
+      GH_TOKEN: ${TASKS_GH_TOKEN:?}
+      # -- Blogger API key (optional, used for generating blog posts)
+      BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
+      # -- Cache Config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      # -- Sentry
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
+      SENTRY_RELEASE: a39ac07
+      SENTRY_SERVICE_NAME: deck-verified-tasks
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_TASKS:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_TASKS:-1.0}
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-tasks
+      source_version: a39ac07
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'localhost:24225'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'false'
+        tag: 'deck-verified-tasks'
+        env: 'source_env,source_service,source_project'
+
+  # --- BACKEND API ---
+  api:
+    image: ghcr.io/decksettings/deck-verified-api@sha256:ef3391c0f191c1635eceec043c4b516173dd05a5829f0cb5097101aa44021483
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_API:-1}
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      resources:
+        limits:
+          memory: ${API_MEMLIMIT:-150M}
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_API:?}
+      labels:
+        #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        - 'source.env=${ENVIRONMENT_NAME:-test}'
+        - 'source.project=deck-verified-site'
+        - 'source.service=deck-verified-api'
+        - 'source.version=a39ac07'
+
+        #### -- Enable traefik router for this service
+        - 'traefik.enable=true'
+
+        #### -- Main Service
+        - 'traefik.http.services.deck-verified-api.loadbalancer.server.port=9022'
+        - 'traefik.http.services.deck-verified-api.loadbalancer.healthcheck.path=/deck-verified/api/v1/health'
+        - 'traefik.http.services.deck-verified-api.loadbalancer.healthcheck.interval=10s'
+        - 'traefik.http.routers.deck-verified-api.entrypoints=web'
+        # Configure router domain
+        - 'traefik.http.routers.deck-verified-api.rule=${TRAEFIK_ROUTE_RULE_API}'
+        # Router uses SSL
+        - 'traefik.http.routers.deck-verified-api.tls=true'
+        # Use the "le" (Let's Encrypt) resolver created below
+        - 'traefik.http.routers.deck-verified-api.tls.certresolver=le'
+        # Enable middlewares:
+        #   - Redirect HTTP -> HTTPS
+        - 'traefik.http.routers.deck-verified-api.middlewares=https-redirect'
+    user: '1000:1000'
+    command: npm run serve-no-tasks
+    networks:
+      - swarm-public
+      - private-net
+    environment:
+      # -- Application execution
+      NODE_ENV: production
+      BASE_URL: ${BASE_URL:-}
+      DEFAULT_CACHE_TIME: ${DEFAULT_CACHE_TIME:-21600}
+      REVERSE_PROXY_COUNT: ${REVERSE_PROXY_COUNT:-0}
+      DISABLE_RATE_LIMITER: ${DISABLE_RATE_LIMITER:-false}
+      RUN_SCHEDULED_TASKS_ON_START: 'false'
+      # -- GitHub Workflow Updates Secret
+      GITHUB_WORKFLOW_SECRET: ${GITHUB_WORKFLOW_SECRET:-}
+      # -- GitHub token (required to increase rate limits on API calls).
+      GH_TOKEN: ${API_GH_TOKEN:?}
+      # -- GitHub User Login
+      GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
+      GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}
+      PUBLIC_WEB_ORIGINS: ${PUBLIC_WEB_ORIGINS:-}
+      DV_AUTH_JWT_SECRET: ${DV_AUTH_JWT_SECRET:-}
+      # -- Blogger API key (optional, used for generating blog posts)
+      BLOGGER_API_KEY: ${BLOGGER_API_KEY:-}
+      # -- IsThereAnyDeal API key (optional, used for checking game prices)
+      ISTHEREANYDEAL_API_KEY: ${ISTHEREANYDEAL_API_KEY:-}
+      # -- Cache Config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      # -- Sentry
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
+      SENTRY_RELEASE: a39ac07
+      SENTRY_SERVICE_NAME: deck-verified-api
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_API:-0.1}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_API:-0.5}
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-api
+      source_version: a39ac07
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--header=User-Agent: Swarm-HealthChecker/1.0',
+          '--spider',
+          '--no-verbose',
+          '--tries=1',
+          '--timeout=3',
+          'http://localhost:9022/deck-verified/api/v1/health',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'localhost:24225'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'false'
+        tag: 'deck-verified-api'
+        env: 'source_env,source_service,source_version,source_project'
+
+  # --- FRONTEND SSR ---
+  web-ssr:
+    image: ghcr.io/decksettings/deck-verified-web-ssr@sha256:6c24ce3a28c92bc9c6ba9c129ef58b51c3ffa669bf40ed98bfa0f02c05e0ffdc
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_WEB_SSR:-1}
+      restart_policy:
+        condition: any
+        delay: 10s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          memory: 160M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_API:?}
+      labels:
+        #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        - 'source.env=${ENVIRONMENT_NAME:-test}'
+        - 'source.project=deck-verified-site'
+        - 'source.service=deck-verified-web-ssr'
+        - 'source.version=a39ac07'
+
+        #### -- Enable traefik router for this service
+        - 'traefik.enable=false'
+    networks:
+      - private-net
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-web-ssr
+      source_version: a39ac07
+      # Used by SSR to call the API directly instead of hitting the SSR server
+      SSR_API_ORIGIN: http://api:9022
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'localhost:24225'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'false'
+        tag: 'deck-verified-web-ssr'
+        env: 'source_env,source_service,source_version,source_project'
+
+  # --- FRONTEND ---
+  web:
+    image: ghcr.io/decksettings/deck-verified-web@sha256:666748f71cc3f3927e7e36f351292e59f752cb833497715f73b4460f233995bc
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS_WEB:-1}
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          memory: 50M
+      placement:
+        constraints:
+          - ${PLACEMENT_CONSTRAINT_WEB:?}
+      labels:
+        #### -- Configure Logging labels
+        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        - 'source.env=${ENVIRONMENT_NAME:-test}'
+        - 'source.project=deck-verified-site'
+        - 'source.service=deck-verified-web'
+        - 'source.version=a39ac07'
+
+        #### -- Enable traefik router for this service
+        - 'traefik.enable=true'
+
+        #### -- Main Service
+        - 'traefik.http.services.deck-verified-web.loadbalancer.server.port=9021'
+        - 'traefik.http.routers.deck-verified-web.entrypoints=web'
+        # Configure router domain
+        - 'traefik.http.routers.deck-verified-web.rule=${TRAEFIK_ROUTE_RULE_WEB}'
+        # Router uses SSL
+        - 'traefik.http.routers.deck-verified-web.tls=true'
+        # Use the "le" (Let's Encrypt) resolver created below
+        - 'traefik.http.routers.deck-verified-web.tls.certresolver=le'
+        # Enable middlewares:
+        #   - Redirect HTTP -> HTTPS
+        - 'traefik.http.routers.deck-verified-web.middlewares=https-redirect'
+    networks:
+      - swarm-public
+      - private-net
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-web
+      source_version: a39ac07
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'localhost:24225'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'false'
+        tag: 'deck-verified-web'
+        env: 'source_env,source_service,source_version,source_project'
