@@ -65,6 +65,15 @@ npm update --workspaces
 npm audit fix
 ```
 
+To update the Frontend project's Quasar ecosystem:
+```bash
+cd packages/frontend
+# Check for updates
+npx quasar upgrade
+# Apply updates
+npx quasar upgrade --install
+```
+
 To update the mobile project (Capacitor):
 ```bash
 cd packages/frontend/src-capacitor
