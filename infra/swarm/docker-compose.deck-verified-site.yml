@@ -265,7 +265,7 @@ services:
           '--no-verbose',
           '--tries=1',
           '--timeout=3',
-          'http://localhost:9022/deck-verified/api/v1/health',
+          'http://127.0.0.1:9022/deck-verified/api/v1/health',
         ]
       interval: 10s
       timeout: 5s
