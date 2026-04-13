@@ -132,6 +132,7 @@ export const fetchProxiedRssFeed = async (encodedFeedUrl: string | undefined): P
     const response = await fetch(feedUrl.toString(), {
       headers: {
         Accept: 'application/rss+xml, application/xml, text/xml',
+        'User-Agent': 'DeckVerifiedGamesProxy/1.0 (+https://deckverified.games)'
       },
       signal: controller.signal,
     })
