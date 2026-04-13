@@ -57,3 +57,17 @@ docker compose build api web
 # and/or...
 npm run build
 ```
+
+### Update Dependencies
+To update the core workspace packages (Backend & Frontend):
+```bash
+npm update --workspaces
+npm audit fix
+```
+
+To update the mobile project (Capacitor):
+```bash
+cd packages/frontend/src-capacitor
+npm update
+npm audit fix
+```
