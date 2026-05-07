@@ -32,6 +32,7 @@ import type {
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import { useQuasar } from 'quasar'
 import { submitCommunityFlagComment } from 'src/utils/gh-api'
+import { BACKEND_API_ORIGIN } from 'src/utils/env'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import ReportForm from 'components/ReportForm.vue'
@@ -604,9 +605,20 @@ const submitReportIssue = async () => {
   }
 }
 
+const shareOrigin = () => {
+  if (!isClient) return BACKEND_API_ORIGIN
+  return globalThis.isCapacitor ? BACKEND_API_ORIGIN : window.location.origin
+}
+
+const shareUrlForReport = (reportId: number) => {
+  const url = new URL(route.path, `${shareOrigin()}/`)
+  url.searchParams.set('expandedId', String(reportId))
+  return url.toString()
+}
+
 const copyReportLink = (reportId: number) => {
   if (!isClient) return
-  const url = `${window.location.origin}${route.path}?expandedId=${reportId}`
+  const url = shareUrlForReport(reportId)
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(url).catch(() => {
       // Ignore
@@ -623,11 +635,6 @@ const copyReportLink = (reportId: number) => {
     }
     document.body.removeChild(ta)
   }
-}
-
-const shareUrlForReport = (reportId: number) => {
-  if (!isClient) return ''
-  return `${window.location.origin}${route.path}?expandedId=${reportId}`
 }
 
 const shareToX = (report: ExtendedGameReport) => {
