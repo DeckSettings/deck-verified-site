@@ -723,6 +723,11 @@ const metaImageAlt = computed(() => gameStore.metadata.imageAlt)
 const metaImageType = computed(() => gameStore.metadata.imageType)
 const metaImageWidth = computed(() => gameStore.metadata.imageWidth)
 const metaImageHeight = computed(() => gameStore.metadata.imageHeight)
+const pageBackgroundStyle = computed(() => ({
+  backgroundImage: gameBackground.value
+    ? `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground.value}')`
+    : 'linear-gradient(to top, var(--q-dark), transparent)',
+}))
 
 // Watch for changes to the gameBanner URL and update store metadata
 watch(gameBanner, (newUrl) => {
@@ -806,7 +811,7 @@ useMeta(() => {
   <PageHeader :show-nav-back-button="true" />
   <div class="background-container"
        :class="{ 'background-container-mobile': $q.platform.isMobileUi }"
-       :style="{ backgroundImage: `linear-gradient(to top, var(--q-dark), transparent), url('${gameBackground}')` }"></div>
+       :style="pageBackgroundStyle"></div>
   <div
     v-if="hasReportsToCompare"
     class="compare-dialog-trigger help-highlight-element"
