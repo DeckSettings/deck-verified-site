@@ -60,7 +60,7 @@ const gameStore = useGameStore()
 const marketStore = useGameMarketStore()
 const authStore = useAuthStore()
 const configStore = useConfigStore()
-const { hideDuplicateReports, country, currency } = storeToRefs(configStore)
+const { hideDuplicateReports, preferredDevices, country, currency } = storeToRefs(configStore)
 
 const ajaxBar = ref<QAjaxBar | null>(null)
 
@@ -166,13 +166,13 @@ const sortDialogOpen = ref(false)
 
 const selectedDevice = ref('all')
 const deviceLabels = computed<GitHubIssueLabel[]>(() => gameStore.deviceLabels)
+const formatLabelName = (labelName: string) => labelName.split(':')[1]?.trim() || labelName
 const deviceOptions = computed(() => {
   if (deviceLabels.value) {
     const options = deviceLabels.value
       .map(label => {
-        const parsedLabel = label.name.split(':')[1]?.trim() || label.name
         return {
-          label: parsedLabel,
+          label: formatLabelName(label.name),
           value: label.name,
         }
       })
@@ -181,6 +181,15 @@ const deviceOptions = computed(() => {
   }
   return [{ label: 'All', value: 'all' }]
 })
+const hasGlobalDeviceFilter = computed(() => preferredDevices.value.length > 0)
+const activeDeviceFilters = computed(() =>
+  hasGlobalDeviceFilter.value
+    ? preferredDevices.value
+    : selectedDevice.value !== 'all' && selectedDevice.value
+      ? [selectedDevice.value]
+      : [],
+)
+const preferredDeviceSummary = computed(() => preferredDevices.value.map(formatLabelName).join(', '))
 
 const selectedLauncher = ref('all')
 const launcherLabels = computed<GitHubIssueLabel[]>(() => gameStore.launcherLabels)
@@ -259,9 +268,19 @@ const hasDuplicateReports = computed(() => {
   return gd.reports.some(report => isDuplicateReport(report))
 })
 const hasActiveFilters = computed(() =>
-  selectedDevice.value !== 'all' ||
+  activeDeviceFilters.value.length > 0 ||
   selectedLauncher.value !== 'all' ||
   (hideDuplicateReports.value && hasDuplicateReports.value),
+)
+
+watch(
+  preferredDevices,
+  (devices) => {
+    if (devices.length > 0) {
+      selectedDevice.value = 'all'
+    }
+  },
+  { immediate: true, deep: true },
 )
 
 // Expanded state per-report id
@@ -411,10 +430,10 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
     ...report,
   }))
 
-  // Filter by device selector
-  if (selectedDevice.value !== 'all' && selectedDevice.value) {
+  // Filter by device selector or app-level preferred devices
+  if (activeDeviceFilters.value.length > 0) {
     reports = reports.filter(report =>
-      report.labels.some(label => label.name === selectedDevice.value),
+      report.labels.some(label => activeDeviceFilters.value.includes(label.name)),
     )
   }
 
@@ -1304,7 +1323,10 @@ useMeta(() => {
                         <q-separator dark />
 
                         <q-card-section class="dv-dialog-body scroll q-pa-lg q-gutter-lg">
-                          <q-select v-model="selectedDevice" label="Device"
+                          <div v-if="hasGlobalDeviceFilter" class="text-body2 text-grey-4">
+                            Device filter is controlled by App Settings: {{ preferredDeviceSummary }}
+                          </div>
+                          <q-select v-else v-model="selectedDevice" label="Device"
                                     dense outlined emit-value map-options
                                     :options="deviceOptions" />
                           <q-select v-model="selectedLauncher" label="Launcher"
@@ -1374,12 +1396,17 @@ useMeta(() => {
               <template v-else>
                 <!-- Filters (Top Left) -->
                 <div class="filters col-xs-12 col-md-8">
-                  <div class="filter-container help-highlight-element">
+                  <div v-if="!hasGlobalDeviceFilter" class="filter-container help-highlight-element">
                     <q-select v-model="selectedDevice" label="Device"
                               dense square borderless
                               class="filter-select"
                               :options="deviceOptions" emit-value map-options />
                     <span class="help-tooltip help-tooltip-top">Filter the list of reports</span>
+                  </div>
+                  <div v-else class="filter-container filter-container-global-device">
+                    <div class="text-caption text-grey-4">
+                      Device filter from App Settings: {{ preferredDeviceSummary }}
+                    </div>
                   </div>
                   <div class="filter-container">
                     <q-select v-model="selectedLauncher" label="Launcher"

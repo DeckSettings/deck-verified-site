@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { PropType } from 'vue'
+import { useQuasar } from 'quasar'
 import NotificationCenter from 'components/NotificationCenter.vue'
 import { useAuthStore } from 'stores/auth-store'
 import { useFeatureFlags } from 'src/composables/useFeatureFlags'
 import { useNotifications } from 'src/composables/useNotifications'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
+import SecondaryButton from 'components/elements/SecondaryButton.vue'
 import FooterSupportCard from 'components/elements/FooterSupportCard.vue'
 import MobileProgressNotifications from 'components/elements/MobileProgressNotifications.vue'
 import { mobileProgressState } from 'src/composables/useProgressNotifications'
@@ -21,6 +23,7 @@ const props = defineProps({
 })
 
 const displayMode = computed(() => props.displayMode)
+const $q = useQuasar()
 
 const { enableLogin } = useFeatureFlags()
 
@@ -39,6 +42,7 @@ const userInitials = computed(() => {
 const hasProgress = computed(() => {
   return mobileProgressState.value && mobileProgressState.value.length > 0
 })
+const settingsLabel = computed(() => $q.platform.isMobileUi ? 'App Settings' : 'Site Settings')
 
 const isMobileMenuOpen = ref(false)
 const isSettingsDialogOpen = ref(false)
@@ -76,16 +80,24 @@ defineExpose({
   >
     <template v-if="displayMode === 'default'">
       <div class="header-user-menu-wrapper">
-        <q-btn
-          v-if="!isLoggedIn"
-          flat
-          dense
-          no-caps
-          color="white"
-          icon="fab fa-github"
-          label="Login"
-          @click="handleLogin"
-        />
+        <template v-if="!isLoggedIn">
+          <SecondaryButton
+            dense
+            color="grey"
+            icon="settings"
+            :label="$q.platform.isMobileUi ? 'Settings' : 'Site Settings'"
+            class="q-mr-sm"
+            @click="isSettingsDialogOpen = true"
+          />
+          <PrimaryButton
+            dense
+            color="primary"
+            text-color="white"
+            icon="fab fa-github"
+            label="Login with GitHub"
+            @click="handleLogin"
+          />
+        </template>
 
         <q-btn
           v-else
@@ -175,11 +187,11 @@ defineExpose({
                       <q-icon name="chevron_right" />
                     </q-item-section>
                   </q-item>
-                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple @click="isSettingsDialogOpen = true">
+                  <q-item clickable v-ripple @click="isSettingsDialogOpen = true">
                     <q-item-section avatar>
                       <q-avatar square color="primary" text-color="white" icon="settings" />
                     </q-item-section>
-                    <q-item-section>App Settings</q-item-section>
+                    <q-item-section>{{ settingsLabel }}</q-item-section>
                     <q-item-section side>
                       <q-icon name="chevron_right" />
                     </q-item-section>
@@ -293,7 +305,7 @@ defineExpose({
                       <q-icon name="chevron_right" />
                     </q-item-section>
                   </q-item>
-                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
+                  <q-item clickable v-ripple
                           class="dv-dialog-menu-list-button"
                           @click="isSettingsDialogOpen = true"
                   >
@@ -302,7 +314,7 @@ defineExpose({
                         <q-icon name="settings" />
                       </q-avatar>
                     </q-item-section>
-                    <q-item-section>App Settings</q-item-section>
+                    <q-item-section>{{ settingsLabel }}</q-item-section>
                     <q-item-section side>
                       <q-icon name="chevron_right" />
                     </q-item-section>
@@ -316,35 +328,30 @@ defineExpose({
               </template>
 
               <template v-else>
-                <q-list dark>
-                  <q-item v-if="$q.platform.isMobileUi" clickable v-ripple
-                          class="dv-dialog-menu-list-button"
-                          @click="isSettingsDialogOpen = true"
-                  >
-                    <q-item-section avatar>
-                      <q-avatar color="primary">
-                        <q-icon name="settings" />
-                      </q-avatar>
-                    </q-item-section>
-                    <q-item-section>App Settings</q-item-section>
-                    <q-item-section side>
-                      <q-icon name="chevron_right" />
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-
-                <q-separator dark />
-
-                <div class="column q-gutter-sm">
-                  <p class="text-body2 text-grey-4">
-                    Connect your GitHub account to receive personalised notifications and save your activity.
-                  </p>
-                  <PrimaryButton
-                    color="primary"
-                    full-width
-                    icon="fab fa-github"
-                    label="Login with GitHub"
-                    @click="handleLogin" />
+                <div class="row q-col-gutter-sm items-stretch">
+                  <div class="col-auto">
+                    <q-btn
+                      outline
+                      color="primary"
+                      icon="settings"
+                      aria-label="Open settings"
+                      class="full-height"
+                      @click="isSettingsDialogOpen = true"
+                    />
+                  </div>
+                  <div class="col">
+                    <div class="column q-gutter-sm">
+                      <p class="text-body2 text-grey-4">
+                        Connect your GitHub account to receive personalised notifications and save your activity.
+                      </p>
+                      <PrimaryButton
+                        color="primary"
+                        full-width
+                        icon="fab fa-github"
+                        label="Login with GitHub"
+                        @click="handleLogin" />
+                    </div>
+                  </div>
                 </div>
               </template>
             </div>
@@ -365,26 +372,26 @@ defineExpose({
           </div>
         </q-card>
       </q-dialog>
-
-      <!-- App Settings Dialog -->
-      <q-dialog
-        v-model="isSettingsDialogOpen"
-        backdrop-filter="blur(2px)"
-        maximized
-        position="left"
-        transition-show="slide-up"
-        transition-hide="slide-down"
-        transition-duration="100"
-      >
-        <q-card class="dv-side-dialog-card"
-                :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
-        >
-          <q-card-section class="dv-dialog-content">
-            <AppSettings />
-          </q-card-section>
-        </q-card>
-      </q-dialog>
     </template>
+
+    <!-- App Settings Dialog -->
+    <q-dialog
+      v-model="isSettingsDialogOpen"
+      backdrop-filter="blur(2px)"
+      maximized
+      :position="displayMode === 'default' ? 'right' : 'left'"
+      :transition-show="displayMode === 'default' ? 'slide-left' : 'slide-right'"
+      :transition-hide="displayMode === 'default' ? 'slide-right' : 'slide-left'"
+      transition-duration="300"
+    >
+      <q-card class="dv-side-dialog-card"
+              :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
+      >
+        <q-card-section class="dv-dialog-content">
+          <AppSettings :menu-on-right="displayMode === 'default'" />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 
 </template>

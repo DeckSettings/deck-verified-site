@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(defineProps<{
@@ -18,8 +18,10 @@ const props = withDefaults(defineProps<{
   textColor?: string
 }>(), {
   color: 'secondary',
+  dense: false,
   fullWidth: false,
 })
+const attrs = useAttrs()
 
 const btnStyle = computed(() => {
   if (props.color?.includes('grey')) return { '--btn-base': `grey` } as Record<string, string>
@@ -30,6 +32,10 @@ const btnColour = computed(() => {
   if (props.color?.includes('grey')) return 'grey-8'
   return props.color
 })
+const btnAttrs = computed(() => ({
+  ...attrs,
+  ...(props.dense ? { dense: true } : {}),
+}))
 const computedClass = computed(() => {
   const classes = ['dv-primary-btn', 'q-my-sm', 'q-mx-xs'] as string[]
   if (!props.dense) classes.push('q-pa-sm')
@@ -45,7 +51,6 @@ const emit = defineEmits<{ (e: 'click'): void }>()
     :label="label"
     :icon="icon"
     :size="size"
-    :dense="dense"
     :href="href"
     :to="to"
     :target="target"
@@ -55,7 +60,7 @@ const emit = defineEmits<{ (e: 'click'): void }>()
     :icon-right="iconRight"
     :class="computedClass"
     :style="btnStyle"
-    v-bind="$attrs"
+    v-bind="btnAttrs"
     @click="emit('click')"
   >
     <slot />
@@ -65,7 +70,20 @@ const emit = defineEmits<{ (e: 'click'): void }>()
 <style scoped>
 .dv-primary-btn {
   border: 1px solid color-mix(in srgb, white 20%, transparent);
+  min-height: 40px;
   text-decoration: none !important;
+}
+
+.dv-primary-btn :deep(.q-btn__content) {
+  min-height: 38px;
+}
+
+.dv-primary-btn.q-btn--dense {
+  padding: 0 12px;
+}
+
+.dv-primary-btn:not(.q-btn--dense) {
+  padding-inline: 12px;
 }
 
 .dv-primary-btn:visited,

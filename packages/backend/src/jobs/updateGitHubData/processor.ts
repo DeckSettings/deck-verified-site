@@ -24,10 +24,10 @@ export async function run(): Promise<void> {
     // Next, get an update on all the recent reports
     // NOTE: These fetch***Reports functions call parseGameReport which need cached fetchReportBodySchema and fetchHardwareInfo
     await Promise.all([
-      fetchRecentReports(20, 'created', authToken, true),
-      fetchRecentReports(5, 'created', authToken, true),
-      fetchPopularReports(20, authToken, true),
-      fetchPopularReports(5, authToken, true),
+      fetchRecentReports(20, 'created', [], authToken, true),
+      fetchRecentReports(5, 'created', [], authToken, true),
+      fetchPopularReports(20, [], authToken, true),
+      fetchPopularReports(5, [], authToken, true),
     ])
 
     // Finally, update all games with reports from GitHub

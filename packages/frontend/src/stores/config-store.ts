@@ -7,6 +7,7 @@ const cloneConfig = (config: ConfigPayload): ConfigPayload => ({
   hideDuplicateReports: config.hideDuplicateReports,
   showHomeWelcomeCard: config.showHomeWelcomeCard,
   disabledFeeds: [...config.disabledFeeds],
+  preferredDevices: [...config.preferredDevices],
   country: config.country,
   currency: config.currency,
 })
@@ -74,6 +75,7 @@ export const useConfigStore = defineStore('config', () => {
   const hideDuplicateReports = toRef(state, 'hideDuplicateReports')
   const showHomeWelcomeCard = toRef(state, 'showHomeWelcomeCard')
   const disabledFeeds = toRef(state, 'disabledFeeds')
+  const preferredDevices = toRef(state, 'preferredDevices')
   const country = toRef(state, 'country')
   const currency = toRef(state, 'currency')
 
@@ -81,6 +83,7 @@ export const useConfigStore = defineStore('config', () => {
     state.hideDuplicateReports = config.hideDuplicateReports
     state.showHomeWelcomeCard = config.showHomeWelcomeCard
     state.disabledFeeds = [...config.disabledFeeds]
+    state.preferredDevices = [...config.preferredDevices]
     state.country = config.country
     state.currency = config.currency
   }
@@ -110,6 +113,15 @@ export const useConfigStore = defineStore('config', () => {
 
   const setCountry = (value: string) => {
     country.value = value
+  }
+
+  const setPreferredDevices = (values: string[]) => {
+    state.preferredDevices = Array.from(new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    ))
   }
 
   const setCurrency = (value: string) => {
@@ -156,6 +168,7 @@ export const useConfigStore = defineStore('config', () => {
       hideDuplicateReports: state.hideDuplicateReports,
       showHomeWelcomeCard: state.showHomeWelcomeCard,
       disabledFeeds: state.disabledFeeds,
+      preferredDevices: state.preferredDevices,
       country: state.country,
       currency: state.currency,
     }),
@@ -165,6 +178,7 @@ export const useConfigStore = defineStore('config', () => {
         hideDuplicateReports: value.hideDuplicateReports,
         showHomeWelcomeCard: value.showHomeWelcomeCard,
         disabledFeeds: [...value.disabledFeeds],
+        preferredDevices: [...value.preferredDevices],
         country: typeof value.country === 'string' ? value.country : DEFAULT_CONFIG.country,
         currency: typeof value.currency === 'string' ? value.currency : DEFAULT_CONFIG.currency,
       }
@@ -187,6 +201,8 @@ export const useConfigStore = defineStore('config', () => {
     disabledFeeds,
     setFeedDisabled,
     isFeedDisabled,
+    preferredDevices,
+    setPreferredDevices,
     country,
     setCountry,
     currency,

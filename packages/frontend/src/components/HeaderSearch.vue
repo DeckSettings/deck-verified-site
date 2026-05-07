@@ -1,13 +1,17 @@
 <script setup lang="ts">
 
 import { ref, watch, onMounted, onUnmounted, computed, inject, nextTick, type ComputedRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { searchGames } from 'src/utils/api'
+import { useConfigStore } from 'src/stores/config-store'
 import type { GameSearchResult } from '../../../shared/src/game'
 
 const $q = useQuasar()
 const router = useRouter()
+const configStore = useConfigStore()
+const { preferredDevices } = storeToRefs(configStore)
 
 const searchContainerRef = ref<HTMLElement | null>(null)
 const searchResultsRef = ref<HTMLElement | null>(null)
@@ -165,6 +169,8 @@ const searchResultsTop = computed(() => {
   }
   return `${topBarHeight + 29 + resultsGap}px`
 })
+
+const hideReportCounts = computed(() => preferredDevices.value.length > 0)
 </script>
 
 <template>
@@ -222,9 +228,12 @@ const searchResultsTop = computed(() => {
             <q-item-section class="game-details">
               <q-item-label class="ellipsis">{{ result.gameName }}</q-item-label>
               <q-item-label caption>
-                ({{ result.reportCount }} reports)
+                <template v-if="!hideReportCounts">
+                  ({{ result.reportCount }} reports)
+                </template>
                 <template v-if="result.appId && Number(result.appId) > 0">
-                  | App ID: {{ result.appId }}
+                  <template v-if="!hideReportCounts"> |</template>
+                  App ID: {{ result.appId }}
                 </template>
               </q-item-label>
             </q-item-section>
@@ -250,7 +259,7 @@ const searchResultsTop = computed(() => {
 <style scoped>
 .game-search-container {
   position: relative;
-  width: 400px;
+  width: min(100%, 400px);
   display: flex;
   justify-content: flex-end;
 }
@@ -286,7 +295,8 @@ const searchResultsTop = computed(() => {
 
 @media (min-width: 1023.98px) {
   .game-search-container {
-    width: 560px;
+    width: clamp(240px, 32vw, 560px);
+    max-width: 100%;
   }
 
   .search-result-item {

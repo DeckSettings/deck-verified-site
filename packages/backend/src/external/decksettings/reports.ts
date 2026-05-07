@@ -21,6 +21,30 @@ import type {
   GitHubIssueLabel,
 } from '../../../../shared/src/game'
 
+const normalizeDeviceFilters = (devices: string[] = []): string[] =>
+  Array.from(new Set(
+    devices
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+  )).sort((a, b) => a.localeCompare(b))
+
+const buildDeviceCacheKey = (devices: string[] = []): string => {
+  const normalizedDevices = normalizeDeviceFilters(devices)
+  return normalizedDevices.length > 0 ? normalizedDevices.join('|') : 'all'
+}
+
+const filterReportsByDevices = (reports: GameReport[], devices: string[] = []): GameReport[] => {
+  const normalizedDevices = normalizeDeviceFilters(devices)
+  if (normalizedDevices.length === 0) {
+    return reports
+  }
+
+  return reports.filter((report) =>
+    Array.isArray(report.labels) && report.labels.some((label) => normalizedDevices.includes(label.name)),
+  )
+}
+
 /**
  * Fetches reports from a GitHub repository using the issues API.
  * Note: This method is preferred when filtering by author to avoid issues with private users.
@@ -385,12 +409,13 @@ const redisCacheRecentGameReports = async (
   data: GameReport[],
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
+  devices: string[] = [],
 ): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub recent game reports.')
   }
   const validatedSort = sort === 'created' ? 'created' : 'updated'
-  const redisKey = `github:game_reports:recent:${count}:${validatedSort}`
+  const redisKey = `github:game_reports:recent:${count}:${validatedSort}:${buildDeviceCacheKey(devices)}`
   const cacheTime = config.defaultCacheTime
   try {
     await redisCacheExtData(JSON.stringify(data), redisKey, cacheTime)
@@ -403,9 +428,10 @@ const redisCacheRecentGameReports = async (
 const redisLookupRecentGameReports = async (
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
+  devices: string[] = [],
 ): Promise<GameReport[] | null> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
-  const redisKey = `github:game_reports:recent:${count}:${validatedSort}`
+  const redisKey = `github:game_reports:recent:${count}:${validatedSort}:${buildDeviceCacheKey(devices)}`
   try {
     const cachedData = await redisLookupExtData(redisKey)
     if (cachedData) {
@@ -418,11 +444,11 @@ const redisLookupRecentGameReports = async (
   return null
 }
 
-const redisCachePopularGameReports = async (data: GameReport[], count: number = 5): Promise<void> => {
+const redisCachePopularGameReports = async (data: GameReport[], count: number = 5, devices: string[] = []): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub popular game reports.')
   }
-  const redisKey = `github:game_reports:popular:${count}`
+  const redisKey = `github:game_reports:popular:${count}:${buildDeviceCacheKey(devices)}`
   const cacheTime = config.defaultCacheTime
   try {
     await redisCacheExtData(JSON.stringify(data), redisKey, cacheTime)
@@ -432,8 +458,8 @@ const redisCachePopularGameReports = async (data: GameReport[], count: number = 
   }
 }
 
-const redisLookupPopularGameReports = async (count: number = 5): Promise<GameReport[] | null> => {
-  const redisKey = `github:game_reports:popular:${count}`
+const redisLookupPopularGameReports = async (count: number = 5, devices: string[] = []): Promise<GameReport[] | null> => {
+  const redisKey = `github:game_reports:popular:${count}:${buildDeviceCacheKey(devices)}`
   try {
     const cachedData = await redisLookupExtData(redisKey)
     if (cachedData) {
@@ -489,34 +515,50 @@ const redisLookupAuthorGameReportCount = async (author: string): Promise<number 
 export const fetchRecentReports = async (
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
+  devices: string[] = [],
   authToken: string | null = null,
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
+  const normalizedDevices = normalizeDeviceFilters(devices)
   try {
     if (!forceRefresh) {
-      const cachedData = await redisLookupRecentGameReports(count, validatedSort)
+      const cachedData = await redisLookupRecentGameReports(count, validatedSort, normalizedDevices)
       if (cachedData) {
         logger.info('Serving recent reports from Redis cache')
         return cachedData
       }
     }
 
-    const reports = await fetchReportsWithSearchApi(
-      undefined,
-      'open',
-      null,
-      null,
-      validatedSort,
-      'desc',
-      count,
-      true,
-      ['community:duplicate-report'],
-      authToken,
-    )
+    const reports = normalizedDevices.length > 0
+      ? await fetchReportsWithIssuesApi(
+        undefined,
+        'open',
+        null,
+        null,
+        validatedSort,
+        'desc',
+        null,
+        true,
+        ['community:duplicate-report'],
+        authToken,
+      )
+      : await fetchReportsWithSearchApi(
+        undefined,
+        'open',
+        null,
+        null,
+        validatedSort,
+        'desc',
+        count,
+        true,
+        ['community:duplicate-report'],
+        authToken,
+      )
     if (reports && reports?.items?.length > 0) {
-      const returnData = await parseGameReport(reports)
-      await redisCacheRecentGameReports(returnData, count, validatedSort)
+      const parsedReports = await parseGameReport(reports)
+      const returnData = filterReportsByDevices(parsedReports, normalizedDevices).slice(0, count)
+      await redisCacheRecentGameReports(returnData, count, validatedSort, normalizedDevices)
       // Refresh the first 5 games in the background
       returnData.slice(0, 5).forEach((report) => {
         if (report.data.app_id || report.data.game_name) {
@@ -554,7 +596,7 @@ export const fetchRecentReports = async (
     return []
   } catch (error) {
     logger.error('Error fetching recent reports:', error)
-    await redisCacheRecentGameReports([], count, validatedSort)
+    await redisCacheRecentGameReports([], count, validatedSort, normalizedDevices)
     return []
   }
 }
@@ -565,12 +607,14 @@ export const fetchRecentReports = async (
  */
 export const fetchPopularReports = async (
   count: number = 5,
+  devices: string[] = [],
   authToken: string | null = null,
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
+  const normalizedDevices = normalizeDeviceFilters(devices)
   try {
     if (!forceRefresh) {
-      const cachedData = await redisLookupPopularGameReports(count)
+      const cachedData = await redisLookupPopularGameReports(count, normalizedDevices)
       if (cachedData) {
         logger.info('Serving popular reports from Redis cache')
         return cachedData
@@ -584,14 +628,15 @@ export const fetchPopularReports = async (
       null,
       'reactions-+1',
       'desc',
-      count,
+      normalizedDevices.length > 0 ? null : count,
       true,
       null,
       authToken,
     )
     if (reports && reports?.items?.length > 0) {
-      const returnData = await parseGameReport(reports)
-      await redisCachePopularGameReports(returnData, count)
+      const parsedReports = await parseGameReport(reports)
+      const returnData = filterReportsByDevices(parsedReports, normalizedDevices).slice(0, count)
+      await redisCachePopularGameReports(returnData, count, normalizedDevices)
       return returnData
     }
 
@@ -599,7 +644,7 @@ export const fetchPopularReports = async (
     return []
   } catch (error) {
     logger.error('Error fetching popular reports:', error)
-    await redisCachePopularGameReports([], count)
+    await redisCachePopularGameReports([], count, normalizedDevices)
     return []
   }
 }

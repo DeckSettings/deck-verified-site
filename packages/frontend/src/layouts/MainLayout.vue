@@ -146,13 +146,16 @@ const { enableLogin } = useFeatureFlags()
 
 .header-actions {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   align-items: center;
   justify-content: center;
   gap: 12px;
 }
 
 .header-actions__search {
-  flex: 1 1 320px;
+  flex: 1 1 260px;
+  min-width: 0;
   display: flex;
   justify-content: flex-end;
 }

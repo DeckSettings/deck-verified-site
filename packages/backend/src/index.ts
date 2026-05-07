@@ -774,7 +774,10 @@ app.get('/deck-verified/api/v1/recent_reports', async (req: Request, res: Respon
   try {
     const count = parseInt(req.query.count as string, 10) || 5
     const sortParam = req.query.sortby === 'created' ? 'created' : 'updated'
-    const reports = await fetchRecentReports(count, sortParam)
+    const devices = typeof req.query.devices === 'string'
+      ? req.query.devices.split(',').map((value) => value.trim()).filter((value) => value.length > 0)
+      : []
+    const reports = await fetchRecentReports(count, sortParam, devices)
     if (reports && reports?.length > 0) {
       return res.json(reports)
     }
@@ -796,7 +799,10 @@ app.get('/deck-verified/api/v1/recent_reports', async (req: Request, res: Respon
 app.get('/deck-verified/api/v1/popular_reports', async (req: Request, res: Response) => {
   try {
     const count = parseInt(req.query.count as string, 10) || 5
-    const reports = await fetchPopularReports(count)
+    const devices = typeof req.query.devices === 'string'
+      ? req.query.devices.split(',').map((value) => value.trim()).filter((value) => value.length > 0)
+      : []
+    const reports = await fetchPopularReports(count, devices)
     if (reports && reports?.length > 0) {
       return res.json(reports)
     }

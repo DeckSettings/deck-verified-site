@@ -44,6 +44,21 @@ interface MarketQueryParams {
   currency?: string;
 }
 
+const buildDeviceFilterQuery = (devices: string[] = []): string => {
+  const normalizedDevices = Array.from(new Set(
+    devices
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+  ))
+
+  if (normalizedDevices.length === 0) {
+    return ''
+  }
+
+  return `&devices=${encodeURIComponent(normalizedDevices.join(','))}`
+}
+
 export interface HomeReport {
   id: number | null;
   // Optional full GitHub issue object for user reports (undefined for community reports)
@@ -217,8 +232,12 @@ export const fetchGameRatingsSummary = async (params: MarketQueryParams): Promis
  * @param sort - Which field to sort by on the backend ('updated' or 'created'). Defaults to 'updated'.
  * @returns An array of simplified `HomeReport` objects. Returns an empty array on error.
  */
-export const fetchRecentReports = async (count: number = 5, sort: 'updated' | 'created' = 'updated'): Promise<HomeReport[]> => {
-  const url = apiUrl(`/deck-verified/api/v1/recent_reports?count=${count}&sortby=${sort}`)
+export const fetchRecentReports = async (
+  count: number = 5,
+  sort: 'updated' | 'created' = 'updated',
+  devices: string[] = [],
+): Promise<HomeReport[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/recent_reports?count=${count}&sortby=${sort}${buildDeviceFilterQuery(devices)}`)
 
   try {
     console.debug('Fetching recent reports from backend')
@@ -241,8 +260,8 @@ export const fetchRecentReports = async (count: number = 5, sort: 'updated' | 'c
  * @param count - Number of reports to fetch (default: 5).
  * @returns An array of simplified `HomeReport` objects. Returns an empty array on error.
  */
-export const fetchPopularReports = async (count: number = 5): Promise<HomeReport[]> => {
-  const url = apiUrl(`/deck-verified/api/v1/popular_reports?count=${count}`)
+export const fetchPopularReports = async (count: number = 5, devices: string[] = []): Promise<HomeReport[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/popular_reports?count=${count}${buildDeviceFilterQuery(devices)}`)
 
   try {
     console.debug('Fetching popular reports from backend')

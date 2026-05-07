@@ -12,6 +12,7 @@ export const DEFAULT_CONFIG: ConfigPayload = {
   hideDuplicateReports: false,
   showHomeWelcomeCard: true,
   disabledFeeds: [],
+  preferredDevices: [],
   country: DEFAULT_COUNTRY,
   currency: DEFAULT_CURRENCY,
 }
@@ -21,6 +22,7 @@ export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | 
     hideDuplicateReports: DEFAULT_CONFIG.hideDuplicateReports,
     showHomeWelcomeCard: DEFAULT_CONFIG.showHomeWelcomeCard,
     disabledFeeds: [...DEFAULT_CONFIG.disabledFeeds],
+    preferredDevices: [...DEFAULT_CONFIG.preferredDevices],
     country: DEFAULT_CONFIG.country,
     currency: DEFAULT_CONFIG.currency,
   }
@@ -39,6 +41,14 @@ export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | 
   }
   if (Array.isArray(record.disabledFeeds)) {
     normalized.disabledFeeds = record.disabledFeeds.filter((value): value is string => typeof value === 'string')
+  }
+  if (Array.isArray(record.preferredDevices)) {
+    normalized.preferredDevices = Array.from(new Set(
+      record.preferredDevices
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    ))
   }
 
   if (typeof record.country === 'string' && record.country.trim() !== '') {

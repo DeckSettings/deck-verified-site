@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useMeta } from 'quasar'
 import { fetchGamesWithReports } from 'src/utils/api'
+import { useConfigStore } from 'src/stores/config-store'
 import type { GameSearchResult } from '../../../shared/src/game'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import PageHeader from 'components/elements/PageHeader.vue'
@@ -9,8 +11,11 @@ import ReportForm from 'components/ReportForm.vue'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
 
 const baseUrl = ref((`${import.meta.env.BASE_URL ?? ''}`).replace(/^\/$/, '').replace(/\/$/, ''))
+const configStore = useConfigStore()
+const { preferredDevices } = storeToRefs(configStore)
 const gamesWithReports = ref<GameSearchResult[] | null>(null)
 const gameBackground = ref(`${baseUrl.value}/hero-background2.jpg`)
+const hideReportCounts = computed(() => preferredDevices.value.length > 0)
 
 const fetchGames = async () => {
   gamesWithReports.value = await fetchGamesWithReports(0, 100)
@@ -166,6 +171,9 @@ useMeta(() => {
     <div class="page-content-container">
       <div class="row items-center justify-between q-mb-md">
         <div class="col-12 col-md-5">
+          <div v-if="hideReportCounts" class="text-caption text-grey-4">
+            Report counts are hidden while a global device filter is active.
+          </div>
         </div>
       </div>
 
@@ -209,7 +217,7 @@ useMeta(() => {
                   <q-item-label caption class="text-primary q-pt-sm self-baseline">
                     App ID: {{ game.appId }}
                   </q-item-label>
-                  <q-item-label caption class="text-secondary">
+                  <q-item-label v-if="!hideReportCounts" caption class="text-secondary">
                     {{ game.reportCount }} reports
                   </q-item-label>
                 </q-card-section>

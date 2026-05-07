@@ -2,6 +2,7 @@ export interface ConfigPayload {
   hideDuplicateReports: boolean;
   showHomeWelcomeCard: boolean;
   disabledFeeds: string[];
+  preferredDevices: string[];
   country: string;
   currency: string;
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from 'src/stores/config-store'
+import { useGameStore } from 'src/stores/game-store'
 import { APP_FEEDS } from 'src/constants/feeds'
 import { apiUrl } from 'src/utils/api'
 import { simSteamdb, simPcgamingwiki } from 'quasar-extras-svg-icons/simple-icons-v14'
@@ -10,10 +11,37 @@ import itadLogo from 'src/assets/icons/itad-icon.svg'
 import protondbLogo from 'src/assets/icons/protondb.svg'
 import steamLogo from 'src/assets/icons/steam.svg'
 import { COUNTRY_OPTIONS, CURRENCY_OPTIONS } from 'src/constants/localisation'
+import { useQuasar } from 'quasar'
+
+const props = defineProps({
+  menuOnRight: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const configStore = useConfigStore()
-const { isHydrated, showHomeWelcomeCard, hideDuplicateReports, country, currency } = storeToRefs(configStore)
+const gameStore = useGameStore()
+const $q = useQuasar()
+const {
+  isHydrated,
+  showHomeWelcomeCard,
+  hideDuplicateReports,
+  preferredDevices,
+  country,
+  currency,
+} = storeToRefs(configStore)
 const isAboutDialogOpen = ref(false)
+const settingsTitle = computed(() => $q.platform.isMobileUi ? 'App Settings' : 'Site Settings')
+
+const preferredDeviceOptions = computed(() =>
+  gameStore.deviceLabels
+    .map((label) => ({
+      label: label.name.split(':')[1]?.trim() || label.name,
+      value: label.name,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
+)
 
 const closeAboutDialog = () => {
   isAboutDialogOpen.value = false
@@ -49,6 +77,11 @@ const handleHideDuplicatesToggle = (value: boolean) => {
   configStore.setHideDuplicateReports(value)
 }
 
+const setPreferredDevices = (values: string[] | null) => {
+  if (!isHydrated.value) return
+  configStore.setPreferredDevices(Array.isArray(values) ? values : [])
+}
+
 const toggleHideDuplicates = () => {
   if (!isHydrated.value) return
   configStore.toggleHideDuplicateReports()
@@ -70,27 +103,33 @@ const setCurrency = (value: string | null) => {
   if (!isHydrated.value || typeof value !== 'string') return
   configStore.setCurrency(value)
 }
+
+onMounted(async () => {
+  if (gameStore.deviceLabels.length > 0) return
+  const labels = await gameStore.getCachedLabels()
+  gameStore.deviceLabels = labels.filter((label) => label.name.startsWith('DEVICE:'))
+})
 </script>
 
 <template>
   <q-card flat class="dv-dialog-inner-card">
     <q-card-section class="dv-side-dialog-header row items-center justify-between no-wrap">
-
-      <div class="text-subtitle1 text-weight-bold">App Settings</div>
+      <div v-if="props.menuOnRight" class="text-h4 text-left">{{ settingsTitle }}</div>
       <q-btn
         outline round
         color="primary"
-        icon="close"
+        :icon="props.menuOnRight ? 'arrow_forward' : 'arrow_back'"
         size="sm"
         v-close-popup
         @click="handleSettingsClose"
       />
+      <div v-if="!props.menuOnRight" class="text-h4 text-right">{{ settingsTitle }}</div>
     </q-card-section>
 
     <q-separator dark />
 
     <q-card-section class="q-gutter-lg">
-      <section>
+      <section v-if="$q.platform.isMobileUi">
         <div class="text-subtitle2 text-weight-bold q-mb-sm">Home Cards</div>
         <q-list>
           <q-item
@@ -193,6 +232,37 @@ const setCurrency = (value: string | null) => {
               />
             </q-item-section>
           </q-item>
+
+          <q-item class="dv-dialog-menu-list-button">
+            <q-item-section avatar>
+              <q-avatar color="primary">
+                <q-icon name="devices" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-body1 text-weight-medium">
+                Preferred Devices
+              </q-item-label>
+              <q-item-label caption class="text-grey-5">
+                Apply these handheld filters across reports and game details
+              </q-item-label>
+              <q-select
+                class="q-mt-sm"
+                :model-value="preferredDevices"
+                :options="preferredDeviceOptions"
+                :disable="!isHydrated"
+                dense
+                outlined
+                multiple
+                emit-value
+                map-options
+                use-chips
+                label="Devices"
+                @update:model-value="setPreferredDevices"
+              />
+            </q-item-section>
+          </q-item>
         </q-list>
       </section>
     </q-card-section>
@@ -292,10 +362,10 @@ const setCurrency = (value: string | null) => {
     v-model="isAboutDialogOpen"
     backdrop-filter="blur(2px)"
     maximized
-    position="left"
-    transition-show="slide-up"
-    transition-hide="slide-down"
-    transition-duration="100"
+    :position="props.menuOnRight ? 'right' : 'left'"
+    :transition-show="props.menuOnRight ? 'slide-left' : 'slide-right'"
+    :transition-hide="props.menuOnRight ? 'slide-right' : 'slide-left'"
+    transition-duration="300"
   >
     <q-card class="dv-side-dialog-card"
             :style="$q.screen.lt.sm ? 'min-width: 100vw;' : 'min-width: 600px;width: 600px;'"
@@ -303,15 +373,16 @@ const setCurrency = (value: string | null) => {
       <q-card-section class="dv-dialog-content">
         <q-card flat class="dv-dialog-inner-card">
           <q-card-section class="dv-side-dialog-header row items-center justify-between no-wrap">
-
-            <div class="text-subtitle1 text-weight-bold">About</div>
+            <div v-if="props.menuOnRight" class="text-h4 text-left">About</div>
             <q-btn
               outline round
               color="primary"
-              icon="close"
+              :icon="props.menuOnRight ? 'arrow_forward' : 'arrow_back'"
               size="sm"
+              v-close-popup
               @click="closeAboutDialog"
             />
+            <div v-if="!props.menuOnRight" class="text-h4 text-right">About</div>
           </q-card-section>
 
           <q-separator dark />

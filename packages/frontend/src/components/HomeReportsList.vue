@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { refreshScrollTrigger, useScrollTrigger } from 'src/composables/useScrollTrigger'
 import { useReportsStore } from 'stores/reports-store'
+import { useConfigStore } from 'src/stores/config-store'
 import ReportList from 'components/elements/ReportList.vue'
 import ReportStatsList from 'components/elements/ReportStatsList.vue'
 import type { HomeReport } from 'src/utils/api'
@@ -22,6 +24,8 @@ const props = defineProps({
 })
 
 const reportStore = useReportsStore()
+const configStore = useConfigStore()
+const { preferredDevices } = storeToRefs(configStore)
 const isLoading = ref(true)
 const listTitle = computed(() => {
   if (props.reportSelection === 'popular') return 'Most Popular Reports (most likes)'
@@ -71,13 +75,14 @@ async function loadReports() {
   }
   try {
     await useScrollTrigger()
+    const activeDevices = preferredDevices.value
 
     if (props.reportSelection === 'popular') {
-      await reportStore.loadPopular(props.count)
+      await reportStore.loadPopular(props.count, activeDevices)
     } else if (props.reportSelection === 'recentlyCreated') {
-      await reportStore.loadRecentlyCreated(props.count)
+      await reportStore.loadRecentlyCreated(props.count, activeDevices)
     } else if (props.reportSelection === 'recentlyUpdated') {
-      await reportStore.loadRecentlyUpdated(props.count)
+      await reportStore.loadRecentlyUpdated(props.count, activeDevices)
     } else if (props.reportSelection === 'views') {
       await reportStore.loadViews(props.count)
     }
@@ -108,6 +113,15 @@ watch(reportsStatsList, async () => {
   await nextTick()
   await scheduleScrollTriggerRefresh()
 }, { flush: 'post' })
+
+watch(
+  preferredDevices,
+  async () => {
+    if (props.reportSelection === 'views') return
+    await loadReports()
+  },
+  { deep: true },
+)
 </script>
 
 <template>
