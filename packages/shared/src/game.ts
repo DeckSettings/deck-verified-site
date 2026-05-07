@@ -1,5 +1,6 @@
 export interface HardwareInfo {
   name: string;
+  aliases?: string[];
   battery_size_wh: number;
   max_display_resolution: string;
   max_refresh_rate: number;

@@ -500,13 +500,19 @@ export const parseReportBody = async (
         }
         return trimmed
       }
+      const matchesReportedDevice = (candidate: string, reportedDevice: string) => {
+        const candidateLower = (candidate || '').trim().toLowerCase()
+        if (!candidateLower) return false
+        if (candidateLower === reportedDevice) return true
+        if (stripManufacturerPrefixOnce(candidateLower) === reportedDevice) return true
+        return false
+      }
       const reportedDeviceLower = String(data.device || '').trim().toLowerCase()
       const matchedDevice = hardwareInfo.find((device) => {
-        const deviceNameLower = (device.name || '').trim().toLowerCase()
-        // Direct case-insensitive compare
-        if (deviceNameLower === reportedDeviceLower) return true
-        // The reported device doesn't have a manufacturer prefix (e.g. hardware: "Lenovo Legion Go", reported: "Legion Go")
-        if (stripManufacturerPrefixOnce(deviceNameLower) === reportedDeviceLower) return true
+        if (matchesReportedDevice(device.name || '', reportedDeviceLower)) return true
+        if (Array.isArray(device.aliases)) {
+          return device.aliases.some((alias) => matchesReportedDevice(alias, reportedDeviceLower))
+        }
         return false
       })
 
