@@ -38,7 +38,7 @@ export const normalizeConfigPayload = (payload: Partial<ConfigPayload> | null | 
     normalized.showHomeWelcomeCard = record.showHomeWelcomeCard
   }
   if (Array.isArray(record.disabledFeeds)) {
-    normalized.disabledFeeds = record.disabledFeeds.filter((value): value is string => true)
+    normalized.disabledFeeds = record.disabledFeeds.filter((value): value is string => typeof value === 'string')
   }
 
   if (typeof record.country === 'string' && record.country.trim() !== '') {

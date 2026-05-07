@@ -452,7 +452,7 @@ app.get('/deck-verified/api/tasks/:taskId/progress', dvAuth, async (req: Request
     return
   }
 
-  const { taskId } = req.params
+  const taskId = typeof req.params.taskId === 'string' ? req.params.taskId : null
   if (!taskId) {
     res.status(400).json({ error: 'invalid_task_id' })
     return
@@ -540,7 +540,7 @@ app.delete('/deck-verified/api/dv/notifications/:id', dvAuth, async (req: Reques
     res.status(401).json({ error: 'missing_identity' } as any)
     return
   }
-  const { id } = req.params
+  const id = typeof req.params.id === 'string' ? req.params.id : null
   if (!id) {
     res.status(400).json({ error: 'missing_notification_id' } as any)
     return
