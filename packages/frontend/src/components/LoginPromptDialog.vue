@@ -18,9 +18,12 @@ const onLogin = () => {
 </script>
 
 <template>
-
-
-  <q-dialog :model-value="show" @update:model-value="$emit('update:show', $event)" backdrop-filter="blur(2px)">
+  <q-dialog
+    :model-value="show"
+    seamless no-refocus
+    @update:model-value="$emit('update:show', $event)"
+    backdrop-filter="blur(2px)"
+  >
     <q-card class="dv-dialog-card">
       <q-card-section class="dv-dialog-content">
         <q-card flat class="dv-dialog-inner-card">

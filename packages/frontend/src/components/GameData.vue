@@ -522,13 +522,13 @@ const openDialog = () => {
   // Dialog can render in SSR markup as closed; opening is client-only UX
   reportFormDialogOpen.value = true
   if (isClient && 'history' in window) {
-    history.pushState({ dialog: true }, '')
+    history.pushState({ ...(history.state ?? {}), dialog: true }, '')
   }
 }
 const closeDialog = () => {
   reportFormDialogOpen.value = false
   if (isClient && history.state && history.state.dialog) {
-    history.back()
+    history.replaceState({ ...history.state, dialog: false }, '')
   }
 }
 
@@ -577,7 +577,17 @@ const closeReportIssueDialog = () => {
   currentReportNumber.value = null
   currentReportAuthor.value = null
 
-  if (isClient && history.state && history.state.reportIssueDialog) history.back()
+  if (isClient && history.state && history.state.reportIssueDialog) {
+    history.replaceState({ ...history.state, reportIssueDialog: false }, '')
+  }
+}
+
+const refreshCurrentGameData = async () => {
+  gameStore.resetGameState()
+  await ensureClientGameData()
+  if (appId.value) {
+    await loadMarketData(appId.value)
+  }
 }
 
 const submitReportIssue = async () => {
@@ -599,6 +609,7 @@ const submitReportIssue = async () => {
     await submitCommunityFlagComment(currentReportNumber.value, cmd, finalMessage)
     $q.notify({ type: 'positive', message: 'Report submitted.' })
     closeReportIssueDialog()
+    await refreshCurrentGameData()
   } catch (err) {
     console.error('Failed to submit reportbot comment', err)
     $q.notify({ type: 'negative', message: 'Failed to submit report. Please try again.' })
@@ -939,7 +950,7 @@ useMeta(() => {
               label="External Links"
               @click="externalLinksDialogOpen = true"
             />
-            <q-dialog v-model="externalLinksDialogOpen" backdrop-filter="blur(2px)">
+            <q-dialog v-model="externalLinksDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
               <q-card class="dv-dialog-card">
                 <q-card-section class="dv-dialog-content">
                   <q-card flat class="dv-dialog-inner-card">
@@ -1109,6 +1120,8 @@ useMeta(() => {
                            @click="openDialog" />
             <q-dialog class="q-ma-none q-pa-none report-dialog"
                       backdrop-filter="blur(2px)"
+                      seamless
+                      no-refocus
                       full-height
                       :full-width="$q.screen.lt.md"
                       :maximized="$q.screen.lt.md"
@@ -1317,7 +1330,7 @@ useMeta(() => {
                   </div>
                 </div>
 
-                <q-dialog v-model="filterDialogOpen" backdrop-filter="blur(2px)">
+                <q-dialog v-model="filterDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
                   <q-card class="dv-dialog-card">
                     <q-card-section class="dv-dialog-content">
                       <q-card flat class="dv-dialog-inner-card">
@@ -1357,7 +1370,7 @@ useMeta(() => {
                   </q-card>
                 </q-dialog>
 
-                <q-dialog v-model="sortDialogOpen" backdrop-filter="blur(2px)">
+                <q-dialog v-model="sortDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
                   <q-card class="dv-dialog-card">
                     <q-card-section class="dv-dialog-content">
                       <q-card flat class="dv-dialog-inner-card">
@@ -1958,7 +1971,7 @@ useMeta(() => {
 
                       <!-- Comments dialog (PLACEHOLDER) -->
                       <q-dialog v-model="commentsDialogOpen" class="q-ma-none q-pa-none report-comments-dialog"
-                                persistent>
+                                seamless no-refocus persistent>
                         <q-card>
                           <q-card-section>
                             <div class="text-h6">Comments</div>
@@ -1982,7 +1995,7 @@ useMeta(() => {
 
                       <!-- Flag / Report Issue dialog -->
                       <q-dialog v-model="reportIssueDialogOpen" class="q-ma-none q-pa-none report-issue-dialog"
-                                persistent>
+                                seamless no-refocus persistent>
                         <q-card style="min-width: 320px; max-width: 720px;">
                           <q-card-section>
                             <div class="text-h6">Flag report</div>
@@ -2098,6 +2111,8 @@ useMeta(() => {
 
   <q-dialog class="q-ma-none q-pa-none comparison-dialog"
             backdrop-filter="blur(2px)"
+            seamless
+            no-refocus
             full-height
             :full-width="$q.screen.lt.md"
             :maximized="$q.screen.lt.md"
