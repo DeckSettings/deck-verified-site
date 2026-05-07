@@ -328,30 +328,35 @@ defineExpose({
               </template>
 
               <template v-else>
-                <div class="row q-col-gutter-sm items-stretch">
-                  <div class="col-auto">
-                    <q-btn
-                      outline
-                      color="primary"
-                      icon="settings"
-                      aria-label="Open settings"
-                      class="full-height"
-                      @click="isSettingsDialogOpen = true"
-                    />
-                  </div>
-                  <div class="col">
-                    <div class="column q-gutter-sm">
-                      <p class="text-body2 text-grey-4">
-                        Connect your GitHub account to receive personalised notifications and save your activity.
-                      </p>
-                      <PrimaryButton
-                        color="primary"
-                        full-width
-                        icon="fab fa-github"
-                        label="Login with GitHub"
-                        @click="handleLogin" />
-                    </div>
-                  </div>
+                <q-list dark>
+                  <q-item clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          @click="isSettingsDialogOpen = true"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar color="primary">
+                        <q-icon name="settings" />
+                      </q-avatar>
+                    </q-item-section>
+                    <q-item-section>{{ settingsLabel }}</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="chevron_right" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+
+                <q-separator dark class="q-my-md" />
+
+                <div class="column q-gutter-sm">
+                  <p class="text-body2 text-grey-4">
+                    Connect your GitHub account to receive personalised notifications and save your activity.
+                  </p>
+                  <PrimaryButton
+                    color="primary"
+                    full-width
+                    icon="fab fa-github"
+                    label="Login with GitHub"
+                    @click="handleLogin" />
                 </div>
               </template>
             </div>
