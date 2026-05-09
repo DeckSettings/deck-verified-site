@@ -28,7 +28,7 @@ const configStore = useConfigStore()
 const { preferredDevices } = storeToRefs(configStore)
 const isLoading = ref(true)
 const listTitle = computed(() => {
-  if (props.reportSelection === 'popular') return 'Most Popular Reports (most likes)'
+  if (props.reportSelection === 'popular') return 'Most Liked Reports'
   if (props.reportSelection === 'recentlyCreated') return 'Recently Created Reports'
   if (props.reportSelection === 'recentlyUpdated') return 'Recently Updated Reports'
   if (props.reportSelection === 'views') return 'Most Viewed (Past 7 days)'

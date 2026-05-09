@@ -3,6 +3,7 @@ import config from '../../config'
 import logger, { logMetric } from '../../logger'
 import {
   redisCacheExtData,
+  redisDeleteExtData,
   redisLookupExtData,
   storeGameInRedis,
 } from '../../redis'
@@ -70,6 +71,30 @@ const redisLookupGitHubProjectDetails = async (
     logger.error('Redis error while fetching cached GitHub project details:', error)
   }
   return null
+}
+
+export const invalidateGitHubProjectDetailsCache = async (
+  appId: string | null = null,
+  gameName: string | null = null,
+): Promise<void> => {
+  if (!appId && !gameName) {
+    throw new Error('Either an AppID or Game Name is required.')
+  }
+
+  const cacheKeys = [
+    appId ? `github:project_details:appid:${appId}` : null,
+    gameName ? `github:project_details:name:${gameName}` : null,
+  ].filter((value): value is string => Boolean(value))
+
+  for (const cacheKey of cacheKeys) {
+    try {
+      await redisDeleteExtData(cacheKey)
+      logger.info(`Invalidated GitHub project details cache for key ${cacheKey}`)
+    } catch (error) {
+      logger.error(`Redis error while invalidating GitHub project details for key "${cacheKey}":`, error)
+      throw error
+    }
+  }
 }
 
 /**
@@ -145,6 +170,7 @@ export const parseProjectDetails = async (
           avatar_url: issue.user.avatar_url,
           report_count: await fetchAuthorReportCount(issue.user.login, authToken),
         },
+        current_user_reaction: issue.current_user_reaction ?? null,
         created_at: issue.created_at,
         updated_at: issue.updated_at,
       })
@@ -224,9 +250,11 @@ export const fetchProject = async (
                       }
                       reactions_thumbs_up: reactions(content: THUMBS_UP) {
                         totalCount
+                        viewerHasReacted
                       }
                       reactions_thumbs_down: reactions(content: THUMBS_DOWN) {
                         totalCount
+                        viewerHasReacted
                       }
                       author {
                         login
@@ -397,6 +425,11 @@ export const fetchProject = async (
               },
               labels: node.content.labels.nodes,
               user: node.content.author,
+              current_user_reaction: node.content.reactions_thumbs_up.viewerHasReacted
+                ? 'up'
+                : node.content.reactions_thumbs_down.viewerHasReacted
+                  ? 'down'
+                  : null,
               closed: node.content.closed,
               created_at: node.content.createdAt,
               updated_at: node.content.updatedAt,
@@ -441,7 +474,9 @@ export const fetchProjectsByAppIdOrGameName = async (
     throw new Error('Either appId or gameName must be provided.')
   }
 
-  if (!forceRefresh) {
+  const personalizedView = Boolean(authToken && authToken !== config.defaultGithubAuthToken)
+
+  if (!forceRefresh && !personalizedView) {
     const cachedData = await redisLookupGitHubProjectDetails(appId, gameName)
     if (cachedData) {
       logger.info(`Using cached results for GitHub project search by appId:'${appId}', gameName:'${gameName}'`)
@@ -460,10 +495,12 @@ export const fetchProjectsByAppIdOrGameName = async (
     const project = projects[0]
     if (project) {
       const parsedProject = await parseProjectDetails(project, authToken)
-      try {
-        await redisCacheGitHubProjectDetails(parsedProject, appId, gameName)
-      } catch (error) {
-        logger.error('Error storing project details in Redis:', error)
+      if (!personalizedView) {
+        try {
+          await redisCacheGitHubProjectDetails(parsedProject, appId, gameName)
+        } catch (error) {
+          logger.error('Error storing project details in Redis:', error)
+        }
       }
       return parsedProject
     }
@@ -471,7 +508,9 @@ export const fetchProjectsByAppIdOrGameName = async (
   logger.warn(`No GitHub projects found for "${searchTerm}". Caching empty response.`)
   // Cache an empty response for a short period of time
   // TODO: Handle a rate limit by github with a longer cache of this data. I think setting this to 1 week is fine as the scheduled task will update it if a report is submitted anyway.
-  await redisCacheGitHubProjectDetails({}, appId, gameName)
+  if (!personalizedView) {
+    await redisCacheGitHubProjectDetails({}, appId, gameName)
+  }
   return {}
 }
 

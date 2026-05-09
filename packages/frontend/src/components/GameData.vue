@@ -28,10 +28,11 @@ import type {
   GameRatingsSummary,
   GamePriceSummary,
   SteamDeckCompatibilitySummary,
+  GameReportUserReaction,
 } from '../../../shared/src/game'
 import DeviceImage from 'components/elements/DeviceImage.vue'
 import { useQuasar } from 'quasar'
-import { submitCommunityFlagComment } from 'src/utils/gh-api'
+import { setReportReaction, submitCommunityFlagComment } from 'src/utils/gh-api'
 import { BACKEND_API_ORIGIN } from 'src/utils/env'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -53,6 +54,38 @@ interface ExtendedGameReport extends Omit<GameReport, 'data'> {
   data: Partial<GameReportData>;
   reportVisible?: boolean;
   external?: boolean;
+}
+
+interface CommunityVerificationPresentation {
+  label: string;
+  icon: string;
+  color: string;
+  likes: number;
+  tooltip: string;
+}
+
+interface AppreciationTierPresentation {
+  key: 'gold' | 'silver' | 'bronze' | 'standard' | 'none';
+  label: string;
+  shortLabel: string;
+  icon: string;
+  color: string;
+  likes: number;
+  tooltip: string;
+  itemClass: string;
+}
+
+interface ReportStatusChip {
+  key: string;
+  label: string;
+  shortLabel: string;
+  icon: string;
+  color: string;
+  tooltip: string;
+  ariaLabel: string;
+  avatarColor?: string;
+  count?: number;
+  kind: 'appreciation' | 'duplicate';
 }
 
 const isClient = typeof window !== 'undefined'
@@ -82,9 +115,11 @@ const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
   const internalOnly = baseReports.slice().sort((a, b) => {
     const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
     if (duplicatePriority !== 0) return duplicatePriority
-    const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-    const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-    return bLikes - aLikes
+    const scoreDelta = getReportReactionScore(b) - getReportReactionScore(a)
+    if (scoreDelta !== 0) return scoreDelta
+    const issuePriority = compareByCommunityIssues(a, b)
+    if (issuePriority !== 0) return issuePriority
+    return b.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_up']
   })
   return internalOnly[0]?.data ?? null
 })
@@ -258,10 +293,31 @@ const hasPerformanceSettings = (report: ExtendedGameReport) => {
 }
 
 const DUPLICATE_LABEL = 'community:duplicate-report'
+const COMMUNITY_ISSUE_LABELS = new Set([
+  'community:clarification-requested',
+  'community:config-review-suggested',
+  'community:improvements-suggested',
+  'community:spelling-check-suggested',
+  'community:verification-suggested',
+])
 type LabeledItem = { labels?: Array<{ name: string } | GitHubIssueLabel> }
 const isDuplicateReport = (report: LabeledItem) => {
   return Array.isArray(report.labels) && report.labels.some(label => label?.name === DUPLICATE_LABEL)
 }
+
+const getCommunityIssueLabelCount = (report: LabeledItem) => (
+  Array.isArray(report.labels)
+    ? report.labels.filter(label => COMMUNITY_ISSUE_LABELS.has(label?.name ?? '')).length
+    : 0
+)
+
+const getReportReactionScore = (report: Pick<GameReport, 'reactions'>) => (
+  (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
+)
+
+const compareByCommunityIssues = (a: LabeledItem, b: LabeledItem) => (
+  getCommunityIssueLabelCount(a) - getCommunityIssueLabelCount(b)
+)
 
 const hasDuplicateReports = computed(() => {
   const gd = gameData.value
@@ -286,13 +342,41 @@ watch(
 
 // Expanded state per-report id
 const expanded = ref<Record<number, boolean>>({})
+const lastExpandedReportId = ref<number | null>(null)
 
 function isExpanded(id: number) {
   return !!expanded.value[id]
 }
 
+function getFirstExpandedReportId(excludedId?: number): number | null {
+  const visibleExpanded = filteredReports.value.find((report) =>
+    report.id !== excludedId && expanded.value[report.id],
+  )
+  if (visibleExpanded) return visibleExpanded.id
+
+  for (const [rawId, isOpen] of Object.entries(expanded.value)) {
+    const parsedId = Number(rawId)
+    if (isOpen && parsedId !== excludedId) {
+      return parsedId
+    }
+  }
+
+  return null
+}
+
 function setExpanded(id: number, val: boolean) {
   expanded.value[id] = val
+  if (val) {
+    lastExpandedReportId.value = id
+    scheduleVerificationPrompt(id)
+    return
+  }
+
+  if (lastExpandedReportId.value === id) {
+    lastExpandedReportId.value = getFirstExpandedReportId(id)
+  }
+
+  scheduleVerificationPrompt(lastExpandedReportId.value)
 }
 
 const priceSummary = ref<GamePriceSummary | null>(null)
@@ -335,11 +419,11 @@ const loadMarketData = async (id?: string | null) => {
   }
 }
 
-const ensureClientGameData = async () => {
+const ensureClientGameData = async (forceReload: boolean = false) => {
   const routeAppId = route.params.appId as string
   const routeGameName = route.params.gameName as string
 
-  let needsLoading = false
+  let needsLoading = forceReload
   if (!gameData.value) {
     needsLoading = true
   } else if (routeAppId && gameStore.appId !== routeAppId) {
@@ -363,7 +447,15 @@ const ensureClientGameData = async () => {
   }
 }
 
-watch(() => route.fullPath, ensureClientGameData)
+watch(() => route.fullPath, () => {
+  void ensureClientGameData()
+})
+
+watch(() => authStore.accessToken, async (newToken, oldToken) => {
+  if (newToken === oldToken) return
+  if (!route.path.startsWith('/app/') && !route.path.startsWith('/game/')) return
+  await ensureClientGameData(true)
+})
 
 watch([appId, country, currency], async (values) => {
   const [newAppId] = values
@@ -379,6 +471,47 @@ watch([appId, country, currency], async (values) => {
 const hasReports = computed(() => {
   const gd = gameData.value
   return !!(gd && Array.isArray(gd.reports) && gd.reports.length > 0)
+})
+
+const currentUserLogin = computed(() => authStore.user?.login ?? null)
+const reactionLoadingByReport = ref<Record<number, boolean>>({})
+const verificationPromptVisible = ref(false)
+const verificationPromptDismissed = ref(false)
+const verificationPromptTargetReportId = ref<number | null>(null)
+let verificationPromptTimerId: number | null = null
+
+const hasSubmittedOwnReport = computed(() => Boolean(
+  currentUserLogin.value && (gameData.value?.reports ?? []).some((report) => report.user?.login === currentUserLogin.value),
+))
+
+const hasReactedToAnyReport = computed(() => Boolean(
+  authStore.isLoggedIn &&
+  (gameData.value?.reports ?? []).some((report) => report.current_user_reaction === 'up'),
+))
+
+const canPromptForVerification = computed(() => (
+  hasReports.value &&
+  (
+    !authStore.isLoggedIn ||
+    (
+      !hasSubmittedOwnReport.value &&
+      !hasReactedToAnyReport.value
+    )
+  )
+))
+
+const verificationPromptReport = computed<ExtendedGameReport | null>(() => {
+  const targetReportId = verificationPromptTargetReportId.value ?? activeExpandedReportId.value
+  if (targetReportId === null) return null
+  return filteredReports.value.find((report) => report.id === targetReportId) ?? null
+})
+
+const activeExpandedReportId = computed<number | null>(() => {
+  const lastExpanded = lastExpandedReportId.value
+  if (lastExpanded !== null && expanded.value[lastExpanded]) {
+    return lastExpanded
+  }
+  return getFirstExpandedReportId()
 })
 
 const compareReports = ref<ExtendedGameReport[]>([])
@@ -491,9 +624,17 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
     reports = reports.slice().sort((a, b) => {
       const duplicatePriority = Number(isDuplicateReport(a)) - Number(isDuplicateReport(b))
       if (duplicatePriority !== 0) return duplicatePriority
-      const aLikes = a.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_down']
-      const bLikes = b.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_down']
-      return sortOrder.value === 'asc' ? aLikes - bLikes : bLikes - aLikes
+      const scoreDelta = sortOrder.value === 'asc'
+        ? getReportReactionScore(a) - getReportReactionScore(b)
+        : getReportReactionScore(b) - getReportReactionScore(a)
+      if (scoreDelta !== 0) return scoreDelta
+      const issuePriority = compareByCommunityIssues(a, b)
+      if (issuePriority !== 0) return issuePriority
+      const likeTieBreak = sortOrder.value === 'asc'
+        ? a.reactions['reactions_thumbs_up'] - b.reactions['reactions_thumbs_up']
+        : b.reactions['reactions_thumbs_up'] - a.reactions['reactions_thumbs_up']
+      if (likeTieBreak !== 0) return likeTieBreak
+      return 0
     })
   } else if (sortOption.value === 'updated') {
     reports = reports.slice().sort((a, b) => {
@@ -501,11 +642,13 @@ const filteredReports = computed<ExtendedGameReport[]>(() => {
       if (duplicatePriority !== 0) return duplicatePriority
       const aUpdated = new Date(a.updated_at).getTime()
       const bUpdated = new Date(b.updated_at).getTime()
-      return sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
+      const updatedDelta = sortOrder.value === 'asc' ? aUpdated - bUpdated : bUpdated - aUpdated
+      if (updatedDelta !== 0) return updatedDelta
+      return compareByCommunityIssues(a, b)
     })
   } else {
     reports = reports.slice().sort((a, b) =>
-      Number(isDuplicateReport(a)) - Number(isDuplicateReport(b)),
+      Number(isDuplicateReport(a)) - Number(isDuplicateReport(b)) || compareByCommunityIssues(a, b),
     )
   }
 
@@ -516,6 +659,316 @@ const lastUpdated = (dateString: string | null): string => {
   if (!dateString) return 'Unknown'
   const updatedAt = dayjs(dateString)
   return updatedAt.isValid() ? `${updatedAt.fromNow()}` : 'Unknown'
+}
+
+const getAppreciationTier = (report: ExtendedGameReport): AppreciationTierPresentation | null => {
+  if (report.external) return null
+
+  const likes = report.reactions.reactions_thumbs_up || 0
+  if (likes <= 0) {
+    return {
+      key: 'none',
+      label: 'Awaiting community feedback',
+      shortLabel: 'Unrated',
+      icon: 'chat_bubble_outline',
+      color: 'blue-grey-4',
+      likes,
+      tooltip: 'This report has not received any likes yet. Read through it and leave a like if it helped.',
+      itemClass: 'report-tier-none',
+    }
+  }
+
+  if (likes >= 10) {
+    return {
+      key: 'gold',
+      label: 'Gold report',
+      shortLabel: 'Gold',
+      icon: 'workspace_premium',
+      color: 'amber-7',
+      likes,
+      tooltip: `${likes} players appreciated this report. It stands out as one of the most liked reports for this game.`,
+      itemClass: 'report-tier-gold',
+    }
+  }
+
+  if (likes >= 5) {
+    return {
+      key: 'silver',
+      label: 'Silver report',
+      shortLabel: 'Silver',
+      icon: 'military_tech',
+      color: 'blue-grey-3',
+      likes,
+      tooltip: `${likes} players appreciated this report. It has strong community support.`,
+      itemClass: 'report-tier-silver',
+    }
+  }
+
+  if (likes >= 2) {
+    return {
+      key: 'bronze',
+      label: 'Bronze report',
+      shortLabel: 'Bronze',
+      icon: 'emoji_events',
+      color: 'deep-orange-4',
+      likes,
+      tooltip: `${likes} players appreciated this report. It is building traction with the community.`,
+      itemClass: 'report-tier-bronze',
+    }
+  }
+
+  return {
+    key: 'standard',
+    label: 'Appreciated report',
+    shortLabel: 'Liked',
+    icon: 'thumb_up',
+    color: 'light-green-5',
+    likes,
+    tooltip: `${likes} player appreciated this report. Leave a like if it helped you too.`,
+    itemClass: 'report-tier-standard',
+  }
+}
+
+const getReportStatusChips = (report: ExtendedGameReport): ReportStatusChip[] => {
+  const chips: ReportStatusChip[] = []
+  const appreciation = getAppreciationTier(report)
+
+  if (appreciation) {
+    chips.push({
+      key: `appreciation-${appreciation.key}`,
+      label: appreciation.label,
+      shortLabel: appreciation.shortLabel,
+      icon: appreciation.icon,
+      color: appreciation.color,
+      tooltip: appreciation.tooltip,
+      ariaLabel: `${appreciation.label} indicator`,
+      count: appreciation.likes > 0 ? appreciation.likes : undefined,
+      kind: 'appreciation',
+    })
+  }
+
+  if (isDuplicateReport(report)) {
+    chips.push({
+      key: 'duplicate',
+      label: 'Duplicate',
+      shortLabel: 'Duplicate',
+      icon: 'backup_table',
+      color: 'warning',
+      avatarColor: 'warning',
+      tooltip: 'This report is marked as a duplicate by the community.',
+      ariaLabel: 'Duplicate community report indicator',
+      kind: 'duplicate',
+    })
+  }
+
+  return chips
+}
+
+const getReportStatusChipPositionClass = (chips: ReportStatusChip[], chipIndex: number) => {
+  if (chips.length === 1) return 'report-corner-chip-single'
+  if (chipIndex === 0) return 'report-corner-chip-left'
+  if (chipIndex === chips.length - 1) return 'report-corner-chip-right'
+  return 'report-corner-chip-middle'
+}
+
+const getReportStatusChipClasses = (chips: ReportStatusChip[], chip: ReportStatusChip, chipIndex: number) => ({
+  [getReportStatusChipPositionClass(chips, chipIndex)]: true,
+  'report-status-chip--appreciation': chip.kind === 'appreciation',
+  'report-status-chip--duplicate': chip.kind === 'duplicate',
+})
+
+const getVerificationPresentation = (report: ExtendedGameReport): CommunityVerificationPresentation | null => {
+  if (report.external) return null
+
+  const likes = report.reactions.reactions_thumbs_up || 0
+  if (likes <= 0) return null
+
+  if (likes >= 10) {
+    return {
+      label: 'Community favourite',
+      icon: 'workspace_premium',
+      color: 'amber-7',
+      likes,
+      tooltip: `${likes} players appreciated this report for its detail and usefulness.`,
+    }
+  }
+
+  if (likes >= 5) {
+    return {
+      label: 'Community verified',
+      icon: 'verified',
+      color: 'positive',
+      likes,
+      tooltip: `${likes} players appreciated this report and found it helpful.`,
+    }
+  }
+
+  if (likes >= 2) {
+    return {
+      label: 'Gaining appreciation',
+      icon: 'thumb_up',
+      color: 'light-green-5',
+      likes,
+      tooltip: `${likes} players appreciated this report so far.`,
+    }
+  }
+
+  return {
+    label: 'Helpful report',
+    icon: 'favorite_border',
+    color: 'blue-grey-5',
+    likes,
+    tooltip: 'This report has started receiving appreciation from the community.',
+  }
+}
+
+const hasUserReacted = (report: ExtendedGameReport, reaction: Exclude<GameReportUserReaction, null>): boolean =>
+  authStore.isLoggedIn && report.current_user_reaction === reaction
+
+const isReactionLoading = (reportId: number): boolean => Boolean(reactionLoadingByReport.value[reportId])
+
+const applyLocalReactionUpdate = (
+  reportId: number,
+  nextReaction: GameReportUserReaction,
+  nextCounts: { reactions_thumbs_up: number; reactions_thumbs_down: number },
+) => {
+  const currentGameData = gameStore.gameData
+  const reports = currentGameData?.reports
+  if (!currentGameData || !reports) return
+
+  let didUpdate = false
+  const nextReports = reports.map((candidate) => {
+    if (candidate.id !== reportId) return candidate
+    didUpdate = true
+    return {
+      ...candidate,
+      current_user_reaction: nextReaction,
+      reactions: {
+        ...candidate.reactions,
+        reactions_thumbs_up: nextCounts.reactions_thumbs_up,
+        reactions_thumbs_down: nextCounts.reactions_thumbs_down,
+      },
+    }
+  })
+
+  if (!didUpdate) return
+
+  gameStore.gameData = {
+    ...currentGameData,
+    reports: nextReports,
+  }
+
+  compareReports.value = compareReports.value.map((candidate) => (
+    candidate.id !== reportId
+      ? candidate
+      : {
+        ...candidate,
+        current_user_reaction: nextReaction,
+        reactions: {
+          ...candidate.reactions,
+          reactions_thumbs_up: nextCounts.reactions_thumbs_up,
+          reactions_thumbs_down: nextCounts.reactions_thumbs_down,
+        },
+      }
+  ))
+}
+
+const clearVerificationPromptTimer = () => {
+  if (!isClient || verificationPromptTimerId === null) return
+  window.clearTimeout(verificationPromptTimerId)
+  verificationPromptTimerId = null
+}
+
+const dismissVerificationPrompt = () => {
+  verificationPromptVisible.value = false
+  verificationPromptDismissed.value = true
+  verificationPromptTargetReportId.value = null
+  clearVerificationPromptTimer()
+}
+
+const scheduleVerificationPrompt = (reportId: number | null = activeExpandedReportId.value) => {
+  clearVerificationPromptTimer()
+  verificationPromptVisible.value = false
+  verificationPromptTargetReportId.value = null
+
+  if (!isClient || verificationPromptDismissed.value || !canPromptForVerification.value || reportId === null) return
+
+  verificationPromptTargetReportId.value = reportId
+
+  verificationPromptTimerId = window.setTimeout(() => {
+    if (
+      canPromptForVerification.value &&
+      !verificationPromptDismissed.value &&
+      verificationPromptTargetReportId.value === reportId &&
+      activeExpandedReportId.value === reportId &&
+      expanded.value[reportId]
+    ) {
+      verificationPromptVisible.value = true
+    }
+  }, 10_000)
+}
+
+const handleVerificationPromptLike = async () => {
+  const report = verificationPromptReport.value
+  if (!report || report.external) return
+  dismissVerificationPrompt()
+  await handleReportReaction(report, 'up')
+}
+
+const handleVerificationPromptSubmit = () => {
+  dismissVerificationPrompt()
+  openDialog()
+}
+
+const handleReportReaction = async (
+  report: ExtendedGameReport,
+  reaction: 'up',
+) => {
+  if (report.external || !report.number) return
+
+  if (!authStore.isLoggedIn) {
+    loginPromptDialogOpen.value = true
+    return
+  }
+
+  reactionLoadingByReport.value = {
+    ...reactionLoadingByReport.value,
+    [report.id]: true,
+  }
+  verificationPromptVisible.value = false
+
+  try {
+    const result = await setReportReaction(report.number, reaction, {
+      appId: appId.value,
+      gameName: gameName.value,
+    })
+    applyLocalReactionUpdate(report.id, result.currentUserReaction, result.reactions)
+
+    if (result.currentUserReaction === null) {
+      $q.notify({
+        type: 'info',
+        message: 'Like removed.',
+      })
+      return
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Thanks for highlighting this report for other players.',
+    })
+  } catch (error) {
+    console.error('Failed to update report reaction', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Unable to record your feedback right now. Please try again.',
+    })
+  } finally {
+    reactionLoadingByReport.value = {
+      ...reactionLoadingByReport.value,
+      [report.id]: false,
+    }
+    scheduleVerificationPrompt()
+  }
 }
 
 const openDialog = () => {
@@ -539,6 +992,7 @@ const openCommentsDialog = (reportId?: number) => {
   commentsDialogOpen.value = true
   if (isClient && 'history' in window) history.pushState({ commentsDialog: true }, '')
 }
+
 const closeCommentsDialog = () => {
   commentsDialogOpen.value = false
   commentsTargetReportId.value = null
@@ -708,6 +1162,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   isActive = false
+  clearVerificationPromptTimer()
   if (isClient) {
     window.removeEventListener('popstate', onPopState)
   }
@@ -738,6 +1193,33 @@ watch(gameBanner, (newUrl) => {
   },
   { immediate: true },
 )
+
+watch([canPromptForVerification, activeExpandedReportId], () => {
+  scheduleVerificationPrompt(activeExpandedReportId.value)
+}, { immediate: true })
+
+watch(() => route.fullPath, () => {
+  verificationPromptDismissed.value = false
+  scheduleVerificationPrompt(activeExpandedReportId.value)
+})
+
+watch(filteredReports, (reports) => {
+  const visibleReportIds = new Set(reports.map((report) => report.id))
+  const nextExpanded: Record<number, boolean> = {}
+
+  for (const [rawId, isOpen] of Object.entries(expanded.value)) {
+    const parsedId = Number(rawId)
+    if (isOpen && visibleReportIds.has(parsedId)) {
+      nextExpanded[parsedId] = true
+    }
+  }
+
+  expanded.value = nextExpanded
+
+  if (lastExpandedReportId.value !== null && !visibleReportIds.has(lastExpandedReportId.value)) {
+    lastExpandedReportId.value = getFirstExpandedReportId()
+  }
+}, { deep: true })
 
 useMeta(() => {
   return {
@@ -813,25 +1295,85 @@ useMeta(() => {
        :class="{ 'background-container-mobile': $q.platform.isMobileUi }"
        :style="pageBackgroundStyle"></div>
   <div
-    v-if="hasReportsToCompare"
-    class="compare-dialog-trigger help-highlight-element"
+    v-if="hasReportsToCompare || verificationPromptVisible"
+    class="side-prompt-stack"
+    :class=" $q.platform.isMobileUi ? 'side-prompt-stack-mobile' : 'side-prompt-stack-web'"
   >
-    <q-btn
-      class="compare-dialog-trigger-button"
-      color="secondary"
-      text-color="black"
-      dense
-      unelevated
-      no-caps
-      icon="balance"
-      :aria-label="`Compare (${compareReports.length})`"
-      @click="openComparisonDialog"
+    <q-slide-transition>
+      <div
+        v-if="verificationPromptVisible"
+        class="verification-dialog-trigger"
+      >
+        <q-card class="verification-dialog-trigger-card">
+          <div class="verification-dialog-trigger-content">
+            <div class="verification-dialog-trigger-header">
+              <q-icon name="campaign" color="primary" size="18px" />
+              <span class="verification-dialog-trigger-title">Community Feedback</span>
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                icon="close"
+                color="grey-4"
+                aria-label="Dismiss feedback prompt"
+                @click="dismissVerificationPrompt"
+              />
+            </div>
+            <p class="verification-dialog-trigger-copy">
+              Was this game report helpful? Give it a like so other players can quickly spot the most useful reports.
+              If none of these matched your experience, consider submitting your own report.
+            </p>
+            <div class="verification-dialog-trigger-actions">
+              <q-btn
+                color="primary"
+                text-color="black"
+                dense
+                size="sm"
+                unelevated
+                no-caps
+                icon="thumb_up"
+                label="Like"
+                :loading="verificationPromptReport ? isReactionLoading(verificationPromptReport.id) : false"
+                :disable="!verificationPromptReport || verificationPromptReport.external"
+                @click="handleVerificationPromptLike"
+              />
+              <q-btn
+                flat
+                dense
+                size="sm"
+                no-caps
+                color="secondary"
+                icon="edit_note"
+                label="Submit"
+                @click="handleVerificationPromptSubmit"
+              />
+            </div>
+          </div>
+        </q-card>
+      </div>
+    </q-slide-transition>
+    <div
+      v-if="hasReportsToCompare"
+      class="compare-dialog-trigger help-highlight-element"
     >
-      <span class="compare-trigger-label">
-        Compare ({{ compareReports.length }})
-      </span>
-    </q-btn>
-    <span class="help-tooltip help-tooltip-left">Click here to view reports in comparison table</span>
+      <q-btn
+        class="compare-dialog-trigger-button"
+        color="secondary"
+        text-color="black"
+        dense
+        unelevated
+        no-caps
+        icon="balance"
+        :aria-label="`Compare (${compareReports.length})`"
+        @click="openComparisonDialog"
+      >
+        <span class="compare-trigger-label">
+          Compare ({{ compareReports.length }})
+        </span>
+      </q-btn>
+      <span class="help-tooltip help-tooltip-left">Click here to view reports in comparison table</span>
+    </div>
   </div>
   <div class="page-content-container">
     <div class="hero row items-center q-pa-md-md q-pa-sm">
@@ -1125,7 +1667,6 @@ useMeta(() => {
                            @click="openDialog" />
             <q-dialog class="q-ma-none q-pa-none report-dialog"
                       backdrop-filter="blur(2px)"
-                      seamless
                       no-refocus
                       full-height
                       :full-width="$q.screen.lt.md"
@@ -1486,7 +2027,8 @@ useMeta(() => {
               <q-list separator>
                 <q-item
                   v-for="report in filteredReports" :key="report.id"
-                  class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm">
+                  class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm"
+                  :class="getAppreciationTier(report)?.itemClass">
                   <q-expansion-item :model-value="isExpanded(report.id)"
                                     @update:model-value="(v) => setExpanded(report.id, v)"
                                     dense class="full-width"
@@ -1498,24 +2040,31 @@ useMeta(() => {
                         anchor="bottom end" self="bottom right" :offset="[-35, -8]">
                         Click to Show/Hide Report
                       </q-tooltip>
-                      <q-chip
-                        v-if="isDuplicateReport(report)"
-                        size="sm"
-                        square
-                        :dense="$q.screen.lt.sm"
-                        color="warning"
-                        text-color="black"
-                        class="duplicate-chip"
-                        aria-label="Duplicate community report indicator">
-                        <q-avatar icon="backup_table"
-                                  color="warning" text-color="black" />
-                        <span class="duplicate-chip-text">
-                          Duplicate
-                        </span>
-                        <q-tooltip anchor="center left" self="center right" :offset="[5, 0]">
-                          This report is marked as a duplicate by the community.
-                        </q-tooltip>
-                      </q-chip>
+                      <div class="report-status-cluster" v-if="getReportStatusChips(report).length > 0">
+                        <q-chip
+                          v-for="(chip, chipIndex) in getReportStatusChips(report)"
+                          :key="`${report.id}-${chip.key}`"
+                          size="sm"
+                          square
+                          :dense="$q.screen.lt.sm"
+                          class="report-corner-chip report-status-chip q-ma-none"
+                          :class="getReportStatusChipClasses(getReportStatusChips(report), chip, chipIndex)"
+                          :color="chip.color"
+                          text-color="black"
+                          :aria-label="chip.ariaLabel"
+                        >
+                          <q-avatar :icon="chip.icon" :color="chip.avatarColor" text-color="black" />
+                          <span :class="{ 'duplicate-chip-text': chip.kind === 'duplicate' }">
+                            {{ chip.shortLabel }}
+                          </span>
+                          <span v-if="chip.count" class="report-status-chip__count">
+                            {{ chip.count }}
+                          </span>
+                          <q-tooltip anchor="center left" self="center right" :offset="[5, 0]">
+                            {{ chip.tooltip }}
+                          </q-tooltip>
+                        </q-chip>
+                      </div>
                       <q-btn
                         class="compare-select-btn help-highlight-element"
                         :class="{ 'compare-select-btn-selected': isReportSelectedForCompare(report.id) }"
@@ -1567,7 +2116,7 @@ useMeta(() => {
                         </div>
                         <!-- Report Description Section -->
                         <div class="row">
-                          <div class="col-4">
+                          <div class="col-3">
                             <q-item-label caption lines="1" class="q-pt-sm">
                               <b>Rating: </b>{{ report.data.performance_rating ?? 'Unrated' }}
                             </q-item-label>
@@ -1575,7 +2124,7 @@ useMeta(() => {
                               <b>Device: </b>{{ report.data.device }}
                             </q-item-label>
                           </div>
-                          <div class="col-4">
+                          <div class="col-3">
                             <q-item-label caption lines="1" class="q-pt-sm">
                               <b>OS: </b>{{ report.data.os_version }}
                             </q-item-label>
@@ -1583,10 +2132,15 @@ useMeta(() => {
                               <b>Launcher: </b>{{ report.data.launcher }}
                             </q-item-label>
                           </div>
-                          <div class="col-4">
+                          <div class="col-3">
                             <q-item-label caption lines="1" class="q-pt-sm">
                               <b>Target Framerate: </b>{{ report.data.target_framerate }}
                             </q-item-label>
+                            <q-item-label caption lines="1" class="q-pt-sm">
+                              <b>Likes: </b>{{ report.reactions.reactions_thumbs_up }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-3">
                             <q-item-label caption lines="1" class="q-pt-sm">
                               <b>Average Battery Life: </b>
                               <template v-if="report.data.calculated_battery_life_minutes">
@@ -1638,6 +2192,11 @@ useMeta(() => {
                             <q-item-label caption lines="1">
                               <b>Target Framerate: </b>{{ report.data.target_framerate }}
                             </q-item-label>
+                            <q-item-label caption lines="1">
+                              <b>Likes: </b>{{ report.reactions.reactions_thumbs_up }}
+                            </q-item-label>
+                          </div>
+                          <div class="col-12 q-mt-xs">
                             <q-item-label caption lines="1">
                               <b>Average Battery Life: </b>
                               <template v-if="report.data.calculated_battery_life_minutes">
@@ -1858,6 +2417,23 @@ useMeta(() => {
                                 <q-item-label caption class="q-pt-xs q-pr-xs">
                                   <b>Last updated:</b> {{ lastUpdated(report.updated_at) }}
                                 </q-item-label>
+                                <q-item-label v-if="getVerificationPresentation(report)" caption
+                                              class="q-pt-sm q-pr-xs">
+                                  <q-chip
+                                    square
+                                    dense
+                                    class="q-ma-none verification-chip"
+                                    :color="getVerificationPresentation(report)?.color"
+                                    text-color="white"
+                                  >
+                                    <q-avatar :icon="getVerificationPresentation(report)?.icon" text-color="white" />
+                                    {{ getVerificationPresentation(report)?.label }}
+                                    <span class="verification-chip__score">
+                                      {{ getVerificationPresentation(report)?.likes }}
+                                    </span>
+                                    <q-tooltip>{{ getVerificationPresentation(report)?.tooltip }}</q-tooltip>
+                                  </q-chip>
+                                </q-item-label>
                               </q-item-section>
                             </q-item>
                           </div>
@@ -1869,29 +2445,33 @@ useMeta(() => {
                             v-if="false"
                             flat round
                             size="sm"
-                            icon="thumb_up"
-                            aria-label="Like report"
-                            @click.stop>
-                            <q-tooltip>Like this report</q-tooltip>
-                            <q-badge
-                              v-if="report.reactions.reactions_thumbs_up > 0"
-                              color="green"
-                              floating
-                              style="transform: translate(6px, 3px);">
-                              {{ report.reactions.reactions_thumbs_up }}
-                            </q-badge>
-                          </q-btn>
-
-                          <q-btn
-                            v-if="false"
-                            flat round
-                            size="sm"
                             icon="chat_bubble"
                             aria-label="Open comments"
                             @click.stop="openCommentsDialog(report.id)">
                             <q-tooltip>Open comments</q-tooltip>
                             <q-badge color="blue" floating>
                               {{ report.comments }}
+                            </q-badge>
+                          </q-btn>
+
+                          <q-btn
+                            flat round
+                            size="sm"
+                            icon="thumb_up"
+                            :color="hasUserReacted(report, 'up') ? 'positive' : 'grey-4'"
+                            :loading="isReactionLoading(report.id)"
+                            :disable="report.external"
+                            aria-label="Like report"
+                            @click.stop="handleReportReaction(report, 'up')">
+                            <q-tooltip>
+                              {{ hasUserReacted(report, 'up') ? 'Remove like' : 'Like this report' }}
+                            </q-tooltip>
+                            <q-badge
+                              v-if="report.reactions.reactions_thumbs_up > 0"
+                              color="green"
+                              floating
+                              style="transform: translate(6px, 3px);">
+                              {{ report.reactions.reactions_thumbs_up }}
                             </q-badge>
                           </q-btn>
 
@@ -2069,6 +2649,7 @@ useMeta(() => {
                   </q-expansion-item>
                 </q-item>
               </q-list>
+
             </div>
             <div v-else class="no-reports-container">
               <div class="no-reports-card">
@@ -2132,11 +2713,25 @@ useMeta(() => {
 
 <style scoped>
 
-.compare-dialog-trigger {
+.side-prompt-stack {
   position: fixed;
-  top: 125px;
   right: 0;
   z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.side-prompt-stack-web {
+  top: 100px;
+}
+
+.side-prompt-stack-mobile {
+  top: 70px;
+}
+
+.compare-dialog-trigger {
   border-radius: 16px 0 0 16px;
 }
 
@@ -2195,6 +2790,73 @@ useMeta(() => {
 
 .page-content-container {
   position: relative;
+}
+
+.verification-chip {
+  letter-spacing: 0.01em;
+}
+
+.verification-chip__score {
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+.verification-dialog-trigger {
+  max-width: min(320px, calc(100vw - 24px));
+}
+
+.verification-dialog-trigger-card {
+  border-radius: 16px 0 0 16px;
+  background: color-mix(in srgb, var(--q-dark) 88%, rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.25);
+  border-right: 0;
+}
+
+.verification-dialog-trigger-content {
+  padding: 10px 12px 10px 14px;
+}
+
+.verification-dialog-trigger-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.verification-dialog-trigger-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.verification-dialog-trigger-header :deep(.q-btn) {
+  margin-left: auto;
+}
+
+.verification-dialog-trigger-copy {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.verification-dialog-trigger-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-top: 12px;
+}
+
+.verification-dialog-trigger-actions :deep(.q-btn) {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 4px 8px;
 }
 
 .game-title {
@@ -2290,15 +2952,81 @@ useMeta(() => {
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 3px;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-  padding: 10px
+  padding: 10px;
+  border-left-width: 6px;
 }
 
-.duplicate-chip {
+.report-status-cluster {
   position: absolute;
-  right: -15px;
-  top: -15px;
+  top: -11px;
+  right: -11px;
   z-index: 10;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.report-status-cluster :deep(.q-chip) {
+  margin: 0 !important;
+}
+
+.report-corner-chip {
+  position: relative;
+}
+
+.report-status-chip {
+  margin-right: -1px;
+}
+
+.report-status-chip :deep(.q-avatar) {
+  font-size: 14px;
+}
+
+.report-status-chip :deep(.q-chip__content) {
+  gap: 4px;
+}
+
+.report-status-chip__count {
+  margin-left: 6px;
+}
+
+.report-corner-chip-left {
+  border-radius: 0 0 0 12px;
+}
+
+.report-corner-chip-single {
   border-radius: 0 3px 0 12px;
+}
+
+.report-tier-gold {
+  border-left-color: #d4a017;
+  box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.2), 2px 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.report-tier-silver {
+  border-left-color: #b0bec5;
+  box-shadow: 0 0 0 1px rgba(176, 190, 197, 0.2), 2px 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.report-tier-bronze {
+  border-left-color: #c97843;
+  box-shadow: 0 0 0 1px rgba(201, 120, 67, 0.2), 2px 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.report-tier-standard {
+  border-left-color: #8bc34a;
+}
+
+.report-tier-none {
+  border-left-color: rgba(255, 255, 255, 0.25);
+}
+
+.report-corner-chip-right {
+  border-radius: 0 0 0 0;
+}
+
+.report-status-chip--duplicate :deep(.q-avatar) {
+  font-size: 13px;
 }
 
 .compare-select-btn {
@@ -2555,6 +3283,26 @@ useMeta(() => {
 }
 
 @media (max-width: 599.98px) {
+  .side-prompt-stack {
+    gap: 8px;
+  }
+
+  .verification-dialog-trigger {
+    max-width: min(280px, calc(100vw - 16px));
+  }
+
+  .verification-dialog-trigger-content {
+    padding: 10px 10px 10px 12px;
+  }
+
+  .verification-dialog-trigger-copy {
+    font-size: 0.86rem;
+  }
+
+  .verification-dialog-trigger-actions {
+    gap: 6px;
+  }
+
   .duplicate-chip-text {
     display: none;
   }

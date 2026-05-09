@@ -179,6 +179,18 @@ export const redisLookupExtData = async (key: string): Promise<string | null> =>
   return null
 }
 
+/**
+ * Deletes a generic cached object for a given cache key.
+ */
+export const redisDeleteExtData = async (key: string): Promise<void> => {
+  if (!key) {
+    throw new Error('A key is required to delete the ext data.')
+  }
+  const redisKey = `ext_data:${escapeRedisKey(key)}`
+  await ensureRedisConnection()
+  await redisClient.del(redisKey)
+}
+
 export const setTaskProgress = async (
   userId: string,
   taskId: string,

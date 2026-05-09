@@ -24,6 +24,7 @@ export const useGameStore = defineStore('game', {
     gameBanner: null as string | null,
     githubProjectSearchLink: null as string | null,
     githubSubmitReportLink: 'https://github.com/DeckSettings/game-reports-steamos/issues/new?assignees=&labels=&projects=&template=GAME-REPORT.yml&title=%28Placeholder+-+Issue+title+will+be+automatically+populated+with+the+information+provided+below%29&game_display_settings=-%20%2A%2ADisplay%20Resolution%3A%2A%2A%201280x800',
+    viewerContextKey: 'anonymous' as string,
 
     // Page-level SEO/social metadata (client-safe updates only)
     metadata: {
@@ -47,6 +48,7 @@ export const useGameStore = defineStore('game', {
       this.gamePoster = null
       this.gameBanner = null
       this.githubProjectSearchLink = null
+      this.viewerContextKey = 'anonymous'
       // keep githubSubmitReportLink default
       // keep device/launcher labels (global cache)
       this.metadata = {
@@ -199,6 +201,7 @@ export const useGameStore = defineStore('game', {
         : parsedGameName
           ? `game:${parsedGameName}`
           : ''
+      const viewerContextKey = githubToken ? `github:${githubToken}` : 'anonymous'
 
       if (!targetKey) {
         return
@@ -206,7 +209,8 @@ export const useGameStore = defineStore('game', {
 
       // If we already have data for this exact target, skip re-fetch
       if (
-        this.gameData && (
+        this.gameData &&
+        this.viewerContextKey === viewerContextKey && (
           (parsedAppId && this.appId === parsedAppId) ||
           (parsedGameName && this.gameName === parsedGameName)
         )
@@ -228,6 +232,7 @@ export const useGameStore = defineStore('game', {
       // Update store keys from route
       this.appId = parsedAppId
       this.gameName = parsedGameName || ''
+      this.viewerContextKey = viewerContextKey
 
       const loadTask = async () => {
         const labelsPromise = (this.deviceLabels.length === 0 || this.launcherLabels.length === 0)

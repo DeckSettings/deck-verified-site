@@ -1,6 +1,15 @@
 import { useAuthStore } from 'stores/auth-store'
 import { useGithubActionsMonitor } from 'src/composables/useGithubActionsMonitor'
-import type { GitHubIssue } from '../../../shared/src/game'
+import { apiUrl, fetchService } from 'src/utils/api'
+import type { GitHubIssue, GameReportUserReaction } from '../../../shared/src/game'
+
+interface ReportReactionResponse {
+  currentUserReaction: GameReportUserReaction
+  reactions: {
+    reactions_thumbs_up: number
+    reactions_thumbs_down: number
+  }
+}
 
 export const updateIssueState = async (issueNumber: number, state: 'open' | 'closed'): Promise<void> => {
   const authStore = useAuthStore()
@@ -99,6 +108,42 @@ export const submitCommunityFlagComment = async (issueNumber: number, command: s
   } catch (err) {
     console.warn('Failed to start GitHub actions reportbot monitor', err)
   }
+}
+
+export const setReportReaction = async (
+  issueNumber: number,
+  reaction: 'up',
+  options?: {
+    appId?: string | null
+    gameName?: string | null
+  },
+): Promise<ReportReactionResponse> => {
+  const authStore = useAuthStore()
+  if (!authStore.isLoggedIn || !authStore.dvToken || !authStore.accessToken) {
+    throw new Error('Not logged in')
+  }
+
+  const response = await fetchService(apiUrl('/deck-verified/api/user/report-reaction'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${authStore.dvToken}`,
+      'X-GitHub-Token': authStore.accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      issueNumber,
+      reaction,
+      appId: options?.appId ?? null,
+      gameName: options?.gameName ?? null,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`Failed to set report reaction: ${response.status} ${errorBody}`)
+  }
+
+  return await response.json() as ReportReactionResponse
 }
 
 export const createIssue = async (title: string, body: string): Promise<Partial<GitHubIssue>> => {

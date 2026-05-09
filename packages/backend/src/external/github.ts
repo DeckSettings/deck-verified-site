@@ -1,9 +1,28 @@
 import config from '../config'
 import logger from '../logger'
 import type { GitHubIdentity, GitHubTokenResponse } from '../../../shared/src/auth'
+import type { GameReportUserReaction } from '../../../shared/src/game'
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
+const DECKSETTINGS_REPO_API = 'https://api.github.com/repos/DeckSettings/game-reports-steamos'
+
+
+interface GitHubIssueReactionRecord {
+  id: number
+  content: string
+  user?: {
+    login?: string
+  } | null
+}
+
+interface GitHubIssueReactionSyncResult {
+  currentUserReaction: GameReportUserReaction
+  reactions: {
+    reactions_thumbs_up: number
+    reactions_thumbs_down: number
+  }
+}
 
 /**
  * Builds the GitHub OAuth authorize URL with PKCE support using repository configuration.
@@ -27,6 +46,12 @@ export const buildGitHubAuthorizeUrl = ({ state, codeChallenge, redirectUri }: {
 
   return url.toString()
 }
+
+const buildGitHubApiHeaders = (accessToken: string): HeadersInit => ({
+  Authorization: `Bearer ${accessToken}`,
+  Accept: 'application/vnd.github+json',
+  'User-Agent': 'DeckVerified API',
+})
 
 /**
  * Exchanges the GitHub OAuth code for access and refresh tokens using PKCE verifier.
@@ -137,5 +162,110 @@ export const fetchGitHubUserIdentity = async (accessToken: string): Promise<GitH
   } catch (error) {
     logger.error('GitHub identity lookup error:', error)
     throw error
+  }
+}
+
+const fetchDeckSettingsIssue = async (accessToken: string, issueNumber: number) => {
+  const response = await fetch(`${DECKSETTINGS_REPO_API}/issues/${issueNumber}`, {
+    headers: buildGitHubApiHeaders(accessToken),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    logger.warn(`Failed to fetch issue ${issueNumber}: ${response.status} ${text}`)
+    throw new Error('github_issue_lookup_failed')
+  }
+
+  const issue = await response.json() as {
+    reactions?: {
+      '+1'?: number
+      '-1'?: number
+    }
+  }
+
+  return {
+    reactions_thumbs_up: issue.reactions?.['+1'] || 0,
+    reactions_thumbs_down: issue.reactions?.['-1'] || 0,
+  }
+}
+
+const listIssueReactions = async (accessToken: string, issueNumber: number): Promise<GitHubIssueReactionRecord[]> => {
+  const response = await fetch(`${DECKSETTINGS_REPO_API}/issues/${issueNumber}/reactions?per_page=100`, {
+    headers: buildGitHubApiHeaders(accessToken),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    logger.warn(`Failed to list issue reactions for ${issueNumber}: ${response.status} ${text}`)
+    throw new Error('github_issue_reactions_lookup_failed')
+  }
+
+  return await response.json() as GitHubIssueReactionRecord[]
+}
+
+const deleteReaction = async (accessToken: string, issueNumber: number, reactionId: number): Promise<void> => {
+  const response = await fetch(`${DECKSETTINGS_REPO_API}/issues/${issueNumber}/reactions/${reactionId}`, {
+    method: 'DELETE',
+    headers: buildGitHubApiHeaders(accessToken),
+  })
+
+  if (!response.ok && response.status !== 204) {
+    const text = await response.text()
+    logger.warn(`Failed to delete reaction ${reactionId} on issue ${issueNumber}: ${response.status} ${text}`)
+    throw new Error('github_reaction_delete_failed')
+  }
+}
+
+const createReaction = async (accessToken: string, issueNumber: number, content: '+1' | '-1'): Promise<void> => {
+  const response = await fetch(`${DECKSETTINGS_REPO_API}/issues/${issueNumber}/reactions`, {
+    method: 'POST',
+    headers: {
+      ...buildGitHubApiHeaders(accessToken),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    logger.warn(`Failed to create reaction ${content} for issue ${issueNumber}: ${response.status} ${text}`)
+    throw new Error('github_reaction_create_failed')
+  }
+}
+
+export const syncGitHubIssueReaction = async ({
+                                                accessToken,
+                                                issueNumber,
+                                                viewerLogin,
+                                                desiredReaction,
+                                              }: {
+  accessToken: string
+  issueNumber: number
+  viewerLogin: string
+  desiredReaction: 'up'
+}): Promise<GitHubIssueReactionSyncResult> => {
+  const desiredContent = '+1'
+  const reactions = await listIssueReactions(accessToken, issueNumber)
+  const viewerReactions = reactions.filter((reaction) =>
+    reaction.user?.login === viewerLogin && (reaction.content === '+1' || reaction.content === '-1'),
+  )
+
+  const alreadyApplied = viewerReactions.some((reaction) => reaction.content === desiredContent)
+
+  for (const reaction of viewerReactions) {
+    await deleteReaction(accessToken, issueNumber, reaction.id)
+  }
+
+  let currentUserReaction: GameReportUserReaction = null
+  if (!alreadyApplied) {
+    await createReaction(accessToken, issueNumber, desiredContent)
+    currentUserReaction = desiredReaction
+  }
+
+  const updatedCounts = await fetchDeckSettingsIssue(accessToken, issueNumber)
+
+  return {
+    currentUserReaction,
+    reactions: updatedCounts,
   }
 }

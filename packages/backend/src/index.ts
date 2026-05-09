@@ -66,9 +66,10 @@ import { fetchBlogReviewSummary } from './external/bloggerapi'
 import { fetchRepoIssueLabels } from './external/decksettings/repo_issue_labels'
 import { fetchReportBodySchema } from './external/decksettings/report_body_schema'
 import { fetchPopularReports, fetchRecentReports, fetchReportsWithIssuesApi } from './external/decksettings/reports'
-import { fetchProjectsByAppIdOrGameName } from './external/decksettings/projects'
+import { fetchProjectsByAppIdOrGameName, invalidateGitHubProjectDetailsCache } from './external/decksettings/projects'
 import { fetchHardwareInfo } from './external/decksettings/hw_info'
 import { fetchGameReportTemplate } from './external/decksettings/game_report_template'
+import { fetchGitHubUserIdentity, syncGitHubIssueReaction } from './external/github'
 
 const delay = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms)
@@ -657,6 +658,62 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
   } catch (error) {
     logger.error('Failed to fetch user reports', error)
     res.status(500).json({ error: 'failed_to_fetch_user_reports' })
+  }
+})
+
+app.post('/deck-verified/api/user/report-reaction', dvAuth, express.json(), async (req: Request, res: Response) => {
+  try {
+    const dvIdentity = res.locals.dvIdentity
+    const githubToken = typeof req.headers['x-github-token'] === 'string' ? req.headers['x-github-token'] : null
+    const issueNumber = Number(req.body?.issueNumber)
+    const reaction = req.body?.reaction
+    const appId = typeof req.body?.appId === 'string' && req.body.appId.trim().length > 0
+      ? req.body.appId.trim()
+      : null
+    const gameName = typeof req.body?.gameName === 'string' && req.body.gameName.trim().length > 0
+      ? req.body.gameName.trim()
+      : null
+
+    if (!dvIdentity) {
+      return res.status(401).json({ error: 'missing_dv_identity' })
+    }
+
+    if (!githubToken) {
+      return res.status(401).json({ error: 'missing_github_token' })
+    }
+
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+      return res.status(400).json({ error: 'invalid_issue_number' })
+    }
+
+    if (reaction !== 'up') {
+      return res.status(400).json({ error: 'invalid_reaction' })
+    }
+
+    const githubIdentity = await fetchGitHubUserIdentity(githubToken)
+    if (String(githubIdentity.id) !== dvIdentity.id || githubIdentity.login !== dvIdentity.login) {
+      return res.status(403).json({ error: 'github_identity_mismatch' })
+    }
+
+    const result = await syncGitHubIssueReaction({
+      accessToken: githubToken,
+      issueNumber,
+      viewerLogin: githubIdentity.login,
+      desiredReaction: reaction,
+    })
+
+    if (appId || gameName) {
+      try {
+        await invalidateGitHubProjectDetailsCache(appId, gameName)
+      } catch (cacheError) {
+        logger.error('Failed to invalidate game details cache after issue reaction update', cacheError)
+      }
+    }
+
+    return res.json(result)
+  } catch (error) {
+    logger.error('Failed to update issue reaction', error)
+    return res.status(500).json({ error: 'failed_to_update_issue_reaction' })
   }
 })
 

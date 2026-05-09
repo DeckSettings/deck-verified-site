@@ -47,9 +47,12 @@ export interface GameReport {
     description: string;
   }[];
   user: GameReportUser;
+  current_user_reaction?: GameReportUserReaction;
   created_at: string; // ISO 8601 formatted date string
   updated_at: string; // ISO 8601 formatted date string
 }
+
+export type GameReportUserReaction = 'up' | 'down' | null;
 
 export interface GameReportReactions {
   reactions_thumbs_up: number;
@@ -276,6 +279,7 @@ export interface GitHubIssue {
   };
   labels: GitHubIssueLabel[];
   user: GitHubUser;
+  current_user_reaction?: GameReportUserReaction;
   closed: boolean;
   created_at: string;
   updated_at: string;
