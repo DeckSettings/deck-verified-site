@@ -258,13 +258,24 @@ defineExpose({
           v-touch-swipe.touch.left="closeMobileMenu"
         >
           <q-card-section
-            class="header-user-menu-dialog-header dv-side-dialog-header row items-center justify-between no-wrap">
-            <div class="row items-center no-wrap q-gutter-sm">
+            class="header-user-menu-dialog-header dv-side-dialog-header row items-center no-wrap">
+            <q-btn
+              flat
+              dense
+              round
+              color="white"
+              icon="menu_open"
+              aria-label="Close menu"
+              class="header-mobile-close-button"
+              @click="closeMobileMenu"
+            />
+
+            <div class="header-mobile-identity row items-center no-wrap q-gutter-sm">
               <q-avatar size="42px">
                 <img v-if="isLoggedIn && avatarUrl" :src="avatarUrl" alt="GitHub avatar">
                 <img v-else src="~/assets/icons/dv-app-icon.png" alt="DeckVerified Icon">
               </q-avatar>
-              <div class="column">
+              <div class="header-mobile-identity-text column">
                 <span class="text-subtitle1 text-weight-medium">
                   {{ isLoggedIn ? userDisplayName : 'Deck Verified Games' }}
                 </span>
@@ -423,6 +434,19 @@ defineExpose({
 }
 
 .header-user-menu-dialog-trigger {
+  min-width: 0;
+}
+
+.header-mobile-close-button {
+  margin-right: 10px;
+}
+
+.header-mobile-identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.header-mobile-identity-text {
   min-width: 0;
 }
 
