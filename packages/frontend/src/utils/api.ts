@@ -16,6 +16,10 @@ import type {
   GamePriceSummary,
   GameRatingsSummary,
   UserGameReport,
+  UserReportsPageResponse,
+  ContributorSummary,
+  HomepageContributorsResponse,
+  HomepageRecentGame,
   GithubIssuesSearchResultItems,
 } from '../../../shared/src/game'
 
@@ -34,6 +38,10 @@ export type {
   GamePriceSummary,
   GameRatingsSummary,
   UserGameReport,
+  UserReportsPageResponse,
+  ContributorSummary,
+  HomepageContributorsResponse,
+  HomepageRecentGame,
   GithubIssuesSearchResultItems,
 }
 
@@ -494,7 +502,7 @@ export const fetchTopGameDetailsRequestMetrics = async (days: number, min_report
  * @param dvToken - The user's Deck Verified authentication token.
  * @returns An array of `UserGameReport` objects or `null` on error.
  */
-export const getUserReports = async (githubToken: string, dvToken: string): Promise<UserGameReport[] | null> => {
+export const getUserReports = async (githubToken: string, dvToken: string): Promise<UserReportsPageResponse | null> => {
   const url = apiUrl('/deck-verified/api/user/reports')
   try {
     const response = await fetchService(url, {
@@ -504,17 +512,78 @@ export const getUserReports = async (githubToken: string, dvToken: string): Prom
       },
     })
     if (response.status === 204) {
-      return []
+      return null
     }
     if (!response.ok) {
       const errorBody = await response.text()
       console.error(`Failed to fetch user reports: ${response.status} - ${errorBody}`)
       return null
     }
-    const data = await response.json() as UserGameReport[]
+    const data = await response.json() as UserReportsPageResponse
     return data
   } catch (error) {
     console.error('Error fetching user reports:', error)
     return null
+  }
+}
+
+export const getPublicUserReports = async (login: string): Promise<UserReportsPageResponse | null> => {
+  const url = apiUrl(`/deck-verified/api/v1/users/${encodeURIComponent(login)}/reports`)
+  try {
+    const response = await fetchService(url)
+    if (response.status === 204) {
+      return null
+    }
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch public user reports: ${response.status} - ${errorBody}`)
+      return null
+    }
+    const data = await response.json() as UserReportsPageResponse
+    return data
+  } catch (error) {
+    console.error('Error fetching public user reports:', error)
+    return null
+  }
+}
+
+export const fetchHomepageContributors = async (
+  topLimit: number,
+  newLimit: number,
+): Promise<HomepageContributorsResponse | null> => {
+  const url = apiUrl(`/deck-verified/api/v1/homepage_contributors?topLimit=${topLimit}&newLimit=${newLimit}`)
+  try {
+    const response = await fetchService(url)
+    if (response.status === 204) {
+      return null
+    }
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch homepage contributors: ${response.status} - ${errorBody}`)
+      return null
+    }
+    return await response.json() as HomepageContributorsResponse
+  } catch (error) {
+    console.error('Error fetching homepage contributors:', error)
+    return null
+  }
+}
+
+export const fetchHomepageRecentGames = async (limit: number = 6): Promise<HomepageRecentGame[]> => {
+  const url = apiUrl(`/deck-verified/api/v1/homepage_recent_games?limit=${limit}`)
+  try {
+    const response = await fetchService(url)
+    if (response.status === 204) {
+      return []
+    }
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`Failed to fetch homepage recent games: ${response.status} - ${errorBody}`)
+      return []
+    }
+    return await response.json() as HomepageRecentGame[]
+  } catch (error) {
+    console.error('Error fetching homepage recent games:', error)
+    return []
   }
 }

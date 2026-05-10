@@ -67,6 +67,11 @@ import { fetchRepoIssueLabels } from './external/decksettings/repo_issue_labels'
 import { fetchReportBodySchema } from './external/decksettings/report_body_schema'
 import { fetchPopularReports, fetchRecentReports, fetchReportsWithIssuesApi } from './external/decksettings/reports'
 import { fetchProjectsByAppIdOrGameName, invalidateGitHubProjectDetailsCache } from './external/decksettings/projects'
+import {
+  fetchHomepageContributors,
+  fetchHomepageRecentGames,
+  fetchUserReportsPageData,
+} from './external/decksettings/community'
 import { fetchHardwareInfo } from './external/decksettings/hw_info'
 import { fetchGameReportTemplate } from './external/decksettings/game_report_template'
 import { fetchGitHubUserIdentity, syncGitHubIssueReaction } from './external/github'
@@ -569,95 +574,33 @@ app.get('/deck-verified/api/user/reports', dvAuth, async (req: Request, res: Res
   }
 
   try {
-    const reports = await fetchReportsWithIssuesApi(
-      undefined,
-      null,
-      identity.login,
-      null,
-      'updated',
-      'desc',
-      null,
-      false,
-      null,
-      githubToken,
-    )
+    const pageData = await fetchUserReportsPageData(identity.login, {
+      accessToken: githubToken,
+      includeClosed: true,
+      excludeInvalid: false,
+      excludeLabels: null,
+    })
 
-    if (!reports) {
-      res.status(204).json([])
-      return
-    }
-
-    const [schema, hardwareInfo] = await Promise.all([
-      fetchReportBodySchema(),
-      fetchHardwareInfo(),
-    ])
-
-    const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
-      m.banner == null ||
-      m.poster == null ||
-      m.hero == null ||
-      m.background == null
-
-    const userReports: UserGameReport[] = await Promise.all(
-      reports.items.map(async (issue) => {
-        const parsedReport = await parseReportBody(issue.body, schema, hardwareInfo)
-        let metadata: Partial<GameMetadata> = {
-          banner: null,
-          poster: null,
-          hero: null,
-          background: null,
-        }
-        if (parsedReport.game_name) {
-          const games = await searchGamesInRedis(null, null, parsedReport.game_name)
-          if (games.length > 0) {
-            const redisResult = games[0]
-            metadata = {
-              banner: metadata.banner ?? redisResult.banner,
-              poster: metadata.poster ?? redisResult.poster,
-              hero: metadata.hero,
-              background: metadata.background,
-            }
-          }
-        }
-        if (parsedReport.app_id) {
-          if (hasMissingMetadata(metadata)) {
-            const games = await searchGamesInRedis(null, parsedReport.app_id.toString(), null)
-            if (games.length > 0) {
-              const redisResult = games[0]
-              metadata = {
-                banner: metadata.banner ?? redisResult.banner,
-                poster: metadata.poster ?? redisResult.poster,
-                hero: metadata.hero,
-                background: metadata.background,
-              }
-            }
-          }
-          // Generate metadata from AppId links as a fallback if still missing
-          if (hasMissingMetadata(metadata)) {
-            const fallbackImages = await generateImageLinksFromAppId(String(parsedReport.app_id))
-            metadata = {
-              banner: metadata.banner ?? fallbackImages.banner,
-              poster: metadata.poster ?? fallbackImages.poster,
-              hero: metadata.hero ?? fallbackImages.hero,
-              background: metadata.background ?? fallbackImages.background,
-            }
-          }
-        }
-
-        return {
-          issue,
-          parsedReport,
-          issueNumber: issue.number,
-          issueId: issue.id,
-          metadata: metadata as GameMetadata,
-        }
-      }),
-    )
-
-    res.json(userReports)
+    res.json(pageData)
   } catch (error) {
     logger.error('Failed to fetch user reports', error)
     res.status(500).json({ error: 'failed_to_fetch_user_reports' })
+  }
+})
+
+app.get('/deck-verified/api/v1/users/:login/reports', async (req: Request, res: Response) => {
+  const login = typeof req.params.login === 'string' ? req.params.login.trim() : ''
+  if (!login) {
+    res.status(400).json({ error: 'missing_login' })
+    return
+  }
+
+  try {
+    const pageData = await fetchUserReportsPageData(login)
+    res.json(pageData)
+  } catch (error) {
+    logger.error('Failed to fetch public user reports', error)
+    res.status(500).json({ error: 'failed_to_fetch_public_user_reports' })
   }
 })
 
@@ -868,6 +811,29 @@ app.get('/deck-verified/api/v1/popular_reports', async (req: Request, res: Respo
   } catch (error) {
     logger.error('Error fetching popular reports:', error)
     return res.status(500).json({ error: 'Failed to fetch popular reports' })
+  }
+})
+
+app.get('/deck-verified/api/v1/homepage_contributors', async (req: Request, res: Response) => {
+  try {
+    const topLimit = Math.min(parseInt(req.query.topLimit as string, 10) || 5, 20)
+    const newLimit = Math.min(parseInt(req.query.newLimit as string, 10) || 5, 20)
+    const contributors = await fetchHomepageContributors(topLimit, newLimit)
+    res.json(contributors)
+  } catch (error) {
+    logger.error('Failed to fetch homepage contributors', error)
+    res.status(500).json({ error: 'failed_to_fetch_homepage_contributors' })
+  }
+})
+
+app.get('/deck-verified/api/v1/homepage_recent_games', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 6, 20)
+    const recentGames = await fetchHomepageRecentGames(limit)
+    res.json(recentGames)
+  } catch (error) {
+    logger.error('Failed to fetch homepage recent games', error)
+    res.status(500).json({ error: 'failed_to_fetch_homepage_recent_games' })
   }
 })
 

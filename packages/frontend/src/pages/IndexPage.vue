@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useMeta, useQuasar } from 'quasar'
 import { useReportsStore } from 'stores/reports-store'
+import { useHomepageStore } from 'src/stores/homepage-store'
 import type { Pinia } from 'pinia'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import ScrollToTop from 'components/elements/ScrollToTop.vue'
 import HomeHero from 'components/HomeHero.vue'
 import HomePageSection from 'components/HomePageSection.vue'
 import HomeReportsList from 'components/HomeReportsList.vue'
+import HomeContributorSpotlights from 'components/HomeContributorSpotlights.vue'
+import HomeRecentlyAddedGamesSection from 'components/HomeRecentlyAddedGamesSection.vue'
 import HomeSupportedDevicesSection from 'components/HomeSupportedDevicesSection.vue'
 import HomeDeckyPlugin from 'components/HomeDeckyPlugin.vue'
 import HomeAndroidAppComponent from 'components/HomeAndroidAppComponent.vue'
@@ -19,11 +22,16 @@ const { enableMobileAppLink } = useFeatureFlags()
 defineOptions({
   async preFetch({ store }: { store: Pinia; currentRoute: RouteLocationNormalizedLoaded }) {
     const s = useReportsStore(store)
+    const homepageStore = useHomepageStore(store)
     if (process.env.SERVER) {
       // SSR: block so bots get full HTML
-      await s.loadPopular()
-      await s.loadRecentlyCreated()
-      await s.loadViews()
+      await Promise.all([
+        s.loadPopular(),
+        s.loadRecentlyCreated(),
+        s.loadViews(),
+        homepageStore.loadContributors(),
+        homepageStore.loadRecentGames(),
+      ])
     }
   },
 })
@@ -31,10 +39,6 @@ defineOptions({
 const $q = useQuasar()
 
 const reportStore = useReportsStore()
-
-onMounted(async () => {
-  await reportStore.loadViews()
-})
 const fallbackSectionBackground = 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1817070/library_hero.jpg'
 
 const sectionBackgrounds = computed<string[]>(() => {
@@ -146,6 +150,37 @@ useMeta(() => {
       </HomePageSection>
     </div>
 
+    <div class="community-spotlights-section">
+      <HomePageSection
+        :add-debug-markers="false"
+        section-title="contributors"
+        bg-show-start-pos="top bottom-=180px"
+        background-colour="rgba(13, 26, 38, 0.72)"
+        :background-image="getSectionBackground(1)"
+      >
+        <div class="row">
+          <div class="col-12 q-pt-md q-pa-md-sm q-px-lg-md">
+            <HomeContributorSpotlights />
+          </div>
+        </div>
+      </HomePageSection>
+    </div>
+
+    <div class="recent-games-section">
+      <HomePageSection
+        :add-debug-markers="false"
+        section-title="new-games"
+        bg-show-start-pos="top bottom-=180px"
+        background-colour="rgba(20, 18, 28, 0.72)"
+      >
+        <div class="row">
+          <div class="col-12 q-pt-md q-pa-md-sm q-px-lg-md">
+            <HomeRecentlyAddedGamesSection />
+          </div>
+        </div>
+      </HomePageSection>
+    </div>
+
     <div class="supported-devices-section">
       <HomePageSection
         :add-debug-markers="false"
@@ -185,8 +220,16 @@ useMeta(() => {
 </template>
 
 <style scoped>
+.community-spotlights-section {
+  margin-top: 100px;
+}
+
+.recent-games-section {
+  margin-top: 100px;
+}
+
 .supported-devices-section {
-  margin-top: 300px;
+  margin-top: 200px;
 }
 
 .decky-plugin-section {
@@ -198,6 +241,8 @@ useMeta(() => {
 }
 
 @media (max-width: 1023.98px) {
+  .community-spotlights-section,
+  .recent-games-section,
   .supported-devices-section {
     margin-top: 100px;
   }

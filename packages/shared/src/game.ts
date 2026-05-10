@@ -510,3 +510,36 @@ export interface UserGameReport {
   issueId: number;
   metadata?: GameMetadata;
 }
+
+export interface ContributorSummary {
+  login: string;
+  avatar_url: string;
+  report_count: number;
+  games_covered: number;
+  devices_covered: number;
+  likes_received: number;
+  first_report_at: string | null;
+  last_report_at: string | null;
+}
+
+export interface UserReportsPageResponse {
+  user: GitHubUser;
+  stats: ContributorSummary;
+  reports: UserGameReport[];
+}
+
+export interface HomepageContributorsResponse {
+  topContributors: ContributorSummary[];
+  newContributors: ContributorSummary[];
+}
+
+export interface HomepageRecentGame {
+  gameName: string;
+  appId: number | null;
+  metadata: GameMetadata;
+  reportCount: number;
+  likes: number;
+  devices: string[];
+  firstReportAt: string;
+  latestReportAt: string;
+}
