@@ -21,7 +21,7 @@ import type {
   GitHubIssueLabel,
 } from '../../../../shared/src/game'
 
-const normalizeDeviceFilters = (devices: string[] = []): string[] =>
+const parseDeviceFilters = (devices: string[] = []): string[] =>
   Array.from(new Set(
     devices
       .filter((value): value is string => typeof value === 'string')
@@ -30,18 +30,18 @@ const normalizeDeviceFilters = (devices: string[] = []): string[] =>
   )).sort((a, b) => a.localeCompare(b))
 
 const buildDeviceCacheKey = (devices: string[] = []): string => {
-  const normalizedDevices = normalizeDeviceFilters(devices)
-  return normalizedDevices.length > 0 ? normalizedDevices.join('|') : 'all'
+  const parsedDevices = parseDeviceFilters(devices)
+  return parsedDevices.length > 0 ? parsedDevices.join('|') : 'all'
 }
 
 const filterReportsByDevices = (reports: GameReport[], devices: string[] = []): GameReport[] => {
-  const normalizedDevices = normalizeDeviceFilters(devices)
-  if (normalizedDevices.length === 0) {
+  const parsedDevices = parseDeviceFilters(devices)
+  if (parsedDevices.length === 0) {
     return reports
   }
 
   return reports.filter((report) =>
-    Array.isArray(report.labels) && report.labels.some((label) => normalizedDevices.includes(label.name)),
+    Array.isArray(report.labels) && report.labels.some((label) => parsedDevices.includes(label.name)),
   )
 }
 
@@ -520,17 +520,17 @@ export const fetchRecentReports = async (
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
-  const normalizedDevices = normalizeDeviceFilters(devices)
+  const parsedDevices = parseDeviceFilters(devices)
   try {
     if (!forceRefresh) {
-      const cachedData = await redisLookupRecentGameReports(count, validatedSort, normalizedDevices)
+      const cachedData = await redisLookupRecentGameReports(count, validatedSort, parsedDevices)
       if (cachedData) {
         logger.info('Serving recent reports from Redis cache')
         return cachedData
       }
     }
 
-    const reports = normalizedDevices.length > 0
+    const reports = parsedDevices.length > 0
       ? await fetchReportsWithIssuesApi(
         undefined,
         'open',
@@ -557,8 +557,8 @@ export const fetchRecentReports = async (
       )
     if (reports && reports?.items?.length > 0) {
       const parsedReports = await parseGameReport(reports)
-      const returnData = filterReportsByDevices(parsedReports, normalizedDevices).slice(0, count)
-      await redisCacheRecentGameReports(returnData, count, validatedSort, normalizedDevices)
+      const returnData = filterReportsByDevices(parsedReports, parsedDevices).slice(0, count)
+      await redisCacheRecentGameReports(returnData, count, validatedSort, parsedDevices)
       // Refresh the first 5 games in the background
       returnData.slice(0, 5).forEach((report) => {
         if (report.data.app_id || report.data.game_name) {
@@ -596,7 +596,7 @@ export const fetchRecentReports = async (
     return []
   } catch (error) {
     logger.error('Error fetching recent reports:', error)
-    await redisCacheRecentGameReports([], count, validatedSort, normalizedDevices)
+    await redisCacheRecentGameReports([], count, validatedSort, parsedDevices)
     return []
   }
 }
@@ -611,10 +611,10 @@ export const fetchPopularReports = async (
   authToken: string | null = null,
   forceRefresh: boolean = false,
 ): Promise<GameReport[]> => {
-  const normalizedDevices = normalizeDeviceFilters(devices)
+  const parsedDevices = parseDeviceFilters(devices)
   try {
     if (!forceRefresh) {
-      const cachedData = await redisLookupPopularGameReports(count, normalizedDevices)
+      const cachedData = await redisLookupPopularGameReports(count, parsedDevices)
       if (cachedData) {
         logger.info('Serving popular reports from Redis cache')
         return cachedData
@@ -628,15 +628,17 @@ export const fetchPopularReports = async (
       null,
       'reactions-+1',
       'desc',
-      normalizedDevices.length > 0 ? null : count,
+      parsedDevices.length > 0 ? null : count,
       true,
       null,
       authToken,
     )
     if (reports && reports?.items?.length > 0) {
       const parsedReports = await parseGameReport(reports)
-      const returnData = filterReportsByDevices(parsedReports, normalizedDevices).slice(0, count)
-      await redisCachePopularGameReports(returnData, count, normalizedDevices)
+      const returnData = filterReportsByDevices(parsedReports, parsedDevices)
+        .filter((report) => (report.reactions.reactions_thumbs_up || 0) > 0)
+        .slice(0, count)
+      await redisCachePopularGameReports(returnData, count, parsedDevices)
       return returnData
     }
 
@@ -644,7 +646,7 @@ export const fetchPopularReports = async (
     return []
   } catch (error) {
     logger.error('Error fetching popular reports:', error)
-    await redisCachePopularGameReports([], count, normalizedDevices)
+    await redisCachePopularGameReports([], count, parsedDevices)
     return []
   }
 }
