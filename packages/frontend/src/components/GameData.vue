@@ -2724,7 +2724,7 @@ useMeta(() => {
 }
 
 .side-prompt-stack-web {
-  top: 100px;
+  top: 130px;
 }
 
 .side-prompt-stack-mobile {
@@ -3418,12 +3418,20 @@ useMeta(() => {
   .config-card .config-item {
     padding: 12px 16px;
   }
+
+  .side-prompt-stack-web {
+    top: 100px;
+  }
 }
 
 /* -md- */
 @media (min-width: 1024px) {
   .game-links {
     position: sticky;
+    top: 120px;
+  }
+
+  .side-prompt-stack-web {
     top: 120px;
   }
 }
