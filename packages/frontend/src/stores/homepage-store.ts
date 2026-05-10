@@ -13,9 +13,10 @@ export const useHomepageStore = defineStore('homepage', {
     recentGamesLastFetch: null as number | null,
   }),
   actions: {
-    async loadContributors(topLimit: number = 4, newLimit: number = 4) {
+    async loadContributors(topLimit: number = 4, newLimit: number = 4, force = false) {
       const now = Date.now()
       if (
+        !force &&
         this.contributorsLastFetch &&
         (now - this.contributorsLastFetch < CACHE_DURATION) &&
         this.topContributors.length >= Math.min(topLimit, 1) &&
@@ -29,9 +30,10 @@ export const useHomepageStore = defineStore('homepage', {
       this.newContributors = response?.newContributors || []
       this.contributorsLastFetch = now
     },
-    async loadRecentGames(limit: number = 6) {
+    async loadRecentGames(limit: number = 6, force = false) {
       const now = Date.now()
       if (
+        !force &&
         this.recentGamesLastFetch &&
         (now - this.recentGamesLastFetch < CACHE_DURATION) &&
         this.recentGames.length >= limit

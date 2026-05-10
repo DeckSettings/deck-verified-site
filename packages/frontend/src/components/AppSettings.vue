@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfigStore } from 'src/stores/config-store'
 import { useGameStore } from 'src/stores/game-store'
-import { APP_FEEDS } from 'src/constants/feeds'
+import { APP_FEEDS, HOME_WIDGETS } from 'src/constants/feeds'
 import { apiUrl } from 'src/utils/api'
 import { simSteamdb, simPcgamingwiki } from 'quasar-extras-svg-icons/simple-icons-v14'
 import sdhqLogo from 'src/assets/icons/sdhq.svg'
@@ -87,7 +87,7 @@ const toggleHideDuplicates = () => {
   configStore.toggleHideDuplicateReports()
 }
 
-const feeds = computed(() => APP_FEEDS)
+const homeCards = computed(() => [...HOME_WIDGETS, ...APP_FEEDS])
 
 const websiteLink = computed(() => apiUrl('/'))
 const privacyPolicyLink = computed(() => apiUrl('/privacy-policy'))
@@ -164,7 +164,7 @@ onMounted(async () => {
           </q-item>
 
           <q-item
-            v-for="feed in feeds"
+            v-for="feed in homeCards"
             :key="feed.key"
             clickable v-ripple
             class="dv-dialog-menu-list-button"
@@ -174,12 +174,14 @@ onMounted(async () => {
               <q-avatar v-if="feed.logo">
                 <img :src="feed.logo" :alt="`${feed.title} logo`" loading="lazy">
               </q-avatar>
-              <q-icon v-else name="rss_feed" size="40px" color="primary" />
+              <q-avatar v-else color="primary">
+                <q-icon :name="feed.icon || 'rss_feed'" />
+              </q-avatar>
             </q-item-section>
 
             <q-item-section>
               <q-item-label class="text-body1 text-weight-medium">
-                {{ `${feed.title} Feed` }}
+                {{ feed.title }}
               </q-item-label>
               <q-item-label v-if="feed.subtitle" caption class="text-grey-5">
                 {{ feed.subtitle }}

@@ -51,6 +51,9 @@ const buildContributorSummary = (login: string, avatar_url: string): Contributor
   likes_received: 0,
   first_report_at: null,
   last_report_at: null,
+  featured_game_name: null,
+  featured_game_app_id: null,
+  featured_game_metadata: null,
 })
 
 const DEVICE_MANUFACTURERS = ['Valve', 'ASUS', 'Lenovo', 'MSI', 'AYANEO', 'GPD']
@@ -232,16 +235,18 @@ const parseIssueReports = async (issues: GithubIssuesSearchResultItems[]): Promi
   return parseIssueReportsWithDependencies(issues, schema, hardwareInfo)
 }
 
-const buildHomepageContributorSummary = (
+const buildHomepageContributorSummary = async (
   snapshots: CommunityReportSnapshot[],
   login: string,
-): ContributorSummary => {
+  featuredReportTiming: 'first' | 'last',
+): Promise<ContributorSummary> => {
   const first = snapshots[0]
   const summary = buildContributorSummary(login, first?.user.avatar_url || '')
   const uniqueGames = new Set<string>()
   const uniqueDevices = new Set<string>()
+  let featuredSnapshot: CommunityReportSnapshot | null = null
 
-  snapshots.forEach((snapshot) => {
+  for (const snapshot of snapshots) {
     summary.report_count += 1
     summary.likes_received += snapshot.likes
     uniqueGames.add(toReportGameKey(snapshot.parsedReport))
@@ -253,10 +258,30 @@ const buildHomepageContributorSummary = (
     if (!summary.last_report_at || snapshot.createdAt > summary.last_report_at) {
       summary.last_report_at = snapshot.createdAt
     }
-  })
+
+    if (!featuredSnapshot) {
+      featuredSnapshot = snapshot
+      continue
+    }
+
+    if (featuredReportTiming === 'first' && snapshot.createdAt < featuredSnapshot.createdAt) {
+      featuredSnapshot = snapshot
+    }
+    if (featuredReportTiming === 'last' && snapshot.createdAt > featuredSnapshot.createdAt) {
+      featuredSnapshot = snapshot
+    }
+  }
 
   summary.games_covered = uniqueGames.size
   summary.devices_covered = uniqueDevices.size
+
+  const selectedFeaturedSnapshot = featuredSnapshot
+  if (selectedFeaturedSnapshot) {
+    summary.featured_game_name = selectedFeaturedSnapshot.parsedReport.game_name
+    summary.featured_game_app_id = selectedFeaturedSnapshot.parsedReport.app_id ?? null
+    summary.featured_game_metadata = await resolveMetadataForParsedReport(selectedFeaturedSnapshot.parsedReport)
+  }
+
   return summary
 }
 
@@ -416,17 +441,17 @@ export const fetchHomepageContributors = async (
     byLogin.set(snapshot.user.login, existing)
   })
 
-  const contributors = Array.from(byLogin.entries()).map(([login, records]) =>
-    buildHomepageContributorSummary(records, login),
-  )
+  const contributorsByLogin = Array.from(byLogin.entries())
 
-  const topContributors = contributors
-    .slice()
+  const topContributors = (await Promise.all(
+    contributorsByLogin.map(([login, records]) => buildHomepageContributorSummary(records, login, 'last')),
+  ))
     .sort(sortTopContributors)
     .slice(0, topLimit)
 
-  const newContributors = contributors
-    .slice()
+  const newContributors = (await Promise.all(
+    contributorsByLogin.map(([login, records]) => buildHomepageContributorSummary(records, login, 'first')),
+  ))
     .sort(sortNewContributors)
     .slice(0, newLimit)
 

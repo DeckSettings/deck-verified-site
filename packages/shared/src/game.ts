@@ -520,6 +520,9 @@ export interface ContributorSummary {
   likes_received: number;
   first_report_at: string | null;
   last_report_at: string | null;
+  featured_game_name?: string | null;
+  featured_game_app_id?: number | null;
+  featured_game_metadata?: GameMetadata | null;
 }
 
 export interface UserReportsPageResponse {

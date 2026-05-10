@@ -37,6 +37,256 @@
           </div>
         </q-card>
 
+        <q-card
+          v-if="showRecentGamesWidget"
+          flat
+          bordered
+        >
+          <div class="relative-position" style="overflow: hidden;">
+            <div class="absolute-top-left feed-header-overlay row items-center q-gutter-sm">
+              <q-avatar size="36px" color="primary" text-color="white" icon="new_releases" />
+              <div class="text-subtitle2 text-weight-medium text-white">Newly Added Games</div>
+            </div>
+
+            <div
+              v-if="homepageCardsLoading && recentGameCards.length === 0"
+              class="row no-wrap">
+              <q-card flat bordered class="bg-grey-8 text-grey-5 full-width full-height">
+                <q-skeleton height="160px" width="100%" type="rect" animation="fade" />
+                <div class="q-pa-md column q-gutter-sm">
+                  <q-skeleton type="text" width="80%" animation="fade" />
+                  <q-skeleton type="text" width="60%" animation="fade" />
+                  <q-skeleton type="text" height="48px" animation="fade" />
+                </div>
+              </q-card>
+            </div>
+
+            <div v-else-if="recentGameCards.length === 0" class="bg-grey-8 text-grey-5 q-pa-lg column items-center">
+              <q-icon name="new_releases" size="32px" class="q-mb-sm" />
+              <div class="text-body2">No recently added games found. Try refreshing.</div>
+            </div>
+
+            <q-carousel
+              v-else
+              v-model="recentGamesCarouselModel"
+              swipeable
+              animated
+              arrows
+              class="bg-transparent rounded-borders"
+              transition-prev="slide-right"
+              transition-next="slide-left"
+              control-type="regular"
+              control-color="primary"
+            >
+              <q-carousel-slide
+                v-for="(game, index) in recentGameCards"
+                :key="`${game.appId ?? game.gameName}`"
+                :name="index"
+                class="flex flex-center q-pa-none"
+                :img-src="getGameImage(game) ?? ''"
+              >
+                <div class="feed-slide-content">
+                  <div class="feed-slide-link">
+                    <q-btn
+                      round
+                      dense
+                      color="primary"
+                      icon="arrow_forward"
+                      @click="openGame(game.appId, game.gameName)"
+                    />
+                  </div>
+                  <div class="feed-slide-caption">
+                    <div class="text-h6 text-weight-bold cursor-pointer" @click="openGame(game.appId, game.gameName)">
+                      {{ index + 1 }}. {{ game.gameName }}
+                    </div>
+                    <div class="text-caption text-grey-4">
+                      Added {{ formatDate(game.firstReportAt) }}
+                    </div>
+                    <div class="text-body2">
+                      {{ game.reportCount }} reports
+                      <span v-if="game.likes > 0">&nbsp;•&nbsp;{{ game.likes }} likes</span>
+                    </div>
+                  </div>
+                </div>
+              </q-carousel-slide>
+            </q-carousel>
+          </div>
+        </q-card>
+
+        <q-card
+          v-if="showTopContributorsWidget"
+          flat
+          bordered
+        >
+          <div class="relative-position" style="overflow: hidden;">
+            <div class="absolute-top-left feed-header-overlay row items-center q-gutter-sm">
+              <q-avatar size="36px" color="amber-8" text-color="white" icon="workspace_premium" />
+              <div class="text-subtitle2 text-weight-medium text-white">Top Contributors</div>
+            </div>
+
+            <div
+              v-if="homepageCardsLoading && topContributorCards.length === 0"
+              class="row no-wrap">
+              <q-card flat bordered class="bg-grey-8 text-grey-5 full-width full-height">
+                <q-skeleton height="160px" width="100%" type="rect" animation="fade" />
+                <div class="q-pa-md column q-gutter-sm">
+                  <q-skeleton type="text" width="80%" animation="fade" />
+                  <q-skeleton type="text" width="60%" animation="fade" />
+                  <q-skeleton type="text" height="48px" animation="fade" />
+                </div>
+              </q-card>
+            </div>
+
+            <div v-else-if="topContributorCards.length === 0" class="bg-grey-8 text-grey-5 q-pa-lg column items-center">
+              <q-icon name="workspace_premium" size="32px" class="q-mb-sm" />
+              <div class="text-body2">No contributor data found. Try refreshing.</div>
+            </div>
+
+            <q-carousel
+              v-else
+              v-model="topContributorsCarouselModel"
+              swipeable
+              animated
+              arrows
+              class="bg-transparent rounded-borders"
+              transition-prev="slide-right"
+              transition-next="slide-left"
+              control-type="regular"
+              control-color="primary"
+            >
+              <q-carousel-slide
+                v-for="(contributor, index) in topContributorCards"
+                :key="contributor.login"
+                :name="index"
+                class="flex flex-center q-pa-none contributor-slide"
+                :img-src="getContributorImage(contributor) ?? ''"
+              >
+                <div class="contributor-slide__background" />
+                <div class="feed-slide-content">
+                  <div class="feed-slide-link">
+                    <q-btn
+                      round
+                      dense
+                      color="primary"
+                      icon="arrow_forward"
+                      @click="openContributor(contributor.login)"
+                    />
+                  </div>
+                  <div class="feed-slide-caption">
+                    <div class="row items-center no-wrap q-gutter-sm q-mb-sm">
+                      <q-avatar size="48px">
+                        <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.login"
+                             loading="lazy" />
+                        <span v-else>{{ contributor.login.slice(0, 2).toUpperCase() }}</span>
+                      </q-avatar>
+                      <div class="min-width-0">
+                        <div class="text-h6 text-weight-bold cursor-pointer"
+                             @click="openContributor(contributor.login)">
+                          {{ index + 1 }}. @{{ contributor.login }}
+                        </div>
+                        <div class="text-caption text-grey-4">
+                          {{ formatContributorDate(contributor) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-body2">
+                      {{ contributor.report_count }} reports • {{ contributor.games_covered }} games •
+                      {{ contributor.likes_received }} likes
+                    </div>
+                  </div>
+                </div>
+              </q-carousel-slide>
+            </q-carousel>
+          </div>
+        </q-card>
+
+        <q-card
+          v-if="showNewContributorsWidget"
+          flat
+          bordered
+        >
+          <div class="relative-position" style="overflow: hidden;">
+            <div class="absolute-top-left feed-header-overlay row items-center q-gutter-sm">
+              <q-avatar size="36px" color="positive" text-color="white" icon="celebration" />
+              <div class="text-subtitle2 text-weight-medium text-white">New Contributors</div>
+            </div>
+
+            <div
+              v-if="homepageCardsLoading && newContributorCards.length === 0"
+              class="row no-wrap">
+              <q-card flat bordered class="bg-grey-8 text-grey-5 full-width full-height">
+                <q-skeleton height="160px" width="100%" type="rect" animation="fade" />
+                <div class="q-pa-md column q-gutter-sm">
+                  <q-skeleton type="text" width="80%" animation="fade" />
+                  <q-skeleton type="text" width="60%" animation="fade" />
+                  <q-skeleton type="text" height="48px" animation="fade" />
+                </div>
+              </q-card>
+            </div>
+
+            <div v-else-if="newContributorCards.length === 0" class="bg-grey-8 text-grey-5 q-pa-lg column items-center">
+              <q-icon name="celebration" size="32px" class="q-mb-sm" />
+              <div class="text-body2">No new contributor data found. Try refreshing.</div>
+            </div>
+
+            <q-carousel
+              v-else
+              v-model="newContributorsCarouselModel"
+              swipeable
+              animated
+              arrows
+              class="bg-transparent rounded-borders"
+              transition-prev="slide-right"
+              transition-next="slide-left"
+              control-type="regular"
+              control-color="primary"
+            >
+              <q-carousel-slide
+                v-for="(contributor, index) in newContributorCards"
+                :key="contributor.login"
+                :name="index"
+                class="flex flex-center q-pa-none contributor-slide contributor-slide--new"
+                :img-src="getContributorImage(contributor) ?? ''"
+              >
+                <div class="contributor-slide__background" />
+                <div class="feed-slide-content">
+                  <div class="feed-slide-link">
+                    <q-btn
+                      round
+                      dense
+                      color="primary"
+                      icon="arrow_forward"
+                      @click="openContributor(contributor.login)"
+                    />
+                  </div>
+                  <div class="feed-slide-caption">
+                    <div class="row items-center no-wrap q-gutter-sm q-mb-sm">
+                      <q-avatar size="48px">
+                        <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.login"
+                             loading="lazy" />
+                        <span v-else>{{ contributor.login.slice(0, 2).toUpperCase() }}</span>
+                      </q-avatar>
+                      <div class="min-width-0">
+                        <div class="text-h6 text-weight-bold cursor-pointer"
+                             @click="openContributor(contributor.login)">
+                          {{ index + 1 }}. @{{ contributor.login }}
+                        </div>
+                        <div class="text-caption text-grey-4">
+                          {{ formatNewContributorDate(contributor) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-body2">
+                      {{ contributor.report_count }} reports • {{ contributor.devices_covered }} devices •
+                      {{ contributor.likes_received }} likes
+                    </div>
+                  </div>
+                </div>
+              </q-carousel-slide>
+            </q-carousel>
+          </div>
+        </q-card>
+
         <!-- FEED CARDS -->
         <q-card
           v-for="([feedKey, feed]) in feedEntries"
@@ -136,11 +386,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useRssFeedStore } from 'src/stores/rss-feed-store'
 import type { FeedDefinition } from 'src/stores/rss-feed-store'
 import { useConfigStore } from 'src/stores/config-store'
+import { useHomepageStore } from 'src/stores/homepage-store'
+import type { HomepageRecentGame } from 'src/utils/api'
 import { APP_FEEDS } from 'src/constants/feeds'
 import FooterSupportCard from 'components/elements/FooterSupportCard.vue'
 
@@ -149,11 +402,28 @@ const heroBackgroundImageUrl = ref(`${baseUrl.value}/hero-image.png`)
 
 dayjs.extend(relativeTime)
 
+const router = useRouter()
 const feedStore = useRssFeedStore()
 const configStore = useConfigStore()
+const homepageStore = useHomepageStore()
 const { disabledFeeds, showHomeWelcomeCard, country } = storeToRefs(configStore)
+const { recentGames, topContributors, newContributors } = storeToRefs(homepageStore)
 const carouselModels = reactive<Record<string, number>>({})
 const isMounted = ref(false)
+const homepageCardsLoading = ref(false)
+const MOBILE_RECENT_GAMES_LIMIT = 10
+const MOBILE_TOP_CONTRIBUTORS_LIMIT = 10
+const MOBILE_NEW_CONTRIBUTORS_LIMIT = 10
+const recentGamesCarouselModel = ref(0)
+const topContributorsCarouselModel = ref(0)
+const newContributorsCarouselModel = ref(0)
+
+const recentGameCards = computed(() => recentGames.value.slice(0, MOBILE_RECENT_GAMES_LIMIT))
+const topContributorCards = computed(() => topContributors.value.slice(0, MOBILE_TOP_CONTRIBUTORS_LIMIT))
+const newContributorCards = computed(() => newContributors.value.slice(0, MOBILE_NEW_CONTRIBUTORS_LIMIT))
+const showRecentGamesWidget = computed(() => !disabledFeeds.value.includes('homepage-recent-games'))
+const showTopContributorsWidget = computed(() => !disabledFeeds.value.includes('homepage-top-contributors'))
+const showNewContributorsWidget = computed(() => !disabledFeeds.value.includes('homepage-new-contributors'))
 
 const resolveFeedLogo = (logo: string | null | undefined) => {
   if (!logo) return null
@@ -177,6 +447,7 @@ const resolveFeedUrl = (url: string) => {
 
 const enabledFeedDefinitions = computed(() =>
   APP_FEEDS
+    .filter((feed): feed is typeof feed & { url: string } => typeof feed.url === 'string' && feed.url.length > 0)
     .filter(feed => !disabledFeeds.value.includes(feed.key))
     .map(feed => ({
       ...feed,
@@ -227,9 +498,24 @@ const feedEntries = computed<[string, FeedDefinition][]>(() => enabledFeedDefini
   .filter((entry): entry is [string, FeedDefinition] => entry !== null))
 
 
+const loadHomepageCards = async (force = false) => {
+  homepageCardsLoading.value = true
+  try {
+    await Promise.all([
+      homepageStore.loadRecentGames(MOBILE_RECENT_GAMES_LIMIT, force),
+      homepageStore.loadContributors(MOBILE_TOP_CONTRIBUTORS_LIMIT, MOBILE_NEW_CONTRIBUTORS_LIMIT, force),
+    ])
+  } finally {
+    homepageCardsLoading.value = false
+  }
+}
+
 onMounted(() => {
   isMounted.value = true
-  void Promise.all(enabledFeedDefinitions.value.map(({ key }) => feedStore.ensureFeed(key)))
+  void Promise.all([
+    ...enabledFeedDefinitions.value.map(({ key }) => feedStore.ensureFeed(key)),
+    loadHomepageCards(),
+  ])
 })
 
 const formatDate = (iso?: string | null) => {
@@ -244,15 +530,54 @@ const formatRelative = (iso?: string | null) => {
   return parsed.isValid() ? parsed.fromNow() : ''
 }
 
+const formatContributorDate = (contributor: { last_report_at: string | null }) =>
+  contributor.last_report_at ? `Last report ${formatDate(contributor.last_report_at)}` : 'No recent report date'
+
+const formatNewContributorDate = (contributor: { first_report_at: string | null }) =>
+  contributor.first_report_at ? `First report ${formatDate(contributor.first_report_at)}` : 'No first-report date'
+
 const openWindow = (url?: string) => {
   if (url) {
     window.open(url, '_blank', 'noopener')
   }
 }
 
+const gameRoute = (appId: number | null, gameName: string) => {
+  if (appId) {
+    return `/app/${appId}`
+  }
+  return `/game/${encodeURIComponent(gameName)}`
+}
+
+const openGame = (appId: number | null, gameName: string) => {
+  void router.push(gameRoute(appId, gameName))
+}
+
+const openContributor = (login: string) => {
+  void router.push({ name: 'public-user-reports', params: { login } })
+}
+
+const getGameImage = (game: HomepageRecentGame) =>
+  game.metadata.poster || game.metadata.banner || game.metadata.hero || null
+
+const getContributorImage = (contributor: {
+  featured_game_metadata?: {
+    poster?: string | null
+    banner?: string | null
+    hero?: string | null
+  } | null
+}) =>
+  contributor.featured_game_metadata?.poster ||
+  contributor.featured_game_metadata?.banner ||
+  contributor.featured_game_metadata?.hero ||
+  null
+
 const handleRefresh = async (done: () => void) => {
   try {
-    await Promise.all(feedEntries.value.map(([key]) => feedStore.ensureFeed(key, true)))
+    await Promise.all([
+      ...feedEntries.value.map(([key]) => feedStore.ensureFeed(key, true)),
+      loadHomepageCards(true),
+    ])
   } finally {
     done()
   }
@@ -415,6 +740,28 @@ watch(feedEntries, (entries) => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.contributor-slide {
+  position: relative;
+}
+
+.contributor-slide__background {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(255, 205, 97, 0.22), transparent 35%),
+  radial-gradient(circle at right center, rgba(255, 255, 255, 0.1), transparent 28%),
+  linear-gradient(180deg, rgba(18, 24, 34, 0.85), rgba(8, 12, 18, 0.96));
+}
+
+.contributor-slide--new .contributor-slide__background {
+  background: radial-gradient(circle at top left, rgba(88, 207, 158, 0.22), transparent 35%),
+  radial-gradient(circle at right center, rgba(255, 255, 255, 0.1), transparent 28%),
+  linear-gradient(180deg, rgba(16, 28, 24, 0.85), rgba(8, 12, 18, 0.96));
+}
+
+.min-width-0 {
+  min-width: 0;
 }
 
 @media (orientation: landscape) and (min-width: 750px) {

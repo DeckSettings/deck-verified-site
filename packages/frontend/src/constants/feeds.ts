@@ -2,11 +2,36 @@ import itadIconUrl from 'src/assets/icons/itad-icon.svg?url'
 
 export interface AppFeedDefinition {
   key: string;
-  url: string;
   title: string;
   subtitle?: string;
   logo?: string | null;
+  icon?: string;
+  url?: string;
 }
+
+export const HOME_WIDGETS: AppFeedDefinition[] = [
+  {
+    key: 'homepage-recent-games',
+    title: 'Newly Added Games',
+    subtitle: 'Swipe through the newest games that have just received community reports',
+    logo: null,
+    icon: 'new_releases',
+  },
+  {
+    key: 'homepage-top-contributors',
+    title: 'Top Contributors',
+    subtitle: 'Swipe through the community members publishing the most report activity',
+    logo: null,
+    icon: 'workspace_premium',
+  },
+  {
+    key: 'homepage-new-contributors',
+    title: 'New Contributors',
+    subtitle: 'Swipe through the latest contributors who have started submitting reports',
+    logo: null,
+    icon: 'celebration',
+  },
+]
 
 export const APP_FEEDS: AppFeedDefinition[] = [
   {
