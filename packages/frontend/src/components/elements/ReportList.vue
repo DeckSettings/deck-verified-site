@@ -20,57 +20,15 @@ defineProps({
 
 const emit = defineEmits(['edit-report', 'update-report-state', 'delete-report'])
 
-const getReviewScoreIcon = (reviewScore: string) => {
-  switch (reviewScore) {
-    case 'positive':
-      return 'thumb_up'
-    case 'neutral':
-      return 'thumbs_up_down'
-    case 'negative':
-      return 'thumb_down'
-    default:
-      return ''
-  }
-}
+const getReviewScoreIcon = () => 'thumb_up'
 
-const getReviewScoreColor = (reviewScore: string) => {
-  switch (reviewScore) {
-    case 'positive':
-      return 'green'
-    case 'neutral':
-      return 'grey'
-    case 'negative':
-      return 'red'
-    default:
-      return 'grey'
-  }
-}
+const getReviewScoreColor = () => 'green'
 
-const getReviewScoreString = (reviewScore: string) => {
-  switch (reviewScore) {
-    case 'positive':
-      return 'positively rated'
-    case 'neutral':
-      return 'neutral'
-    case 'negative':
-      return 'negatively rated'
-    default:
-      return 'grey'
-  }
-}
+const getReviewScoreString = (likes: number) => `${likes} ${likes === 1 ? 'like' : 'likes'}`
 
-const getReviewScoreTooltip = (reviewScore: string) => {
-  switch (reviewScore) {
-    case 'positive':
-      return 'Positively Reviewed'
-    case 'neutral':
-      return 'Neutrally Reviewed'
-    case 'negative':
-      return 'Negatively Reviewed'
-    default:
-      return ''
-  }
-}
+const getReviewScoreTooltip = (likes: number) => (
+  likes === 1 ? '1 player liked this report' : `${likes} players liked this report`
+)
 
 /**
  * Filter labels that should be shown as chips in the user reports list
@@ -284,15 +242,15 @@ const confirmDelete = () => {
                 size="sm"
                 square
                 :dense="$q.screen.lt.sm"
-                :name="getReviewScoreIcon(report.reviewScore)"
-                :color="getReviewScoreColor(report.reviewScore)">
-                <q-avatar :icon="getReviewScoreIcon(report.reviewScore)"
-                          :color="getReviewScoreColor(report.reviewScore)" text-color="white" />
+                :name="getReviewScoreIcon()"
+                :color="getReviewScoreColor()">
+                <q-avatar :icon="getReviewScoreIcon()"
+                          :color="getReviewScoreColor()" text-color="white" />
                 <span class="report-item-review-score-chip-text">
-                  {{ getReviewScoreString(report.reviewScore) }}
+                  {{ getReviewScoreString(report.reactions.reactions_thumbs_up || 0) }}
                 </span>
                 <q-tooltip v-if="report.reviewScore" anchor="center left" self="center right" :offset="[10, 10]">
-                  {{ getReviewScoreTooltip(report.reviewScore) }}
+                  {{ getReviewScoreTooltip(report.reactions.reactions_thumbs_up || 0) }}
                 </q-tooltip>
               </q-chip>
             </template>

@@ -312,7 +312,7 @@ const getCommunityIssueLabelCount = (report: LabeledItem) => (
 )
 
 const getReportReactionScore = (report: Pick<GameReport, 'reactions'>) => (
-  (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
+  report.reactions.reactions_thumbs_up || 0
 )
 
 const compareByCommunityIssues = (a: LabeledItem, b: LabeledItem) => (

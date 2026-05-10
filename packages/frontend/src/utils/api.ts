@@ -113,20 +113,19 @@ export const apiUrl = (path: string) => {
  * Build a condensed `HomeReport` from a full `GameReport`.
  *
  * This helper extracts the small set of fields used by list and summary UIs
- * and derives a simple `reviewScore` based on reactions to make it easy to
- * surface a quick sentiment for each report.
+ * and derives a simple `reviewScore` flag based on likes so list UIs can
+ * highlight reports that have received community appreciation.
  *
  * Derivation rules for `reviewScore`:
- * - 'positive' when (thumbs_up - thumbs_down) > 0
- * - 'negative' when (thumbs_up - thumbs_down) < 0
- * - 'neutral' when they are equal
+ * - 'positive' when thumbs_up > 0
+ * - 'neutral' when thumbs_up === 0
  *
  * @param report - The full `GameReport` object returned by the backend.
  * @returns A lightweight `HomeReport` suitable for display in lists.
  */
 const buildHomeReport = (report: GameReport): HomeReport => {
-  const reactionDiff = (report.reactions.reactions_thumbs_up || 0) - (report.reactions.reactions_thumbs_down || 0)
-  const reviewScore = reactionDiff > 0 ? 'positive' : reactionDiff < 0 ? 'negative' : 'neutral'
+  const likes = report.reactions.reactions_thumbs_up || 0
+  const reviewScore = likes > 0 ? 'positive' : 'neutral'
   return {
     id: report.id,
     data: report.data,
