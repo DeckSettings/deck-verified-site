@@ -25,10 +25,11 @@
                 <ul class="text-caption q-pl-md q-mt-xs q-mb-none">
                   <li>Use the search bar above to find a game.</li>
                   <li>On a game page, tap <strong>Submit report</strong> to share your settings.</li>
-                  <li>Login with your GitHub profile above to access community features:
+                  <li>Login with your GitHub profile in the side menu to access community features:
                     <ul class="q-pl-md q-mt-xs q-mb-none">
                       <li>Improved report form.</li>
                       <li>Manage your own reports from this app.</li>
+                      <li>Showing appreciation by liking reports you find helpful.</li>
                     </ul>
                   </li>
                 </ul>
