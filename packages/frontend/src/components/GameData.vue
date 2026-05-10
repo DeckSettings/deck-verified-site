@@ -127,8 +127,6 @@ const gameBackground = computed<string | null>(() => gameStore.gameBackground)
 const gameBanner = computed<string | null>(() => gameStore.gameBanner)
 const githubProjectSearchLink = computed<string | null>(() => gameStore.githubProjectSearchLink)
 const githubSubmitReportLink = computed<string>(() => gameStore.githubSubmitReportLink)
-const githubListReportsLink = ref<string>('https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete')
-
 const useLocalReportForm = ref<boolean>(true)
 const reportFormDialogOpen = ref<boolean>(false)
 const externalLinksDialogOpen = ref(false)
@@ -474,6 +472,11 @@ const hasReports = computed(() => {
 })
 
 const currentUserLogin = computed(() => authStore.user?.login ?? null)
+
+const getUserReportsRoute = (login: string) => ({
+  name: 'public-user-reports',
+  params: { login },
+})
 const reactionLoadingByReport = ref<Record<number, boolean>>({})
 const verificationPromptVisible = ref(false)
 const verificationPromptDismissed = ref(false)
@@ -2350,11 +2353,8 @@ useMeta(() => {
                             class="author-group q-ma-none q-pa-none author-link"
                             clickable
                             v-ripple
-                            tag="a"
-                            :href="`${githubListReportsLink}+author%3A${encodeURIComponent(report.user.login)}`"
-                            target="_blank"
-                            rel="noopener"
-                            :aria-label="`View reports by ${report.user.login} on GitHub`"
+                            :to="getUserReportsRoute(report.user.login)"
+                            :aria-label="`View reports by ${report.user.login}`"
                             style="display:flex; align-items:center; flex:0 1 auto; min-width:0;"
                           >
                             <q-item-section side class="author-avatar-col">

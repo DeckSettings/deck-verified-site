@@ -46,7 +46,13 @@ const pageSubtitle = computed(() => shouldUseOwnerView.value
   ? 'Your contributor profile and submitted reports.'
   : 'Contributor profile and published reports.')
 const stats = computed<ContributorSummary | null>(() => pageData.value?.stats || null)
+const useCompactProfileStats = computed(() => $q.screen.width < 500)
 const canManageReports = computed(() => shouldUseOwnerView.value)
+const githubReportsUrl = computed(() => {
+  const login = pageData.value?.user.login || routeLogin.value || viewerLogin.value
+  if (!login) return null
+  return `https://github.com/DeckSettings/game-reports-steamos/issues?q=is%3Aopen+is%3Aissue+-label%3Ainvalid%3Atemplate-incomplete+author%3A${encodeURIComponent(login)}`
+})
 
 useMeta(() => ({
   title: pageTitle.value,
@@ -235,7 +241,7 @@ watch(
         <template v-else>
           <q-card class="reports-card text-white q-pa-xs">
             <q-card-section class="reports-profile-header" :class="{ 'q-pb-sm': $q.platform.isMobileUi }">
-              <div class="row items-center q-col-gutter-md">
+              <div class="row items-start q-col-gutter-md reports-profile-layout">
                 <div class="col-auto">
                   <q-avatar size="64px" class="reports-profile-avatar">
                     <img v-if="pageData?.user.avatar_url" :src="pageData.user.avatar_url" :alt="displayLogin">
@@ -243,24 +249,48 @@ watch(
                   </q-avatar>
                 </div>
                 <div class="col">
-                  <div class="row items-center q-gutter-sm">
-                    <h4 class="text-h6 q-ma-none">{{ profileHeaderTitle }}</h4>
+                  <div class="row items-center">
+                    <h4 class="text-h6 q-ma-none">
+                      {{ profileHeaderTitle }}
+                      <q-btn
+                        v-if="githubReportsUrl"
+                        flat
+                        :dense="!$q.screen.gt.xs"
+                        size="xs"
+                        no-caps
+                        color="primary"
+                        icon="fab fa-github"
+                        :aria-label="`Open ${displayLogin} reports on GitHub`"
+                        :href="githubReportsUrl"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <q-icon
+                          name="open_in_new"
+                          size="16px"
+                          class="q-ml-xs"
+                        />
+                      </q-btn>
+                    </h4>
                     <q-chip v-if="canManageReports" size="sm" color="primary" text-color="white" icon="edit_note">
                       Owner View
                     </q-chip>
                   </div>
-                  <div v-if="stats" class="reports-profile-stats row q-gutter-sm q-mt-sm">
-                    <q-chip size="sm" color="grey-9" text-color="white" icon="description">
-                      {{ stats.report_count }} reports
+                  <div v-if="stats" class="reports-profile-stats row items-center q-mt-sm">
+                    <q-chip size="sm" color="grey-9" text-color="white" icon="description"
+                            :dense="useCompactProfileStats">
+                      {{ stats.report_count }}{{ useCompactProfileStats ? '' : ' reports' }}
                     </q-chip>
-                    <q-chip size="sm" color="grey-9" text-color="white" icon="sports_esports">
-                      {{ stats.games_covered }} games
+                    <q-chip size="sm" color="grey-9" text-color="white" icon="sports_esports"
+                            :dense="useCompactProfileStats">
+                      {{ stats.games_covered }}{{ useCompactProfileStats ? '' : ' games' }}
                     </q-chip>
-                    <q-chip size="sm" color="grey-9" text-color="white" icon="devices_other">
-                      {{ stats.devices_covered }} devices
+                    <q-chip size="sm" color="grey-9" text-color="white" icon="devices_other"
+                            :dense="useCompactProfileStats">
+                      {{ stats.devices_covered }}{{ useCompactProfileStats ? '' : ' devices' }}
                     </q-chip>
-                    <q-chip size="sm" color="grey-9" text-color="white" icon="thumb_up">
-                      {{ stats.likes_received }} likes
+                    <q-chip size="sm" color="grey-9" text-color="white" icon="thumb_up" :dense="useCompactProfileStats">
+                      {{ stats.likes_received }}{{ useCompactProfileStats ? '' : ' likes' }}
                     </q-chip>
                   </div>
                 </div>
@@ -333,6 +363,13 @@ watch(
 }
 
 .reports-profile-stats {
+  column-gap: 8px;
   row-gap: 8px;
+}
+
+@media (max-width: 599px) {
+  .reports-profile-layout {
+    align-items: flex-start;
+  }
 }
 </style>
