@@ -203,6 +203,9 @@ const sdhqLink = ref('')
 
 const filterDialogOpen = ref(false)
 const sortDialogOpen = ref(false)
+const reportViewDialogOpen = ref(false)
+const reportViewTarget = ref<ExtendedGameReport | null>(null)
+const pendingReportViewId = ref<number | null>(null)
 
 const selectedDevice = ref('all')
 const deviceLabels = computed<GitHubIssueLabel[]>(() => gameStore.deviceLabels)
@@ -382,6 +385,29 @@ function setExpanded(id: number, val: boolean) {
 
   scheduleVerificationPrompt(lastExpandedReportId.value)
 }
+
+const openReportViewDialog = (report: ExtendedGameReport) => {
+  reportViewTarget.value = report
+  reportViewDialogOpen.value = true
+}
+
+const closeReportViewDialog = () => {
+  reportViewDialogOpen.value = false
+  reportViewTarget.value = null
+}
+
+const reportViewDialogCardStyle = computed(() => {
+  const base = $q.screen.lt.sm
+    ? 'min-width: 100vw; width: 100vw; max-width: 100vw;'
+    : ($q.screen.lt.md
+      ? 'min-width: 0; width: min(600px, 100vw); max-width: 100vw;'
+      : 'min-width: 0; width: min(800px, 100vw); max-width: 100vw;')
+
+  if (!gameBackground.value) return base
+
+  return `${base} background-image: linear-gradient(to bottom, rgba(8, 12, 18, 0.70) 0%, rgba(8, 12, 18, 0.9) 80%, rgba(8, 12, 18, 0.96) 90%, var(--q-dark) 100%), url('${gameBackground.value}'); background-size: cover; background-position: top center; background-repeat: no-repeat;`
+})
+const reportViewMenuOnRight = computed(() => !$q.screen.lt.sm)
 
 const priceSummary = ref<GamePriceSummary | null>(null)
 const priceNew = computed(() => priceSummary.value?.bestDeal?.priceNew ?? null)
@@ -1160,11 +1186,22 @@ onMounted(async () => {
     // Pre-expand a report from query param
     const expandedId = parseInt(route.query.expandedId as string, 10)
     if (!Number.isNaN(expandedId)) {
-      expanded.value[expandedId] = true
+      if ($q.platform.isMobileUi) {
+        pendingReportViewId.value = expandedId
+      } else {
+        expanded.value[expandedId] = true
+      }
     }
   }
 
   await ensureClientGameData()
+  if ($q.platform.isMobileUi && pendingReportViewId.value !== null) {
+    const report = filteredReports.value.find((entry) => entry.id === pendingReportViewId.value)
+    if (report) {
+      openReportViewDialog(report)
+    }
+    pendingReportViewId.value = null
+  }
   if (appId.value) {
     await loadMarketData(appId.value)
   }
@@ -1227,6 +1264,10 @@ watch(filteredReports, (reports) => {
 
   if (lastExpandedReportId.value !== null && !visibleReportIds.has(lastExpandedReportId.value)) {
     lastExpandedReportId.value = getFirstExpandedReportId()
+  }
+
+  if (reportViewTarget.value && !visibleReportIds.has(reportViewTarget.value.id)) {
+    closeReportViewDialog()
   }
 }, { deep: true })
 
@@ -1381,7 +1422,8 @@ useMeta(() => {
         :aria-label="`Compare (${compareReports.length})`"
         @click="openComparisonDialog"
       >
-        <span class="compare-trigger-label" :style="$q.platform.isMobileUi ? 'max-width: 200px; opacity: 1; margin-left: 8px;' : ''">
+        <span class="compare-trigger-label"
+              :style="$q.platform.isMobileUi ? 'max-width: 200px; opacity: 1; margin-left: 8px;' : ''">
           Compare ({{ compareReports.length }})
         </span>
       </q-btn>
@@ -2042,13 +2084,21 @@ useMeta(() => {
                   v-for="report in filteredReports" :key="report.id"
                   class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm"
                   :class="[getAppreciationTier(report)?.itemClass, { 'app-report-item': $q.platform.isMobileUi, 'q-px-xs': $q.platform.isMobileUi, 'q-py-xs': $q.platform.isMobileUi }]">
-                  <q-expansion-item :model-value="isExpanded(report.id)"
-                                    @update:model-value="(v) => setExpanded(report.id, v)"
+                  <q-expansion-item :model-value="$q.platform.isMobileUi ? false : isExpanded(report.id)"
+                                    @update:model-value="(v) => {
+                                      if ($q.platform.isMobileUi) {
+                                        if (v) openReportViewDialog(report)
+                                        return
+                                      }
+                                      setExpanded(report.id, v)
+                                    }"
                                     dense class="full-width"
+                                    :expand-icon="$q.platform.isMobileUi ? 'arrow_outward' : undefined"
                                     expand-icon-class="self-end game-data-item-expand-button"
                                     header-class="full-width q-ma-none q-pa-none q-pa-sm-xs q-pb-sm-sm q-pb-xs-xs">
                     <template v-slot:header>
                       <q-tooltip
+                        v-if="!$q.platform.isMobileUi"
                         transition-show="scale" transition-hide="scale"
                         anchor="bottom end" self="bottom right" :offset="[-35, -8]">
                         Click to Show/Hide Report
@@ -2705,6 +2755,381 @@ useMeta(() => {
     </div>
   </div>
 
+  <q-dialog
+    v-model="reportViewDialogOpen"
+    backdrop-filter="blur(2px)"
+    seamless no-refocus
+    :maximized="$q.screen.lt.sm"
+    :position="reportViewMenuOnRight ? 'right' : 'left'"
+    :transition-show="reportViewMenuOnRight ? 'slide-left' : 'slide-right'"
+    :transition-hide="reportViewMenuOnRight ? 'slide-right' : 'slide-left'"
+    transition-duration="300"
+  >
+    <q-card class="dv-side-dialog-card" :style="reportViewDialogCardStyle">
+      <q-card-section class="dv-dialog-content report-view-dialog-content">
+        <q-card v-if="reportViewTarget" flat class="dv-dialog-inner-card">
+          <q-card-section
+            class="dv-side-dialog-header row items-center justify-between no-wrap report-view-dialog-header"
+          >
+            <div v-if="reportViewMenuOnRight" class="col q-pr-md report-view-dialog-title">
+              <div class="text-h5 ellipsis">{{ gameName }}</div>
+              <div class="text-subtitle2 text-grey-5 ellipsis">
+                {{ reportViewTarget.data.summary }}
+              </div>
+            </div>
+            <q-btn
+              outline
+              round
+              color="primary"
+              :icon="reportViewMenuOnRight ? 'arrow_forward' : 'arrow_back'"
+              size="sm"
+              aria-label="Close report"
+              @click="closeReportViewDialog"
+            />
+            <div v-if="!reportViewMenuOnRight" class="col q-pl-md report-view-dialog-title text-right">
+              <div class="text-h5 ellipsis">{{ gameName }}</div>
+              <div class="text-subtitle2 text-grey-5 ellipsis">
+                {{ reportViewTarget.data.summary }}
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator dark />
+
+          <q-card-section class="dv-dialog-body scroll report-view-dialog-body"
+                          :class="$q.screen.lt.sm ? 'q-pa-sm' : 'q-pa-md'">
+            <div class="report q-mt-none">
+              <div class="row q-col-gutter-md">
+                <div class="col-xs-12 col-md-6">
+                  <q-card v-if="hasSystemConfig(reportViewTarget)" class="config-card">
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
+                      <div class="text-h6">System Configuration</div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
+                      <div class="config-list">
+                        <div v-if="reportViewTarget.data.undervolt_applied" class="config-item">
+                          <span>Undervolt Applied:</span>
+                          <span>{{ reportViewTarget.data.undervolt_applied }}</span>
+                        </div>
+                        <div
+                          v-if="reportViewTarget.data.steam_play_compatibility_tool_used && reportViewTarget.data.compatibility_tool_version"
+                          class="config-item">
+                          <span>Compatibility Tool:</span>
+                          <span>
+                              {{ reportViewTarget.data.steam_play_compatibility_tool_used
+                            }}: {{ reportViewTarget.data.compatibility_tool_version }}
+                            </span>
+                        </div>
+                        <div v-if="reportViewTarget.data.game_resolution" class="config-item">
+                          <span>Game Resolution:</span>
+                          <span>{{ reportViewTarget.data.game_resolution }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.custom_launch_options" class="config-item">
+                          <span>Launch Options:</span>
+                          <span>{{ reportViewTarget.data.custom_launch_options }}</span>
+                        </div>
+                      </div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+                <div class="col-xs-12 col-md-6">
+                  <q-card v-if="hasPerformanceSettings(reportViewTarget)" class="config-card">
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
+                      <div class="text-h6">Performance Settings</div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
+                      <div class="config-list">
+                        <div v-if="reportViewTarget.data.frame_limit" class="config-item">
+                          <span v-if="reportViewTarget.data.disable_frame_limit === 'On'">Refresh Rate:</span>
+                          <span v-else>Frame Limit:</span>
+                          <span v-if="reportViewTarget.data.disable_frame_limit === 'On'">
+                              {{ reportViewTarget.data.frame_limit }}Hz
+                            </span>
+                          <span v-else>
+                              {{ reportViewTarget.data.frame_limit }}FPS
+                            </span>
+                        </div>
+                        <div v-if="reportViewTarget.data.disable_frame_limit" class="config-item">
+                          <span>Disable Frame Limit:</span>
+                          <span>{{ reportViewTarget.data.disable_frame_limit }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.enable_vrr" class="config-item">
+                          <span>Enable VRR:</span>
+                          <span>{{ reportViewTarget.data.enable_vrr }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.allow_tearing" class="config-item">
+                          <span>Allow Tearing:</span>
+                          <span>{{ reportViewTarget.data.allow_tearing }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.half_rate_shading" class="config-item">
+                          <span>Half Rate Shading:</span>
+                          <span>{{ reportViewTarget.data.half_rate_shading }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.tdp_limit" class="config-item">
+                          <span>TDP Limit:</span>
+                          <span>{{ reportViewTarget.data.tdp_limit }}W</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.manual_gpu_clock" class="config-item">
+                          <span>Manual GPU Clock:</span>
+                          <span>{{ reportViewTarget.data.manual_gpu_clock }}MHz</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.scaling_mode" class="config-item">
+                          <span>Scaling Mode:</span>
+                          <span>{{ reportViewTarget.data.scaling_mode }}</span>
+                        </div>
+                        <div v-if="reportViewTarget.data.scaling_filter" class="config-item">
+                          <span>Scaling Filter:</span>
+                          <span>{{ reportViewTarget.data.scaling_filter }}</span>
+                        </div>
+                      </div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </div>
+
+              <div class="row q-ma-none q-pa-none">
+                <div class="col q-ma-none q-pa-none">
+                  <q-card v-if="reportViewTarget.data.game_display_settings"
+                          :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
+                      <div class="text-h6">Game Display Settings</div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
+                      <GameReportMarkdown :markdown="reportViewTarget.data.game_display_settings" />
+                    </q-card-section>
+                  </q-card>
+                  <q-card v-if="reportViewTarget.data.game_graphics_settings"
+                          :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
+                      <div class="text-h6">Game Graphics Settings</div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
+                      <GameReportMarkdown :markdown="reportViewTarget.data.game_graphics_settings" />
+                    </q-card-section>
+                  </q-card>
+                  <q-card v-if="reportViewTarget.data.additional_notes"
+                          :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
+                      <div class="text-h6">Additional Notes</div>
+                    </q-card-section>
+                    <q-separator />
+                    <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
+                      <GameReportMarkdown :markdown="reportViewTarget.data.additional_notes"
+                                          :inline-images="true"
+                                          keep-standard-list-format />
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </div>
+
+              <div class="report-footer row items-center justify-between q-mt-lg q-mb-xl q-pa-none">
+                <div class="row items-center author-block author-source-row">
+                  <q-item
+                    v-if="!reportViewTarget.external"
+                    class="author-group q-ma-none q-pa-none author-link"
+                    clickable
+                    v-ripple
+                    :to="getUserReportsRoute(reportViewTarget.user.login)"
+                    :aria-label="`View reports by ${reportViewTarget.user.login}`"
+                    style="display:flex; align-items:center; flex:0 1 auto; min-width:0;"
+                  >
+                    <q-item-section side class="author-avatar-col">
+                      <q-avatar rounded class="author-avatar">
+                        <img :src="reportViewTarget.user.avatar_url" alt="Author avatar" />
+                      </q-avatar>
+                    </q-item-section>
+                    <q-item-section class="author-meta-col">
+                      <q-item-label class="author-name" :title="reportViewTarget.user.login">
+                        {{ reportViewTarget.user.login }}
+                      </q-item-label>
+                      <q-item-label caption class="author-count">
+                        {{ reportViewTarget.user.report_count }} reports
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    v-else
+                    class="author-group q-ma-none q-pa-none"
+                    style="display:flex; align-items:center; flex:0 1 auto; min-width:0;"
+                  >
+                    <q-item-section side class="author-avatar-col">
+                      <q-avatar rounded class="author-avatar">
+                        <img :src="reportViewTarget.user.avatar_url" alt="Author avatar" />
+                      </q-avatar>
+                    </q-item-section>
+
+                    <q-item-section class="author-meta-col">
+                      <q-item-label class="author-name" :title="reportViewTarget.user.login">
+                        {{ reportViewTarget.user.login }}
+                      </q-item-label>
+                      <q-item-label caption class="author-count">
+                        {{ reportViewTarget.user.report_count }} reports
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-space />
+                  <q-separator v-if="$q.screen.gt.sm" vertical inset class="q-mr-sm" />
+                  <div class="source-col">
+                    <q-item class="q-ma-none q-pa-none">
+                      <q-item-section>
+                        <q-item-label caption>
+                          <a v-if="!reportViewTarget.external"
+                             :href="reportViewTarget.html_url" target="_blank" rel="noopener"
+                             style="text-decoration: none;">
+                            <q-chip square clickable class="q-ma-none q-pr-xs q-pl-xs">
+                              <q-avatar icon="fab fa-github" text-color="white" />
+                              source
+                            </q-chip>
+                          </a>
+                          <a v-else
+                             :href="reportViewTarget.html_url" target="_blank" rel="noopener"
+                             style="text-decoration: none;">
+                            <q-chip square clickable class="q-ma-none q-pr-xs q-pl-xs">
+                              <q-avatar text-color="white">
+                                <img :src="reportViewTarget.user.avatar_url">
+                              </q-avatar>
+                              source
+                            </q-chip>
+                          </a>
+                        </q-item-label>
+                        <q-item-label caption class="q-pt-xs q-pr-xs">
+                          <b>Last updated:</b> {{ lastUpdated(reportViewTarget.updated_at) }}
+                        </q-item-label>
+                        <q-item-label v-if="getVerificationPresentation(reportViewTarget)" caption
+                                      class="q-pt-sm q-pr-xs">
+                          <q-chip
+                            square
+                            dense
+                            class="q-ma-none verification-chip"
+                            :color="getVerificationPresentation(reportViewTarget)?.color"
+                            text-color="white"
+                          >
+                            <q-avatar :icon="getVerificationPresentation(reportViewTarget)?.icon"
+                                      text-color="white" />
+                            {{ getVerificationPresentation(reportViewTarget)?.label }}
+                            <span class="verification-chip__score">
+                                {{ getVerificationPresentation(reportViewTarget)?.likes }}
+                              </span>
+                            <q-tooltip>{{ getVerificationPresentation(reportViewTarget)?.tooltip }}</q-tooltip>
+                          </q-chip>
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </div>
+                </div>
+
+                <div class="col-auto row items-center social-buttons q-gutter-sm">
+                  <q-btn
+                    flat round
+                    size="sm"
+                    icon="thumb_up"
+                    :color="hasUserReacted(reportViewTarget, 'up') ? 'positive' : 'grey-4'"
+                    :loading="isReactionLoading(reportViewTarget.id)"
+                    :disable="reportViewTarget.external"
+                    aria-label="Like report"
+                    @click.stop="handleReportReaction(reportViewTarget, 'up')">
+                    <q-tooltip>
+                      {{ hasUserReacted(reportViewTarget, 'up') ? 'Remove like' : 'Like this report' }}
+                    </q-tooltip>
+                    <q-badge
+                      v-if="reportViewTarget.reactions.reactions_thumbs_up > 0"
+                      color="green"
+                      floating
+                      style="transform: translate(6px, 3px);">
+                      {{ reportViewTarget.reactions.reactions_thumbs_up }}
+                    </q-badge>
+                  </q-btn>
+
+                  <q-btn-dropdown
+                    flat round
+                    size="sm"
+                    dropdown-icon="share"
+                    no-icon-animation
+                    :content-style="{
+                        minWidth: '100px',
+                        backgroundColor: 'color-mix(in srgb, var(--q-dark) 95%, transparent)',
+                        border: '1px solid rgba(255, 255, 255, 0.5)',
+                        borderRadius: '0px 0px 3px 3px',
+                        boxShadow: '2px 2px 10px rgba(0, 0, 0, 0.9)',
+                      }"
+                    aria-label="Share report"
+                  >
+                    <q-tooltip>Share this report</q-tooltip>
+                    <q-list>
+                      <q-item clickable v-close-popup @click="copyReportLink(reportViewTarget.id)">
+                        <q-item-section avatar>
+                          <q-avatar icon="content_copy" />
+                        </q-item-section>
+                        <q-item-section>Copy link</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="open_in_new" />
+                        </q-item-section>
+                      </q-item>
+
+                      <q-separator />
+
+                      <q-item clickable v-close-popup @click="shareToReddit(reportViewTarget)">
+                        <q-item-section avatar>
+                          <q-avatar>
+                            <q-avatar :icon="simReddit" />
+                          </q-avatar>
+                        </q-item-section>
+                        <q-item-section>Share to Reddit</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="open_in_new" />
+                        </q-item-section>
+                      </q-item>
+
+                      <q-item clickable v-close-popup @click="shareToX(reportViewTarget)">
+                        <q-item-section avatar>
+                          <q-avatar :icon="simX" />
+                        </q-item-section>
+                        <q-item-section>Share to X</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="open_in_new" />
+                        </q-item-section>
+                      </q-item>
+
+                      <q-item clickable v-close-popup @click="shareToBluesky(reportViewTarget)">
+                        <q-item-section avatar>
+                          <q-avatar :icon="simBluesky" />
+                        </q-item-section>
+                        <q-item-section>Share to Bluesky</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="open_in_new" />
+                        </q-item-section>
+                      </q-item>
+
+                      <q-item clickable v-close-popup @click="shareToFacebook(reportViewTarget)">
+                        <q-item-section avatar>
+                          <q-avatar :icon="simFacebook" />
+                        </q-item-section>
+                        <q-item-section>Share to Facebook</q-item-section>
+                        <q-item-section side>
+                          <q-icon name="open_in_new" />
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-btn-dropdown>
+
+                  <q-btn flat round icon="flag" size="sm" aria-label="Flag report"
+                         @click.stop="openReportIssueDialog(reportViewTarget)">
+                    <q-tooltip>Flag this report</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </q-card-section>
+    </q-card>
+  </q-dialog>
+
   <q-dialog class="q-ma-none q-pa-none comparison-dialog"
             backdrop-filter="blur(2px)"
             seamless
@@ -2739,6 +3164,77 @@ useMeta(() => {
 
 .side-prompt-stack-mobile {
   bottom: 65px;
+}
+
+.report-view-dialog-title {
+  min-width: 0;
+  width: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.report-view-dialog-content {
+  overflow: hidden;
+}
+
+.report-view-dialog-content .dv-dialog-inner-card {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.report-view-dialog-header {
+  min-height: 80px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--q-dark) 90%, transparent) 50%,
+    color-mix(in srgb, var(--q-dark) 75%, transparent) 80%,
+    transparent 100%
+  );
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.report-view-dialog-header :deep(.q-btn) {
+  position: relative;
+  z-index: 1;
+  background-color: color-mix(in srgb, var(--q-dark) 48%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.report-view-dialog-title .text-subtitle2 {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.report-view-dialog-title .text-h5 {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-view-dialog-body {
+  position: relative;
+  background: transparent;
+}
+
+.report-view-dialog-body .config-card {
+  background-color: color-mix(in srgb, var(--q-dark) 70%, transparent);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(3px);
+}
+
+.report-view-dialog-body > .report {
+  position: relative;
+  z-index: 1;
 }
 
 .compare-dialog-trigger {
