@@ -4,7 +4,7 @@ import { Platform } from 'quasar'
 // Extend the Platform.is type to include our new flag
 declare module 'quasar' {
   interface Platform {
-    steamdeck: boolean
+    isSteamOs: boolean
   }
 }
 
@@ -14,9 +14,8 @@ export default boot(() => {
     return
   }
   const ua = navigator.userAgent || ''
-  Platform.steamdeck = ua.includes('Steam Deck')
-  // Optionally, if you want Steam Deck to act like mobile:
-  if (Platform.steamdeck) {
+  Platform.isSteamOs = ua.includes('Steam Deck')
+  if (Platform.isSteamOs) {
     Platform.is.mobile = true
     Platform.is.desktop = false
   }

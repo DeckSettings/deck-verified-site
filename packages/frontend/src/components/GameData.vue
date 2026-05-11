@@ -47,6 +47,7 @@ import PageHeader from 'components/elements/PageHeader.vue'
 import GameReportMarkdown from 'components/elements/GameReportMarkdown.vue'
 import GameReportComparison from 'components/GameReportComparison.vue'
 import LoginPromptDialog from 'components/LoginPromptDialog.vue'
+import AndroidAppUpsellDialog from 'components/AndroidAppUpsellDialog.vue'
 
 dayjs.extend(relativeTime)
 
@@ -104,6 +105,11 @@ const appId = computed<string | null>(() => gameStore.appId)
 const gameName = computed<string>(() => gameStore.gameName)
 const gameReportsSummary = computed<string | null>(() => gameStore.reportsSummary)
 const gameData = computed<GameDetails | null>(() => gameStore.gameData)
+const androidUpsellGameKey = computed(() => {
+  if (appId.value) return `app:${appId.value}`
+  if (gameName.value) return `name:${gameName.value.trim().toLowerCase()}`
+  return `route:${route.fullPath}`
+})
 
 const highestRatedGameReport = computed<Partial<GameReportData> | null>(() => {
   const gd = gameData.value
@@ -1285,6 +1291,10 @@ useMeta(() => {
 </script>
 
 <template>
+  <AndroidAppUpsellDialog
+    v-if="!$q.platform.isMobileUi && !$q.platform.isSteamOs && !authStore.isLoggedIn"
+    :game-key="androidUpsellGameKey"
+  />
   <q-ajax-bar
     ref="ajaxBar"
     :position="$q.platform.isMobileUi ? 'top' : 'bottom'"

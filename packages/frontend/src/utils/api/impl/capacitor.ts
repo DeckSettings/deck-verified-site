@@ -1,6 +1,11 @@
 import { CapacitorHttp } from '@capacitor/core'
 import type { HttpOptions, HttpResponse } from '@capacitor/core'
 import type { FetchServiceResponse } from '../types'
+import {
+  OFFICIAL_ANDROID_APP_MARKER,
+  OFFICIAL_ANDROID_CLIENT_HEADER,
+  OFFICIAL_ANDROID_CLIENT_VALUE,
+} from 'src/utils/mobile-client'
 
 const headersToRecord = (headers: RequestInit['headers']): Record<string, string> | undefined => {
   if (!headers) return undefined
@@ -30,15 +35,15 @@ const headersToRecord = (headers: RequestInit['headers']): Record<string, string
 export const fetchService = async (url: string, options?: RequestInit): Promise<FetchServiceResponse> => {
   console.debug('[api] Using CapacitorHttp for request:', url)
 
+  const headerRecord = headersToRecord(options?.headers) ?? {}
+  headerRecord[OFFICIAL_ANDROID_CLIENT_HEADER] = OFFICIAL_ANDROID_CLIENT_VALUE
+  headerRecord['User-Agent'] = headerRecord['User-Agent'] || `${OFFICIAL_ANDROID_APP_MARKER}/native-http`
+
   const httpOptions: HttpOptions = {
     method: options?.method ?? 'GET',
     url,
     data: options?.body,
-  }
-
-  const headerRecord = headersToRecord(options?.headers)
-  if (headerRecord) {
-    httpOptions.headers = headerRecord
+    headers: headerRecord,
   }
 
   try {
