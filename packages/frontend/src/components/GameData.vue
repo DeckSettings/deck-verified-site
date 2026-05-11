@@ -1381,7 +1381,7 @@ useMeta(() => {
         :aria-label="`Compare (${compareReports.length})`"
         @click="openComparisonDialog"
       >
-        <span class="compare-trigger-label">
+        <span class="compare-trigger-label" :style="$q.platform.isMobileUi ? 'max-width: 200px; opacity: 1; margin-left: 8px;' : ''">
           Compare ({{ compareReports.length }})
         </span>
       </q-btn>
@@ -2041,7 +2041,7 @@ useMeta(() => {
                 <q-item
                   v-for="report in filteredReports" :key="report.id"
                   class="game-data-item q-mb-sm q-px-sm q-py-sm q-px-sm-md q-py-sm-sm"
-                  :class="getAppreciationTier(report)?.itemClass">
+                  :class="[getAppreciationTier(report)?.itemClass, { 'app-report-item': $q.platform.isMobileUi, 'q-px-xs': $q.platform.isMobileUi, 'q-py-xs': $q.platform.isMobileUi }]">
                   <q-expansion-item :model-value="isExpanded(report.id)"
                                     @update:model-value="(v) => setExpanded(report.id, v)"
                                     dense class="full-width"
@@ -2225,16 +2225,16 @@ useMeta(() => {
                       </q-item-section>
                     </template>
 
-                    <div class="report q-mt-md">
+                    <div class="report" :class="$q.platform.isMobileUi ? 'q-mt-sm' : 'q-mt-md'">
                       <div class="row q-col-gutter-md">
                         <!-- System Configuration Card -->
                         <div class="col-xs-12 col-md-6">
                           <q-card v-if="hasSystemConfig(report)" class="config-card">
-                            <q-card-section>
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
                               <div class="text-h6">System Configuration</div>
                             </q-card-section>
                             <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
                               <div class="config-list">
                                 <div v-if="report.data.undervolt_applied" class="config-item">
                                   <span>Undervolt Applied:</span>
@@ -2264,11 +2264,11 @@ useMeta(() => {
                         <!-- Performance Settings Card -->
                         <div class="col-xs-12 col-md-6">
                           <q-card v-if="hasPerformanceSettings(report)" class="config-card">
-                            <q-card-section>
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
                               <div class="text-h6">Performance Settings</div>
                             </q-card-section>
                             <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
                               <div class="config-list">
                                 <div v-if="report.data.frame_limit" class="config-item">
                                   <span v-if="report.data.disable_frame_limit === 'On'">Refresh Rate:</span>
@@ -2320,32 +2320,32 @@ useMeta(() => {
                       <div class="row q-ma-none q-pa-none">
                         <div class="col q-ma-none q-pa-none">
                           <q-card v-if="report.data.game_display_settings"
-                                  class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
+                                  :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
                               <div class="text-h6">Game Display Settings</div>
                             </q-card-section>
                             <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
                               <GameReportMarkdown :markdown="report.data.game_display_settings" />
                             </q-card-section>
                           </q-card>
                           <q-card v-if="report.data.game_graphics_settings"
-                                  class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
+                                  :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
                               <div class="text-h6">Game Graphics Settings</div>
                             </q-card-section>
                             <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
                               <GameReportMarkdown :markdown="report.data.game_graphics_settings" />
                             </q-card-section>
                           </q-card>
                           <q-card v-if="report.data.additional_notes"
-                                  class="config-card q-mt-md q-ma-none q-pa-none">
-                            <q-card-section>
+                                  :class="$q.platform.isMobileUi ? 'config-card q-mt-sm q-ma-none q-pa-none' : 'config-card q-mt-md q-ma-none q-pa-none'">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : ''">
                               <div class="text-h6">Additional Notes</div>
                             </q-card-section>
                             <q-separator />
-                            <q-card-section class="q-pa-sm q-pa-sm-md">
+                            <q-card-section :class="$q.platform.isMobileUi ? 'q-px-sm q-py-xs' : 'q-pa-sm q-pa-sm-md'">
                               <GameReportMarkdown :markdown="report.data.additional_notes"
                                                   :inline-images="true"
                                                   keep-standard-list-format />
@@ -2738,7 +2738,7 @@ useMeta(() => {
 }
 
 .side-prompt-stack-mobile {
-  top: 70px;
+  bottom: 65px;
 }
 
 .compare-dialog-trigger {
@@ -2964,6 +2964,10 @@ useMeta(() => {
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
   padding: 10px;
   border-left-width: 6px;
+}
+
+.app-report-item {
+  border-left-width: 2px;
 }
 
 .report-status-cluster {
