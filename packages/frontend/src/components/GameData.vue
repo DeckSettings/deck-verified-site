@@ -2110,14 +2110,14 @@ useMeta(() => {
                           size="sm"
                           square
                           :dense="$q.screen.lt.sm"
-                          class="report-corner-chip report-status-chip q-ma-none"
+                          class="report-corner-chip report-status-chip q-ma-none q-pl-sm"
                           :class="getReportStatusChipClasses(getReportStatusChips(report), chip, chipIndex)"
                           :color="chip.color"
                           text-color="black"
                           :aria-label="chip.ariaLabel"
                         >
                           <q-avatar :icon="chip.icon" :color="chip.avatarColor" text-color="black" />
-                          <span :class="{ 'duplicate-chip-text': chip.kind === 'duplicate' }">
+                          <span>
                             {{ chip.shortLabel }}
                           </span>
                           <span v-if="chip.count" class="report-status-chip__count">
@@ -3811,10 +3811,6 @@ useMeta(() => {
 
   .verification-dialog-trigger-actions {
     gap: 6px;
-  }
-
-  .duplicate-chip-text {
-    display: none;
   }
 
   .report-footer {
