@@ -939,7 +939,7 @@ watch(formValues, () => {
 </script>
 
 <template>
-  <q-card class="report-card"
+  <q-card class="report-card q-mb-xl"
           :class="{
             fullscreen: !inDialog,
             'short-landscape': isShortLandscape
