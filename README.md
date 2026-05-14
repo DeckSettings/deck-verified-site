@@ -69,9 +69,9 @@ To update the Frontend project's Quasar ecosystem:
 ```bash
 cd packages/frontend
 # Check for updates
-npx quasar upgrade
+quasar upgrade
 # Apply updates
-npx quasar upgrade --install
+quasar upgrade --install
 ```
 
 To update the mobile project (Capacitor):
