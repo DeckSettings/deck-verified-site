@@ -93,19 +93,33 @@
                       dense
                       color="primary"
                       icon="arrow_forward"
-                      @click="openGame(game.appId, game.gameName)"
+                      @click.stop="openGame(game.appId, game.gameName)"
                     />
                   </div>
-                  <div class="feed-slide-caption">
-                    <div class="text-h6 text-weight-bold cursor-pointer" @click="openGame(game.appId, game.gameName)">
+                  <div
+                    class="feed-slide-caption feed-slide-caption--interactive"
+                    role="button"
+                    tabindex="0"
+                    @click="openGame(game.appId, game.gameName)"
+                    @keydown.enter.prevent="openGame(game.appId, game.gameName)"
+                    @keydown.space.prevent="openGame(game.appId, game.gameName)"
+                    @touchstart.stop
+                    @touchmove.stop
+                  >
+                    <div class="text-h6 text-weight-bold">
                       {{ index + 1 }}. {{ game.gameName }}
                     </div>
-                    <div class="text-caption text-grey-4">
-                      Added {{ formatDate(game.firstReportAt) }}
-                    </div>
-                    <div class="text-body2">
+                    <div class="feed-slide-meta">
+                      Added {{ formatDate(game.firstReportAt) }} |
                       {{ game.reportCount }} reports
                       <span v-if="game.likes > 0">&nbsp;•&nbsp;{{ game.likes }} likes</span>
+                    </div>
+                    <div class="feed-slide-footer">
+                      <div />
+                      <div class="feed-slide-cta feed-slide-cta--compact">
+                        <span>{{ getGameCtaLabel(game) }}</span>
+                        <q-icon name="arrow_forward" size="16px" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -170,10 +184,19 @@
                       dense
                       color="primary"
                       icon="arrow_forward"
-                      @click="openContributor(contributor.login)"
+                      @click.stop="openContributor(contributor.login)"
                     />
                   </div>
-                  <div class="feed-slide-caption">
+                  <div
+                    class="feed-slide-caption feed-slide-caption--interactive"
+                    role="button"
+                    tabindex="0"
+                    @click="openContributor(contributor.login)"
+                    @keydown.enter.prevent="openContributor(contributor.login)"
+                    @keydown.space.prevent="openContributor(contributor.login)"
+                    @touchstart.stop
+                    @touchmove.stop
+                  >
                     <div class="row items-center no-wrap q-gutter-sm q-mb-sm">
                       <q-avatar size="48px">
                         <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.login"
@@ -181,18 +204,24 @@
                         <span v-else>{{ contributor.login.slice(0, 2).toUpperCase() }}</span>
                       </q-avatar>
                       <div class="min-width-0">
-                        <div class="text-h6 text-weight-bold cursor-pointer"
-                             @click="openContributor(contributor.login)">
+                        <div class="text-h6 text-weight-bold">
                           {{ index + 1 }}. @{{ contributor.login }}
                         </div>
                         <div class="text-caption text-grey-4">
                           {{ formatContributorDate(contributor) }}
                         </div>
+                        <div class="feed-slide-meta">
+                          {{ contributor.report_count }} reports • {{ contributor.games_covered }} games •
+                          {{ contributor.likes_received }} likes
+                        </div>
                       </div>
                     </div>
-                    <div class="text-body2">
-                      {{ contributor.report_count }} reports • {{ contributor.games_covered }} games •
-                      {{ contributor.likes_received }} likes
+                    <div class="feed-slide-footer">
+                      <div />
+                      <div class="feed-slide-cta feed-slide-cta--compact">
+                        <span>View reports</span>
+                        <q-icon name="arrow_forward" size="16px" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -257,10 +286,19 @@
                       dense
                       color="primary"
                       icon="arrow_forward"
-                      @click="openContributor(contributor.login)"
+                      @click.stop="openContributor(contributor.login)"
                     />
                   </div>
-                  <div class="feed-slide-caption">
+                  <div
+                    class="feed-slide-caption feed-slide-caption--interactive"
+                    role="button"
+                    tabindex="0"
+                    @click="openContributor(contributor.login)"
+                    @keydown.enter.prevent="openContributor(contributor.login)"
+                    @keydown.space.prevent="openContributor(contributor.login)"
+                    @touchstart.stop
+                    @touchmove.stop
+                  >
                     <div class="row items-center no-wrap q-gutter-sm q-mb-sm">
                       <q-avatar size="48px">
                         <img v-if="contributor.avatar_url" :src="contributor.avatar_url" :alt="contributor.login"
@@ -268,18 +306,24 @@
                         <span v-else>{{ contributor.login.slice(0, 2).toUpperCase() }}</span>
                       </q-avatar>
                       <div class="min-width-0">
-                        <div class="text-h6 text-weight-bold cursor-pointer"
-                             @click="openContributor(contributor.login)">
+                        <div class="text-h6 text-weight-bold">
                           {{ index + 1 }}. @{{ contributor.login }}
                         </div>
                         <div class="text-caption text-grey-4">
                           {{ formatNewContributorDate(contributor) }}
                         </div>
+                        <div class="feed-slide-meta">
+                          {{ contributor.report_count }} reports • {{ contributor.devices_covered }} devices •
+                          {{ contributor.likes_received }} likes
+                        </div>
                       </div>
                     </div>
-                    <div class="text-body2">
-                      {{ contributor.report_count }} reports • {{ contributor.devices_covered }} devices •
-                      {{ contributor.likes_received }} likes
+                    <div class="feed-slide-footer">
+                      <div />
+                      <div class="feed-slide-cta feed-slide-cta--compact">
+                        <span>View reports</span>
+                        <q-icon name="arrow_forward" size="16px" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -347,11 +391,21 @@
                       dense
                       color="primary"
                       icon="open_in_new"
+                      @click.stop
                       :href="item.link" target="_blank" rel="noopener"
                     />
                   </div>
-                  <div class="feed-slide-caption">
-                    <div class="text-h6 text-weight-bold cursor-pointer" @click="openWindow(item.link)">
+                  <div
+                    class="feed-slide-caption feed-slide-caption--interactive"
+                    role="button"
+                    tabindex="0"
+                    @click="openWindow(item.link)"
+                    @keydown.enter.prevent="openWindow(item.link)"
+                    @keydown.space.prevent="openWindow(item.link)"
+                    @touchstart.stop
+                    @touchmove.stop
+                  >
+                    <div class="text-h6 text-weight-bold">
                       {{ item.title }}
                     </div>
                     <div class="text-caption text-grey-4">
@@ -362,6 +416,13 @@
                       </span>
                     </div>
                     <div class="text-body2">{{ truncate(item.description) }}</div>
+                    <div class="feed-slide-footer">
+                      <div />
+                      <div class="feed-slide-cta feed-slide-cta--compact">
+                        <span>{{ getFeedCtaLabel(item.link) }}</span>
+                        <q-icon name="open_in_new" size="16px" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </q-carousel-slide>
@@ -558,6 +619,20 @@ const openContributor = (login: string) => {
   void router.push({ name: 'public-user-reports', params: { login } })
 }
 
+const getGameCtaLabel = (game: HomepageRecentGame) =>
+  game.appId ? 'View game page' : 'View game reports'
+
+const getFeedCtaLabel = (url?: string) => {
+  if (!url) return 'Open article'
+
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return `Open in ${host}`
+  } catch {
+    return 'Open article'
+  }
+}
+
 const getGameImage = (game: HomepageRecentGame) =>
   game.metadata.poster || game.metadata.banner || game.metadata.hero || null
 
@@ -704,12 +779,59 @@ watch(feedEntries, (entries) => {
   gap: 6px;
 }
 
+.feed-slide-caption--interactive {
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feed-slide-caption--interactive:active {
+  background: color-mix(in srgb, var(--q-dark) 82%, transparent);
+}
+
+.feed-slide-caption--interactive:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
 .feed-slide-caption .text-body2 {
   color: rgba(255, 255, 255, 0.85);
 }
 
 .feed-slide-caption .text-caption {
   color: rgba(255, 255, 255, 0.7);
+}
+
+.feed-slide-cta {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.feed-slide-cta--compact {
+  margin-top: 0;
+  font-size: 0.78rem;
+  gap: 4px;
+}
+
+.feed-slide-meta {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.feed-slide-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 20px;
 }
 
 .feed-slide-link {
