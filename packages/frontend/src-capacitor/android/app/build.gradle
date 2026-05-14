@@ -3,6 +3,9 @@ apply plugin: 'com.android.application'
 android {
     namespace "nz.co.streamingtech.deckverified"
     compileSdk rootProject.ext.compileSdkVersion
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "nz.co.streamingtech.deckverified"
         minSdkVersion rootProject.ext.minSdkVersion
