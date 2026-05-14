@@ -9,7 +9,7 @@ include ':capacitor-browser'
 project(':capacitor-browser').projectDir = new File('../node_modules/@capacitor/browser/android')
 
 include ':capacitor-status-bar'
-project(':capacitor-status-bar').projectDir = new File('../../../../node_modules/@capacitor/status-bar/android')
+project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
 
 include ':capacitor-secure-storage-plugin'
 project(':capacitor-secure-storage-plugin').projectDir = new File('../node_modules/capacitor-secure-storage-plugin/android')
