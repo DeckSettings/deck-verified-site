@@ -152,6 +152,7 @@ useMeta(() => {
           />
           <q-dialog class="q-ma-none q-pa-none report-dialog"
                     backdrop-filter="blur(2px)"
+                    no-refocus
                     full-height
                     :full-width="$q.screen.lt.md"
                     :maximized="$q.screen.lt.md"

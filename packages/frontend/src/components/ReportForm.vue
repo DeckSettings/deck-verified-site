@@ -1361,7 +1361,7 @@ watch(formValues, () => {
     </q-card-actions>
   </q-card>
 
-  <q-dialog v-model="confirmDialog" backdrop-filter="blur(2px) grayscale(100%)">
+  <q-dialog v-model="confirmDialog" no-refocus backdrop-filter="blur(2px) grayscale(100%)">
     <q-card flat bordered>
       <q-card-section>
         <div class="text-h6">

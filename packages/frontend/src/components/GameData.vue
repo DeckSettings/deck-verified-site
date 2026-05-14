@@ -1183,7 +1183,9 @@ const shareToBluesky = (report: ExtendedGameReport) => {
 }
 
 const onPopState = () => {
-  if (reportFormDialogOpen.value) closeDialog()
+  if (reportFormDialogOpen.value) {
+    reportFormDialogOpen.value = false
+  }
   if (reportViewDialogOpen.value) dismissReportViewDialog()
   if (commentsDialogOpen.value) closeCommentsDialog()
   if (reportIssueDialogOpen.value) closeReportIssueDialog()
@@ -1571,7 +1573,7 @@ useMeta(() => {
               label="External Links"
               @click="externalLinksDialogOpen = true"
             />
-            <q-dialog v-model="externalLinksDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
+            <q-dialog v-model="externalLinksDialogOpen" no-refocus backdrop-filter="blur(2px)">
               <q-card class="dv-dialog-card">
                 <q-card-section class="dv-dialog-content">
                   <q-card flat class="dv-dialog-inner-card">
@@ -1950,7 +1952,7 @@ useMeta(() => {
                   </div>
                 </div>
 
-                <q-dialog v-model="filterDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
+                <q-dialog v-model="filterDialogOpen" no-refocus backdrop-filter="blur(2px)">
                   <q-card class="dv-dialog-card">
                     <q-card-section class="dv-dialog-content">
                       <q-card flat class="dv-dialog-inner-card">
@@ -1990,7 +1992,7 @@ useMeta(() => {
                   </q-card>
                 </q-dialog>
 
-                <q-dialog v-model="sortDialogOpen" seamless no-refocus backdrop-filter="blur(2px)">
+                <q-dialog v-model="sortDialogOpen" no-refocus backdrop-filter="blur(2px)">
                   <q-card class="dv-dialog-card">
                     <q-card-section class="dv-dialog-content">
                       <q-card flat class="dv-dialog-inner-card">
@@ -2635,7 +2637,7 @@ useMeta(() => {
 
                       <!-- Comments dialog (PLACEHOLDER) -->
                       <q-dialog v-model="commentsDialogOpen" class="q-ma-none q-pa-none report-comments-dialog"
-                                seamless no-refocus persistent>
+                                no-refocus persistent>
                         <q-card>
                           <q-card-section>
                             <div class="text-h6">Comments</div>
@@ -2659,7 +2661,7 @@ useMeta(() => {
 
                       <!-- Flag / Report Issue dialog -->
                       <q-dialog v-model="reportIssueDialogOpen" class="q-ma-none q-pa-none report-issue-dialog"
-                                seamless no-refocus persistent>
+                                no-refocus persistent>
                         <q-card style="min-width: 320px; max-width: 720px;">
                           <q-card-section>
                             <div class="text-h6">Flag report</div>
@@ -2777,7 +2779,7 @@ useMeta(() => {
   <q-dialog
     v-model="reportViewDialogOpen"
     backdrop-filter="blur(2px)"
-    seamless no-refocus
+    no-refocus
     @hide="onReportViewDialogHide"
     :maximized="$q.screen.lt.sm"
     :position="reportViewMenuOnRight ? 'right' : 'left'"
@@ -3152,7 +3154,6 @@ useMeta(() => {
 
   <q-dialog class="q-ma-none q-pa-none comparison-dialog"
             backdrop-filter="blur(2px)"
-            seamless
             no-refocus
             full-height
             :full-width="$q.screen.lt.md"

@@ -333,6 +333,7 @@ watch(
         <q-dialog
           v-model="reportFormDialogOpen"
           backdrop-filter="blur(2px)"
+          no-refocus
           full-height
           :full-width="$q.screen.lt.md"
           :maximized="$q.screen.lt.md"

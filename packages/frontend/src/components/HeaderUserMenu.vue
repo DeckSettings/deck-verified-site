@@ -247,6 +247,7 @@ defineExpose({
       <q-dialog
         v-model="isMobileMenuOpen"
         backdrop-filter="blur(2px)"
+        no-refocus
         maximized
         position="left"
         class="header-user-menu-dialog-dialog"
@@ -394,6 +395,7 @@ defineExpose({
     <q-dialog
       v-model="isSettingsDialogOpen"
       backdrop-filter="blur(2px)"
+      no-refocus
       maximized
       :position="displayMode === 'default' ? 'right' : 'left'"
       :transition-show="displayMode === 'default' ? 'slide-left' : 'slide-right'"

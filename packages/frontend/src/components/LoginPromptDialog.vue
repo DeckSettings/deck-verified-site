@@ -20,7 +20,7 @@ const onLogin = () => {
 <template>
   <q-dialog
     :model-value="show"
-    seamless no-refocus
+    no-refocus
     @update:model-value="$emit('update:show', $event)"
     backdrop-filter="blur(2px)"
   >

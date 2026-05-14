@@ -363,6 +363,7 @@ onMounted(async () => {
   <q-dialog
     v-model="isAboutDialogOpen"
     backdrop-filter="blur(2px)"
+    no-refocus
     maximized
     :position="props.menuOnRight ? 'right' : 'left'"
     :transition-show="props.menuOnRight ? 'slide-left' : 'slide-right'"
