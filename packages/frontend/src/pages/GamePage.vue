@@ -13,12 +13,25 @@ defineOptions({
     const s = useGameStore(store)
     const a = useAuthStore(store)
     const githubToken = a.isLoggedIn && a.accessToken ? a.accessToken : null
+    const targetAppId = currentRoute.path.startsWith('/app/')
+      ? String(currentRoute.params.appId || '')
+      : null
+    const targetGameName = currentRoute.path.startsWith('/game/')
+      ? decodeURIComponent(String(currentRoute.params.gameName || ''))
+      : null
+    const isSameTarget = Boolean(
+      (targetAppId && s.appId === targetAppId)
+      || (targetGameName && s.gameName === targetGameName),
+    )
+
     if (process.env.SERVER) {
       // SSR: block so bots get full HTML
       await s.ensureLoaded(currentRoute, githubToken)
     } else {
-      // Client nav: switch page immediately, fetch in background
-      s.resetGameState()                                // clear old game instantly
+      // Client nav: only clear state when the target game actually changed
+      if (!isSameTarget) {
+        s.resetGameState()
+      }
       void s.ensureLoaded(currentRoute, githubToken)    // fire & forget (no await)
     }
   },

@@ -389,11 +389,29 @@ function setExpanded(id: number, val: boolean) {
 const openReportViewDialog = (report: ExtendedGameReport) => {
   reportViewTarget.value = report
   reportViewDialogOpen.value = true
+  if (isClient && 'history' in window) {
+    history.pushState({ ...(history.state ?? {}), reportViewDialog: true }, '')
+  }
+}
+
+const dismissReportViewDialog = () => {
+  reportViewDialogOpen.value = false
+  reportViewTarget.value = null
 }
 
 const closeReportViewDialog = () => {
-  reportViewDialogOpen.value = false
-  reportViewTarget.value = null
+  if (isClient && history.state && history.state.reportViewDialog) {
+    history.back()
+    return
+  }
+
+  dismissReportViewDialog()
+}
+
+const onReportViewDialogHide = () => {
+  if (isClient && history.state && history.state.reportViewDialog) {
+    history.back()
+  }
 }
 
 const reportViewDialogCardStyle = computed(() => {
@@ -477,7 +495,7 @@ const ensureClientGameData = async (forceReload: boolean = false) => {
   }
 }
 
-watch(() => route.fullPath, () => {
+watch(() => [route.params.appId, route.params.gameName], () => {
   void ensureClientGameData()
 })
 
@@ -1166,6 +1184,7 @@ const shareToBluesky = (report: ExtendedGameReport) => {
 
 const onPopState = () => {
   if (reportFormDialogOpen.value) closeDialog()
+  if (reportViewDialogOpen.value) dismissReportViewDialog()
   if (commentsDialogOpen.value) closeCommentsDialog()
   if (reportIssueDialogOpen.value) closeReportIssueDialog()
 }
@@ -1267,7 +1286,7 @@ watch(filteredReports, (reports) => {
   }
 
   if (reportViewTarget.value && !visibleReportIds.has(reportViewTarget.value.id)) {
-    closeReportViewDialog()
+    dismissReportViewDialog()
   }
 }, { deep: true })
 
@@ -2759,6 +2778,7 @@ useMeta(() => {
     v-model="reportViewDialogOpen"
     backdrop-filter="blur(2px)"
     seamless no-refocus
+    @hide="onReportViewDialogHide"
     :maximized="$q.screen.lt.sm"
     :position="reportViewMenuOnRight ? 'right' : 'left'"
     :transition-show="reportViewMenuOnRight ? 'slide-left' : 'slide-right'"
