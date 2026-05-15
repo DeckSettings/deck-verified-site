@@ -198,7 +198,7 @@ const reportIssueDescription = computed(() => {
   return opt?.description ?? ''
 })
 
-const includeExternalReports = ref(route.query.include_external === 'true')
+const includeExternalReports = ref(globalThis.isMobile || route.query.include_external === 'true')
 const sdhqLink = ref('')
 
 const filterDialogOpen = ref(false)
@@ -879,6 +879,9 @@ const hasUserReacted = (report: ExtendedGameReport, reaction: Exclude<GameReport
   authStore.isLoggedIn && report.current_user_reaction === reaction
 
 const isReactionLoading = (reportId: number): boolean => Boolean(reactionLoadingByReport.value[reportId])
+
+const shouldHideReportActions = (report: ExtendedGameReport): boolean =>
+  report.external === true && report.user?.login === 'SDHQ'
 
 const applyLocalReactionUpdate = (
   reportId: number,
@@ -2536,6 +2539,7 @@ useMeta(() => {
                           </q-btn>
 
                           <q-btn
+                            v-if="!shouldHideReportActions(report)"
                             flat round
                             size="sm"
                             icon="thumb_up"
@@ -2557,6 +2561,7 @@ useMeta(() => {
                           </q-btn>
 
                           <q-btn-dropdown
+                            v-if="!shouldHideReportActions(report)"
                             flat round
                             size="sm"
                             dropdown-icon="share"
@@ -2628,7 +2633,8 @@ useMeta(() => {
                             </q-list>
                           </q-btn-dropdown>
 
-                          <q-btn flat round icon="flag" size="sm" aria-label="Flag report"
+                          <q-btn v-if="!shouldHideReportActions(report)" flat round icon="flag" size="sm"
+                                 aria-label="Flag report"
                                  @click.stop="openReportIssueDialog(report)">
                             <q-tooltip>Flag this report</q-tooltip>
                           </q-btn>
@@ -3047,6 +3053,7 @@ useMeta(() => {
 
                 <div class="col-auto row items-center social-buttons q-gutter-sm">
                   <q-btn
+                    v-if="!shouldHideReportActions(reportViewTarget)"
                     flat round
                     size="sm"
                     icon="thumb_up"
@@ -3068,6 +3075,7 @@ useMeta(() => {
                   </q-btn>
 
                   <q-btn-dropdown
+                    v-if="!shouldHideReportActions(reportViewTarget)"
                     flat round
                     size="sm"
                     dropdown-icon="share"
@@ -3139,7 +3147,8 @@ useMeta(() => {
                     </q-list>
                   </q-btn-dropdown>
 
-                  <q-btn flat round icon="flag" size="sm" aria-label="Flag report"
+                  <q-btn v-if="!shouldHideReportActions(reportViewTarget)" flat round icon="flag" size="sm"
+                         aria-label="Flag report"
                          @click.stop="openReportIssueDialog(reportViewTarget)">
                     <q-tooltip>Flag this report</q-tooltip>
                   </q-btn>
