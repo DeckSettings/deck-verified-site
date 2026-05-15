@@ -18,7 +18,7 @@ import { useGameMarketStore } from 'src/stores/game-market-store'
 import { useAuthStore } from 'src/stores/auth-store'
 import { useConfigStore } from 'src/stores/config-store'
 import { storeToRefs } from 'pinia'
-import { getPCGamingWikiUrlFromGameName } from 'src/utils/external-links'
+import { getPCGamingWikiUrlFromGameName, getSteamChartsUrlFromAppId } from 'src/utils/external-links'
 import type {
   GameReport,
   GameDetails,
@@ -1551,6 +1551,13 @@ useMeta(() => {
                              target="_blank" rel="noopener">
               <q-tooltip>View on ProtonDB</q-tooltip>
             </SecondaryButton>
+            <SecondaryButton v-if="appId"
+                             :icon="simSteam"
+                             label="SteamCharts"
+                             :href="getSteamChartsUrlFromAppId(appId)"
+                             target="_blank" rel="noopener">
+              <q-tooltip>View on SteamCharts</q-tooltip>
+            </SecondaryButton>
             <SecondaryButton v-if="gameName"
                              :icon="simPcgamingwiki"
                              label="PCGamingWiki"
@@ -1655,6 +1662,31 @@ useMeta(() => {
                           <q-item-section>
                             <q-item-label class="text-body1 text-weight-medium">
                               ProtonDB
+                            </q-item-label>
+                            <q-item-label caption class="text-grey-5">
+                              <!-- No Caption  -->
+                            </q-item-label>
+                          </q-item-section>
+                          <q-item-section side>
+                            <q-icon name="open_in_new" />
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-if="appId"
+                          clickable v-ripple
+                          class="dv-dialog-menu-list-button"
+                          :href="getSteamChartsUrlFromAppId(appId)"
+                          target="_blank" rel="noopener"
+                        >
+                          <q-item-section avatar>
+                            <q-avatar>
+                              <q-icon :name="simSteam" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-body1 text-weight-medium">
+                              SteamCharts
                             </q-item-label>
                             <q-item-label caption class="text-grey-5">
                               <!-- No Caption  -->
