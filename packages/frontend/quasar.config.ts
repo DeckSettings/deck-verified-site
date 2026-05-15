@@ -24,6 +24,7 @@ export default defineConfig((ctx) => {
       'axios',
       'auth',
       'notify-defaults',
+      { path: 'play-store-update', server: false },
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -187,6 +188,7 @@ export default defineConfig((ctx) => {
       plugins: [
         'Meta',
         'Notify',
+        'Dialog',
       ],
     },
 
