@@ -31,7 +31,7 @@ const currentSlide = computed(() => slides[Math.max(0, Math.min(slides.length - 
         <q-carousel
           v-model.number="slide"
           animated
-          :autoplay="10000"
+          :autoplay="5000"
           infinite
           class="mobile-carousel"
         >
