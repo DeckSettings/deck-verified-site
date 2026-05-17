@@ -185,10 +185,14 @@ onBeforeUnmount(() => {
       <q-card-section class="android-app-upsell-hero q-pt-none">
         <p class="android-app-upsell-copy q-mb-none">
           <span v-if="webviewPrompt">
-            It looks like Deck Verified was opened through a third-party app wrapper. The official Deck Verified Android app is free, open source, ad-free, and built for the full community experience.
+            It looks like Deck Verified was opened through a third-party app wrapper.
+            <br>
+            The official Deck Verified Android app is free, open source, ad-free, and built for the full community experience.
           </span>
           <span v-else-if="externalEntryPrompt">
-            It looks like this report was opened directly from another app or website. The official Deck Verified Android app is free, open source, ad-free, and built for a smoother way to browse, compare, and contribute reports.
+            It looks like this report was opened directly from another app or website.
+            <br>
+            The official Deck Verified Android app is free, open source, ad-free, and built for a smoother way to browse, compare, and contribute reports.
           </span>
           <span v-else>
             The website works well for browsing, searching, and reading reports, but there is also an official Android app built for a smoother experience.
@@ -235,7 +239,7 @@ onBeforeUnmount(() => {
           <q-icon :name="strongPrompt ? 'favorite' : 'edit_note'" color="primary" size="22px" />
           <div>
             <div class="text-subtitle1 text-weight-bold">
-              {{ strongPrompt ? 'Be part of what makes Deck Verified useful' : 'Contribute more easily' }}
+              {{ strongPrompt ? 'Be part of what makes Deck Verified useful' : 'Contribute with less friction' }}
             </div>
             <div class="text-body2 text-grey-4">
               <span v-if="strongPrompt">
