@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { detectAndroidClientKind } from 'src/utils/mobile-client'
 import googlePlayBadgeUrl from 'src/assets/GetItOnGooglePlay_Badge_Web_color_English.svg'
 import PrimaryButton from 'components/elements/PrimaryButton.vue'
@@ -9,11 +10,13 @@ const props = defineProps<{
   gameKey: string
 }>()
 const authStore = useAuthStore()
+const route = useRoute()
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=nz.co.streamingtech.deckverified'
 const BROWSER_DISMISS_KEY = 'dv.android-app-upsell.browser.dismissed.v1'
 const BROWSER_REMIND_LATER_KEY = 'dv.android-app-upsell.browser.remind-later.v1'
 const WEBVIEW_DISMISS_PREFIX = 'dv.android-app-upsell.webview.dismissed.v1:'
+const INTERNAL_NAVIGATION_SESSION_KEY = 'dv.session.has-internal-navigation.v1'
 // Seven days in milliseconds. Used when a browser user clicks "Remind me later".
 const BROWSER_REMIND_LATER_MS = 7 * 24 * 60 * 60 * 1000
 // Twenty-four hours in milliseconds. Used to snooze the stronger third-party WebView prompt per game.
@@ -23,14 +26,63 @@ const dialogOpen = ref(false)
 const displayTimer = ref<number | null>(null)
 const clientKind = ref(detectAndroidClientKind())
 
-const promptVariant = computed<'browser' | 'webview' | null>(() => {
-  if (clientKind.value === 'android-browser') return 'browser'
+const readStorage = (storage: Storage, key: string): string | null => {
+  try {
+    return storage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const writeStorage = (storage: Storage, key: string, value: string) => {
+  try {
+    storage.setItem(key, value)
+  } catch {
+    // Ignore browsers that block storage access.
+  }
+}
+
+const hasExpandedId = computed(() => {
+  const expandedId = route.query.expandedId
+  return typeof expandedId === 'string' && expandedId.trim().length > 0
+})
+
+const isSharedLink = computed(() => route.query.shared === '1')
+
+const hasInternalNavigationHistory = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return readStorage(window.sessionStorage, INTERNAL_NAVIGATION_SESSION_KEY) === 'true'
+}
+
+const isInternalReferrer = (): boolean => {
+  if (typeof document === 'undefined' || !document.referrer) return false
+
+  try {
+    return new URL(document.referrer).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
+const externalExpandedEntryPrompt = computed(() => (
+  clientKind.value === 'android-browser'
+  && hasExpandedId.value
+  && !isSharedLink.value
+  && !hasInternalNavigationHistory()
+  && !isInternalReferrer()
+))
+
+const promptVariant = computed<'browser' | 'webview' | 'external-entry' | null>(() => {
+  if (externalExpandedEntryPrompt.value) return 'external-entry'
   if (clientKind.value === 'android-webview') return 'webview'
+  if (clientKind.value === 'android-browser') return 'browser'
   return null
 })
 
 const browserPrompt = computed(() => promptVariant.value === 'browser')
 const webviewPrompt = computed(() => promptVariant.value === 'webview')
+const externalEntryPrompt = computed(() => promptVariant.value === 'external-entry')
+const strongPrompt = computed(() => webviewPrompt.value || externalEntryPrompt.value)
 
 const gameScopedStorageKey = computed(() => `${WEBVIEW_DISMISS_PREFIX}${props.gameKey}`)
 
@@ -43,7 +95,7 @@ const clearDisplayTimer = () => {
 
 const readTimestamp = (key: string): number => {
   if (typeof window === 'undefined') return 0
-  const raw = window.localStorage.getItem(key)
+  const raw = readStorage(window.localStorage, key)
   if (!raw) return 0
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : 0
@@ -54,13 +106,13 @@ const shouldShowPrompt = (): boolean => {
   if (authStore.isLoggedIn) return false
 
   if (browserPrompt.value) {
-    if (window.localStorage.getItem(BROWSER_DISMISS_KEY) === 'true') {
+    if (readStorage(window.localStorage, BROWSER_DISMISS_KEY) === 'true') {
       return false
     }
     return readTimestamp(BROWSER_REMIND_LATER_KEY) <= Date.now()
   }
 
-  if (webviewPrompt.value) {
+  if (strongPrompt.value) {
     return readTimestamp(gameScopedStorageKey.value) <= Date.now()
   }
 
@@ -76,7 +128,7 @@ const schedulePrompt = () => {
     return
   }
 
-  const delayMs = webviewPrompt.value ? 3000 : 5000
+  const delayMs = strongPrompt.value ? 1000 : 5000
   displayTimer.value = window.setTimeout(() => {
     dialogOpen.value = true
   }, delayMs)
@@ -84,21 +136,21 @@ const schedulePrompt = () => {
 
 const dismissForBrowser = () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(BROWSER_DISMISS_KEY, 'true')
+    writeStorage(window.localStorage, BROWSER_DISMISS_KEY, 'true')
   }
   dialogOpen.value = false
 }
 
 const remindBrowserLater = () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(BROWSER_REMIND_LATER_KEY, String(Date.now() + BROWSER_REMIND_LATER_MS))
+    writeStorage(window.localStorage, BROWSER_REMIND_LATER_KEY, String(Date.now() + BROWSER_REMIND_LATER_MS))
   }
   dialogOpen.value = false
 }
 
-const dismissForWebview = () => {
+const dismissStrongPrompt = () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(gameScopedStorageKey.value, String(Date.now() + WEBVIEW_REMIND_LATER_MS))
+    writeStorage(window.localStorage, gameScopedStorageKey.value, String(Date.now() + WEBVIEW_REMIND_LATER_MS))
   }
   dialogOpen.value = false
 }
@@ -125,7 +177,7 @@ onBeforeUnmount(() => {
     <q-card flat bordered class="android-app-upsell-card">
       <q-card-section>
         <div class="text-h6">
-          {{ webviewPrompt ? 'Opened inside another app?' : 'Using Deck Verified on Android?'
+          {{ strongPrompt ? (webviewPrompt ? 'Opened inside another app?' : 'Opened from another app?') : 'Using Deck Verified on Android?'
           }}
         </div>
       </q-card-section>
@@ -134,6 +186,9 @@ onBeforeUnmount(() => {
         <p class="android-app-upsell-copy q-mb-none">
           <span v-if="webviewPrompt">
             It looks like Deck Verified was opened through a third-party app wrapper. The official Deck Verified Android app is free, open source, ad-free, and built for the full community experience.
+          </span>
+          <span v-else-if="externalEntryPrompt">
+            It looks like this report was opened directly from another app or website. The official Deck Verified Android app is free, open source, ad-free, and built for a smoother way to browse, compare, and contribute reports.
           </span>
           <span v-else>
             The website works well for browsing, searching, and reading reports, but there is also an official Android app built for a smoother experience.
@@ -145,11 +200,13 @@ onBeforeUnmount(() => {
 
       <q-card-section class="android-app-upsell-points">
         <div class="android-app-upsell-point">
-          <q-icon :name="webviewPrompt ? 'thumb_up' : 'verified'" color="primary" size="22px" />
+          <q-icon :name="strongPrompt ? 'thumb_up' : 'verified'" color="primary" size="22px" />
           <div>
-            <div class="text-subtitle1 text-weight-bold">{{ webviewPrompt ? 'Like useful reports' : 'Free, open source, and ad-free' }}</div>
+            <div class="text-subtitle1 text-weight-bold">
+              {{ strongPrompt ? 'Like useful reports' : 'Free, open source, and ad-free' }}
+            </div>
             <div class="text-body2 text-grey-4">
-              <span v-if="webviewPrompt">
+              <span v-if="strongPrompt">
                 Help other players find the most trusted settings and make the best reports stand out.
               </span>
               <span v-else>
@@ -159,11 +216,13 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="android-app-upsell-point">
-          <q-icon :name="webviewPrompt ? 'rate_review' : 'smartphone'" color="primary" size="22px" />
+          <q-icon :name="strongPrompt ? 'rate_review' : 'smartphone'" color="primary" size="22px" />
           <div>
-            <div class="text-subtitle1 text-weight-bold">{{ webviewPrompt ? 'Submit and edit reports' : 'Made for your phone' }}</div>
+            <div class="text-subtitle1 text-weight-bold">
+              {{ strongPrompt ? 'Submit and edit reports' : 'Made for your phone' }}
+            </div>
             <div class="text-body2 text-grey-4">
-              <span v-if="webviewPrompt">
+              <span v-if="strongPrompt">
                 Share your own handheld settings, improve existing submissions, and compare results directly from your phone.
               </span>
               <span v-else>
@@ -173,11 +232,13 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="android-app-upsell-point">
-          <q-icon :name="webviewPrompt ? 'favorite' : 'edit_note'" color="primary" size="22px" />
+          <q-icon :name="strongPrompt ? 'favorite' : 'edit_note'" color="primary" size="22px" />
           <div>
-            <div class="text-subtitle1 text-weight-bold">{{ webviewPrompt ? 'Be part of what makes Deck Verified useful' : 'Contribute more easily' }}</div>
+            <div class="text-subtitle1 text-weight-bold">
+              {{ strongPrompt ? 'Be part of what makes Deck Verified useful' : 'Contribute more easily' }}
+            </div>
             <div class="text-body2 text-grey-4">
-              <span v-if="webviewPrompt">
+              <span v-if="strongPrompt">
                 Deck Verified works best when players do more than read reports. The official app makes it easier to react, contribute, and help the best submissions rise to the top.
               </span>
               <span v-else>
@@ -209,7 +270,7 @@ onBeforeUnmount(() => {
           :label="browserPrompt ? `Don't Show Again` : 'Dismiss'"
           color="grey"
           icon="close"
-          @click="browserPrompt ? dismissForBrowser() : dismissForWebview()"
+          @click="browserPrompt ? dismissForBrowser() : dismissStrongPrompt()"
         />
         <PrimaryButton
           v-if="browserPrompt"

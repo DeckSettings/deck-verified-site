@@ -106,6 +106,12 @@ const gameName = computed<string>(() => gameStore.gameName)
 const gameReportsSummary = computed<string | null>(() => gameStore.reportsSummary)
 const gameData = computed<GameDetails | null>(() => gameStore.gameData)
 const androidUpsellGameKey = computed(() => {
+  const routeAppId = typeof route.params.appId === 'string' ? route.params.appId.trim() : ''
+  if (routeAppId) return `app:${routeAppId}`
+
+  const routeGameName = typeof route.params.gameName === 'string' ? route.params.gameName.trim().toLowerCase() : ''
+  if (routeGameName) return `name:${routeGameName}`
+
   if (appId.value) return `app:${appId.value}`
   if (gameName.value) return `name:${gameName.value.trim().toLowerCase()}`
   return `route:${route.fullPath}`
@@ -1134,6 +1140,7 @@ const shareOrigin = () => {
 const shareUrlForReport = (reportId: number) => {
   const url = new URL(route.path, `${shareOrigin()}/`)
   url.searchParams.set('expandedId', String(reportId))
+  url.searchParams.set('shared', '1')
   return url.toString()
 }
 
