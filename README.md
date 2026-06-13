@@ -67,16 +67,22 @@ npm audit fix
 
 To update the Frontend project's Quasar ecosystem:
 ```bash
-cd packages/frontend
+pushd packages/frontend
+
 # Check for updates
 quasar upgrade
 # Apply updates
 quasar upgrade --install
+
+popd
 ```
 
 To update the mobile project (Capacitor):
 ```bash
-cd packages/frontend/src-capacitor
+pushd packages/frontend/src-capacitor
+
 npm update
 npm audit fix
+
+popd
 ```
