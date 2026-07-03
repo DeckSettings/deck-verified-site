@@ -43,15 +43,15 @@
 #   #-  - SENTRY_DSN -
 #   SENTRY_DSN
 #   #-  - SENTRY_ENVIRONMENT -
-#   SENTRY_ENVIRONMENT
+#   SENTRY_ENVIRONMENT=prod
 #   #-  - SENTRY_TRACES_SAMPLE_RATE_TASKS -
-#   SENTRY_TRACES_SAMPLE_RATE_TASKS
-#   #-  - SENTRY_PROFILES_SAMPLE_RATE_API -
-#   SENTRY_PROFILES_SAMPLE_RATE_API
+#   SENTRY_TRACES_SAMPLE_RATE_TASKS=0.1
+#   #-  - SENTRY_PROFILES_SAMPLE_RATE_TASKS -
+#   SENTRY_PROFILES_SAMPLE_RATE_TASKS=0.1
 #   #-  - SENTRY_TRACES_SAMPLE_RATE_API -
-#   SENTRY_TRACES_SAMPLE_RATE_API
+#   SENTRY_TRACES_SAMPLE_RATE_API=0.1
 #   #-  - SENTRY_PROFILES_SAMPLE_RATE_API -
-#   SENTRY_PROFILES_SAMPLE_RATE_API
+#   SENTRY_PROFILES_SAMPLE_RATE_API=0.1
 #   #-  - REDIS_PASSWORD -
 #   REDIS_PASSWORD=password
 #   #-  - GITHUB_WORKFLOW_SECRET -
@@ -63,6 +63,18 @@
 #   #-  - TASKS_GH_TOKEN -
 #   #-    A GitHub token for read access for the tasks service to the DeckSettings GitHub org/repo API
 #   TASKS_GH_TOKEN=XXXXXXXXXXX
+#   #-  - GITHUB_APP_CLIENT_ID -
+#   #-    GitHub App client ID (optional) for enabling user logins.
+#   GITHUB_APP_CLIENT_ID=
+#   #-  - GITHUB_APP_CLIENT_SECRET -
+#   #-    GitHub App client secret (optional) for enabling user logins.
+#   GITHUB_APP_CLIENT_SECRET=
+#   #-  - BLOGGER_API_KEY -
+#   #-    Blogger API key (optional) used by backend for generating blog posts summarizing game reports.
+#   BLOGGER_API_KEY=
+#   #-  - ISTHEREANYDEAL_API_KEY -
+#   #-    IsThereAnyDeal API key (optional) used for checking game prices.
+#   ISTHEREANYDEAL_API_KEY=
 #   #-  - DEFAULT_CACHE_TIME -
 #   #-    The default time to cache game information. This mostly is used to avoid GitHub rate limiting.
 #   DEFAULT_CACHE_TIME=21600
@@ -75,6 +87,15 @@
 #   #-  - RUN_SCHEDULED_TASKS_ON_START -
 #   #-    Run the scheduled tasks on container start. Should normally be false for production.
 #   RUN_SCHEDULED_TASKS_ON_START=true
+#   #-  - BASE_URL -
+#   #-    The base URL of the site/application.
+#   BASE_URL=https://deckverified.games
+#   #-  - PUBLIC_WEB_ORIGINS -
+#   #-    Comma-separated list of allowed public web origins for auth endpoints (CORS).
+#   PUBLIC_WEB_ORIGINS=https://deckverified.games
+#   #-  - DV_AUTH_JWT_SECRET -
+#   #-    JWT secret for backend user authentication.
+#   DV_AUTH_JWT_SECRET=XXXXXXXXXXX
 # <config_end>
 #
 # ---------------
@@ -165,8 +186,8 @@ services:
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-test}
       SENTRY_RELEASE: <GIT_COMMIT_SHORT_SHA>
       SENTRY_SERVICE_NAME: deck-verified-tasks
-      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_TASKS:-1.0}
-      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_TASKS:-1.0}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_TASKS:-0.1}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_TASKS:-0.1}
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
       source_project: deck-verified-site
@@ -262,7 +283,7 @@ services:
       SENTRY_RELEASE: <GIT_COMMIT_SHORT_SHA>
       SENTRY_SERVICE_NAME: deck-verified-api
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_API:-0.1}
-      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_API:-0.5}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_API:-0.1}
       # -- Fluentd Log Driver labels
       source_env: ${ENVIRONMENT_NAME:-test}
       source_project: deck-verified-site
