@@ -29,7 +29,11 @@
 #   NODE_OPTIONS="--no-network-family-autoselection"
 #   #@ Resource Limits
 #   #-  - Container Memory Limits -
+#   REDIS_MEMLIMIT=100M
+#   TASKS_MEMLIMIT=200M
 #   API_MEMLIMIT=150M
+#   WEB_SSR_MEMLIMIT=160M
+#   WEB_MEMLIMIT=50M
 #   #@ Traefik Config
 #   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
 #   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
@@ -102,7 +106,7 @@ services:
         order: stop-first
       resources:
         limits:
-          memory: 100M
+          memory: ${REDIS_MEMLIMIT:-100M}
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_CACHE:?}
@@ -127,7 +131,7 @@ services:
         order: stop-first
       resources:
         limits:
-          memory: 200M
+          memory: ${TASKS_MEMLIMIT:-200M}
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_TASKS:?}
@@ -304,7 +308,7 @@ services:
         order: start-first
       resources:
         limits:
-          memory: 160M
+          memory: ${WEB_SSR_MEMLIMIT:-160M}
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_API:?}
@@ -352,7 +356,7 @@ services:
         order: start-first
       resources:
         limits:
-          memory: 50M
+          memory: ${WEB_MEMLIMIT:-50M}
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_WEB:?}
