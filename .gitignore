@@ -40,3 +40,4 @@ infra/**/dist/**
 
 # Local development
 /tmp/**
+/temp/**
