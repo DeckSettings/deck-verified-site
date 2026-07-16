@@ -34,6 +34,13 @@
 #   API_MEMLIMIT=150M
 #   WEB_SSR_MEMLIMIT=160M
 #   WEB_MEMLIMIT=50M
+#   #@ SSR Diagnostics
+#   #-    Emit structured memory telemetry every 30 seconds. Capture one heap snapshot per
+#   #-    process when Node RSS reaches 70% of the container limit, retaining the newest 3.
+#   #-    Set the snapshot percentage to 0 to disable automatic capture.
+#   SSR_MEMORY_TELEMETRY_INTERVAL_MS=30000
+#   SSR_HEAP_SNAPSHOT_RSS_PERCENT=70
+#   SSR_HEAP_SNAPSHOT_RETAIN_COUNT=3
 #   #@ Traefik Config
 #   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
 #   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
@@ -110,6 +117,8 @@ networks:
 
 volumes:
   redis-cache:
+    driver: local
+  web-ssr-diagnostics:
     driver: local
 
 services:
@@ -353,6 +362,13 @@ services:
       source_version: <GIT_COMMIT_SHORT_SHA>
       # Used by SSR to call the API directly instead of hitting the SSR server
       SSR_API_ORIGIN: http://api:9022
+      # Emit structured Node memory telemetry and retain a bounded set of heap snapshots.
+      SSR_MEMORY_TELEMETRY_INTERVAL_MS: ${SSR_MEMORY_TELEMETRY_INTERVAL_MS:-30000}
+      SSR_HEAP_SNAPSHOT_RSS_PERCENT: ${SSR_HEAP_SNAPSHOT_RSS_PERCENT:-70}
+      SSR_HEAP_SNAPSHOT_RETAIN_COUNT: ${SSR_HEAP_SNAPSHOT_RETAIN_COUNT:-3}
+      SSR_HEAP_SNAPSHOT_DIR: /diagnostics
+    volumes:
+      - web-ssr-diagnostics:/diagnostics
     logging:
       driver: fluentd
       options:

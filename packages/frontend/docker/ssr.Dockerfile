@@ -21,4 +21,4 @@ WORKDIR /app
 
 EXPOSE 9022
 
-CMD ["npm", "run", "start"]
+CMD ["node", "index.js"]

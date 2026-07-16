@@ -20,8 +20,10 @@ import {
 } from '#q-app/wrappers';
 import path from 'node:path';
 import dotenv from 'dotenv';
+import { startSsrMemoryObservability } from './observability';
 
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+startSsrMemoryObservability();
 
 /**
  * Create your webserver and return its instance.
