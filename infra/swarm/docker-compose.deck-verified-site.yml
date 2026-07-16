@@ -173,7 +173,7 @@ services:
         - 'source.service=deck-verified-tasks'
         - 'source.version=<GIT_COMMIT_SHORT_SHA>'
     user: '1000:1000'
-    command: npm run serve
+    command: node dist/backend/src/tasks.js
     networks:
       - private-net
     environment:

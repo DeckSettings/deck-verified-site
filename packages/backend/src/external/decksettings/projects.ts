@@ -1,12 +1,7 @@
 import logfmt from 'logfmt'
 import config from '../../config'
 import logger, { logMetric } from '../../logger'
-import {
-  redisCacheExtData,
-  redisDeleteExtData,
-  redisLookupExtData,
-  storeGameInRedis,
-} from '../../redis'
+import { redisCacheExtData, redisDeleteExtData, redisLookupExtData, storeGameInRedis } from '../../redis'
 import { fetchReportBodySchema } from './report_body_schema'
 import { fetchHardwareInfo } from './hw_info'
 import { parseGameProjectBody, parseReportBody, isValidNumber } from '../../helpers'
@@ -18,13 +13,29 @@ import type {
 } from '../../../../shared/src/game'
 import { fetchAuthorReportCount } from './reports'
 
+interface ProjectPageInfo {
+  endCursor: string | null
+  hasNextPage: boolean
+}
+
+interface FetchProjectOptions {
+  collectResults?: boolean
+  onPage?: (projects: GitHubProjectDetails[], pageInfo: ProjectPageInfo) => Promise<void>
+  startCursor?: string | null
+}
+
+interface UpdateGameIndexOptions {
+  onPageComplete?: (pageInfo: ProjectPageInfo, projectsProcessed: number) => Promise<void>
+  startCursor?: string | null
+}
+
 /**
  * Caches GitHub project details in Redis.
  */
 const redisCacheGitHubProjectDetails = async (
   data: GitHubProjectGameDetails | Record<string, never>,
   appId: string | null = null,
-  gameName: string | null = null,
+  gameName: string | null = null
 ): Promise<void> => {
   if (!data) {
     throw new Error('Data is required for caching GitHub project details.')
@@ -33,9 +44,7 @@ const redisCacheGitHubProjectDetails = async (
     throw new Error('Either an AppID or Game Name is required.')
   }
 
-  const redisKey = appId
-    ? `github:project_details:appid:${appId}`
-    : `github:project_details:name:${gameName}`
+  const redisKey = appId ? `github:project_details:appid:${appId}` : `github:project_details:name:${gameName}`
 
   const cacheTime = 60 * 60 * 24 * 14 // 14 days
   try {
@@ -51,15 +60,13 @@ const redisCacheGitHubProjectDetails = async (
  */
 const redisLookupGitHubProjectDetails = async (
   appId: string | null = null,
-  gameName: string | null = null,
+  gameName: string | null = null
 ): Promise<GitHubProjectGameDetails | null> => {
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
   }
 
-  const redisKey = appId
-    ? `github:project_details:appid:${appId}`
-    : `github:project_details:name:${gameName}`
+  const redisKey = appId ? `github:project_details:appid:${appId}` : `github:project_details:name:${gameName}`
 
   try {
     const cachedData = await redisLookupExtData(redisKey)
@@ -75,7 +82,7 @@ const redisLookupGitHubProjectDetails = async (
 
 export const invalidateGitHubProjectDetailsCache = async (
   appId: string | null = null,
-  gameName: string | null = null,
+  gameName: string | null = null
 ): Promise<void> => {
   if (!appId && !gameName) {
     throw new Error('Either an AppID or Game Name is required.')
@@ -103,7 +110,7 @@ export const invalidateGitHubProjectDetailsCache = async (
  */
 export const parseProjectDetails = async (
   project: GitHubProjectDetails,
-  authToken: string | null = null,
+  authToken: string | null = null
 ): Promise<GitHubProjectGameDetails> => {
   const reportBodySchema: GitHubReportIssueBodySchema = await fetchReportBodySchema()
   const hardwareInfo = await fetchHardwareInfo()
@@ -200,6 +207,7 @@ export const parseProjectDetails = async (
 export const fetchProject = async (
   searchTerm: string,
   authToken: string | null = null,
+  options: FetchProjectOptions = {}
 ): Promise<GitHubProjectDetails[] | null> => {
   if (!authToken && config.defaultGithubAuthToken) {
     authToken = config.defaultGithubAuthToken
@@ -208,7 +216,7 @@ export const fetchProject = async (
   // GraphQL uses a points-based cost model. Increasing the results requested increases the points used.
   // We have 5k points per hour. Cost can be roughly calculated by (maxReportsPerGame * maxGamesPerRequest / 100).
   // As we increase in the number of games with reports, this will need to be refined.
-  const maxReportsPerGame = 10  // This will set the max number of issues returned per request
+  const maxReportsPerGame = 10 // This will set the max number of issues returned per request
   const maxGamesPerRequest = 10 // This will configure how many requests need to be made to fetch all games matching the search term
 
   const orgNodeId = 'O_kgDOC35waw'
@@ -293,9 +301,9 @@ export const fetchProject = async (
 
   try {
     let hasNextPage = true
-    let endCursor: string | null = null
-    const discoveredProjects: any[] = []
+    let endCursor: string | null = options.startCursor ?? null
     const returnProjects: GitHubProjectDetails[] = []
+    const collectResults = options.collectResults ?? true
     let totalQueryCost = 0
 
     while (hasNextPage) {
@@ -372,9 +380,9 @@ export const fetchProject = async (
       }
 
       if (responseData.errors) {
-        responseData.errors.forEach((error: {
-          message: string
-        }) => logger.error(`GitHub GraphQL API Error: ${error.message}`))
+        responseData.errors.forEach((error: { message: string }) =>
+          logger.error(`GitHub GraphQL API Error: ${error.message}`)
+        )
       }
 
       if (!responseData.data?.node || !responseData.data?.node.projectsV2) {
@@ -382,7 +390,8 @@ export const fetchProject = async (
         return null
       }
 
-      discoveredProjects.push(...responseData.data.node.projectsV2.nodes)
+      const pageProjects: GitHubProjectDetails[] = []
+      const discoveredProjects: any[] = responseData.data.node.projectsV2.nodes
 
       for (const project of discoveredProjects) {
         const projectData: GitHubProjectDetails = {
@@ -408,8 +417,9 @@ export const fetchProject = async (
             const ignoredUsers = ['github-actions', 'DeckSettings-ReportBot']
             const comments = node.content.comments
             const totalComments = comments.totalCount
-            const commentsToIgnore = comments.nodes.filter((commentNode: { author: { login: string } | null }) =>
-              commentNode.author && ignoredUsers.includes(commentNode.author.login),
+            const commentsToIgnore = comments.nodes.filter(
+              (commentNode: { author: { login: string } | null }) =>
+                commentNode.author && ignoredUsers.includes(commentNode.author.login)
             ).length
             const adjustedCommentCount = totalComments - commentsToIgnore
 
@@ -437,11 +447,18 @@ export const fetchProject = async (
             })
           }
         }
-        returnProjects.push(projectData)
+        pageProjects.push(projectData)
       }
 
       hasNextPage = responseData.data.node.projectsV2.pageInfo.hasNextPage
       endCursor = responseData.data.node.projectsV2.pageInfo.endCursor
+
+      if (options.onPage) {
+        await options.onPage(pageProjects, { endCursor, hasNextPage })
+      }
+      if (collectResults) {
+        returnProjects.push(...pageProjects)
+      }
     }
 
     // After paging loop completes, log total query cost metric for this fetchProject call
@@ -468,7 +485,7 @@ export const fetchProjectsByAppIdOrGameName = async (
   appId: string | null,
   gameName: string | null,
   authToken: string | null = null,
-  forceRefresh: boolean = false,
+  forceRefresh: boolean = false
 ): Promise<GitHubProjectGameDetails | Record<string, never>> => {
   if (!appId && !gameName) {
     throw new Error('Either appId or gameName must be provided.')
@@ -517,36 +534,49 @@ export const fetchProjectsByAppIdOrGameName = async (
 /**
  * Updates the Redis cache with the latest game data from GitHub org packages.
  */
-export const updateGameIndex = async (authToken: string | null): Promise<void> => {
+export const updateGameIndex = async (
+  authToken: string | null,
+  options: UpdateGameIndexOptions = {}
+): Promise<void> => {
   try {
-    const projects = await fetchProject('', authToken)
-    if (projects) {
-      for (const project of projects) {
-        const parsedProject = await parseProjectDetails(project, authToken)
-        logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
-        try {
-          await storeGameInRedis({
-            gameName: parsedProject.gameName,
-            appId: typeof parsedProject.appId === 'number' ? String(parsedProject.appId) : null,
-            banner: parsedProject.metadata.banner || null,
-            poster: parsedProject.metadata.poster || null,
-            reportCount: parsedProject.reports.length,
-          })
-        } catch (error) {
-          logger.error('Error storing game in Redis:', error)
-        }
-        try {
-          let appId: string | null = String(parsedProject.appId)
-          if (!parsedProject.appId) {
-            appId = null
+    let projectsProcessed = 0
+    const projects = await fetchProject('', authToken, {
+      collectResults: false,
+      startCursor: options.startCursor,
+      onPage: async (pageProjects, pageInfo) => {
+        for (const project of pageProjects) {
+          const parsedProject = await parseProjectDetails(project, authToken)
+          logger.info(`Storing project ${parsedProject.gameName} with appId ${parsedProject.appId} in RedisSearch`)
+          try {
+            await storeGameInRedis({
+              gameName: parsedProject.gameName,
+              appId: typeof parsedProject.appId === 'number' ? String(parsedProject.appId) : null,
+              banner: parsedProject.metadata.banner || null,
+              poster: parsedProject.metadata.poster || null,
+              reportCount: parsedProject.reports.length,
+            })
+          } catch (error) {
+            logger.error('Error storing game in Redis:', error)
           }
-          await redisCacheGitHubProjectDetails(parsedProject, appId, parsedProject.gameName)
-        } catch (error) {
-          logger.error('Error storing project details in Redis:', error)
+          try {
+            let appId: string | null = String(parsedProject.appId)
+            if (!parsedProject.appId) {
+              appId = null
+            }
+            await redisCacheGitHubProjectDetails(parsedProject, appId, parsedProject.gameName)
+          } catch (error) {
+            logger.error('Error storing project details in Redis:', error)
+          }
+          projectsProcessed += 1
         }
-      }
+        await options.onPageComplete?.(pageInfo, projectsProcessed)
+      },
+    })
+    if (projects === null) {
+      throw new Error('GitHub project pagination failed before the index refresh completed.')
     }
   } catch (error) {
     logger.error('Error updating game index:', error)
+    throw error
   }
 }

@@ -1,17 +1,10 @@
 import config from '../../config'
 import logger from '../../logger'
-import {
-  redisCacheExtData,
-  redisLookupExtData,
-  searchGamesInRedis,
-} from '../../redis'
+import { redisCacheExtData, redisLookupExtData, searchGamesInRedis } from '../../redis'
 import { fetchReportBodySchema } from './report_body_schema'
 import { fetchHardwareInfo } from './hw_info'
 import { fetchProjectsByAppIdOrGameName } from './projects'
-import {
-  generateImageLinksFromAppId,
-  parseReportBody,
-} from '../../helpers'
+import { generateImageLinksFromAppId, parseReportBody } from '../../helpers'
 import type {
   GameReport,
   GameReportData,
@@ -22,12 +15,14 @@ import type {
 } from '../../../../shared/src/game'
 
 const parseDeviceFilters = (devices: string[] = []): string[] =>
-  Array.from(new Set(
-    devices
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0),
-  )).sort((a, b) => a.localeCompare(b))
+  Array.from(
+    new Set(
+      devices
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b))
 
 const buildDeviceCacheKey = (devices: string[] = []): string => {
   const parsedDevices = parseDeviceFilters(devices)
@@ -40,8 +35,8 @@ const filterReportsByDevices = (reports: GameReport[], devices: string[] = []): 
     return reports
   }
 
-  return reports.filter((report) =>
-    Array.isArray(report.labels) && report.labels.some((label) => parsedDevices.includes(label.name)),
+  return reports.filter(
+    (report) => Array.isArray(report.labels) && report.labels.some((label) => parsedDevices.includes(label.name))
   )
 }
 
@@ -59,7 +54,7 @@ export const fetchReportsWithIssuesApi = async (
   limit: number | null = null,
   excludeInvalid: boolean = true,
   excludeLabels: string[] | null = null,
-  accessToken: string | null = null,
+  accessToken: string | null = null
 ): Promise<GithubIssuesSearchResult | null> => {
   const repoOwner = 'DeckSettings'
 
@@ -96,7 +91,7 @@ export const fetchReportsWithIssuesApi = async (
       if (!response.ok) {
         const errorBody = await response.text()
         logger.error(
-          `GitHub API request failed with status ${response.status} when fetching reports with issues API: ${errorBody}`,
+          `GitHub API request failed with status ${response.status} when fetching reports with issues API: ${errorBody}`
         )
         return null
       }
@@ -112,7 +107,7 @@ export const fetchReportsWithIssuesApi = async (
         if (!response.ok) {
           const errorBody = await response.text()
           logger.error(
-            `GitHub API request failed with status ${response.status} on page ${page} with issues API: ${errorBody}`,
+            `GitHub API request failed with status ${response.status} on page ${page} with issues API: ${errorBody}`
           )
           return null
         }
@@ -137,12 +132,12 @@ export const fetchReportsWithIssuesApi = async (
     let filteredIssues = allIssues
     if (excludeLabels && excludeLabels.length > 0) {
       filteredIssues = filteredIssues.filter(
-        (issue) => !issue.labels.some((label: GitHubIssueLabel) => excludeLabels.includes(label.name)),
+        (issue) => !issue.labels.some((label: GitHubIssueLabel) => excludeLabels.includes(label.name))
       )
     }
     if (excludeInvalid) {
       filteredIssues = filteredIssues.filter(
-        (issue) => !issue.labels.some((label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete'),
+        (issue) => !issue.labels.some((label: GitHubIssueLabel) => label.name === 'invalid:template-incomplete')
       )
     }
 
@@ -176,7 +171,7 @@ export const fetchReportsWithSearchApi = async (
   limit: number | null = null,
   excludeInvalid: boolean = true,
   excludeLabels: string[] | null = null,
-  accessToken: string | null = null,
+  accessToken: string | null = null
 ): Promise<GithubIssuesSearchResult | null> => {
   const repoOwner = 'DeckSettings'
   const encodedSort = encodeURIComponent(sort)
@@ -227,7 +222,9 @@ export const fetchReportsWithSearchApi = async (
 
       if (!response.ok) {
         const errorBody = await response.text()
-        logger.error(`GitHub API request failed with status ${response.status} when fetching reports using query '${query}': ${errorBody}`)
+        logger.error(
+          `GitHub API request failed with status ${response.status} when fetching reports using query '${query}': ${errorBody}`
+        )
         return null
       }
       const result: GithubIssuesSearchResult = await response.json()
@@ -247,7 +244,9 @@ export const fetchReportsWithSearchApi = async (
 
       if (!response.ok) {
         const errorBody = await response.text()
-        logger.error(`GitHub API request failed with status ${response.status} on page ${page} for query '${query}': ${errorBody}`)
+        logger.error(
+          `GitHub API request failed with status ${response.status} on page ${page} for query '${query}': ${errorBody}`
+        )
         return null
       }
 
@@ -259,7 +258,12 @@ export const fetchReportsWithSearchApi = async (
         allItems.push(...result.items)
       }
 
-      if (!result.items || result.items.length === 0 || allItems.length >= result.total_count || allItems.length >= 1000) {
+      if (
+        !result.items ||
+        result.items.length === 0 ||
+        allItems.length >= result.total_count ||
+        allItems.length >= 1000
+      ) {
         fetchedAll = true
       } else {
         page++
@@ -288,15 +292,9 @@ export const fetchReportsWithSearchApi = async (
  * to populate the `data` field of each GameReport.
  */
 const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameReport[]> => {
-  const [schema, hardwareInfo] = await Promise.all([
-    fetchReportBodySchema(null, false),
-    fetchHardwareInfo(null, false),
-  ])
+  const [schema, hardwareInfo] = await Promise.all([fetchReportBodySchema(null, false), fetchHardwareInfo(null, false)])
   const hasMissingMetadata = (m: Partial<GameMetadata>): boolean =>
-    m.banner == null ||
-    m.poster == null ||
-    m.hero == null ||
-    m.background == null
+    m.banner == null || m.poster == null || m.hero == null || m.background == null
 
   const toSnakeCaseHeading = (heading: string): string =>
     heading
@@ -399,7 +397,7 @@ const parseGameReport = async (reports: GithubIssuesSearchResult): Promise<GameR
         updated_at: report.updated_at,
         comments: report.comments || 0,
       }
-    }),
+    })
   ).then((items) => items.filter((item): item is GameReport => item !== null))
 }
 
@@ -409,7 +407,7 @@ const redisCacheRecentGameReports = async (
   data: GameReport[],
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
-  devices: string[] = [],
+  devices: string[] = []
 ): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub recent game reports.')
@@ -428,7 +426,7 @@ const redisCacheRecentGameReports = async (
 const redisLookupRecentGameReports = async (
   count: number = 5,
   sort: 'updated' | 'created' = 'updated',
-  devices: string[] = [],
+  devices: string[] = []
 ): Promise<GameReport[] | null> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
   const redisKey = `github:game_reports:recent:${count}:${validatedSort}:${buildDeviceCacheKey(devices)}`
@@ -444,7 +442,11 @@ const redisLookupRecentGameReports = async (
   return null
 }
 
-const redisCachePopularGameReports = async (data: GameReport[], count: number = 5, devices: string[] = []): Promise<void> => {
+const redisCachePopularGameReports = async (
+  data: GameReport[],
+  count: number = 5,
+  devices: string[] = []
+): Promise<void> => {
   if (!data || !Array.isArray(data)) {
     throw new Error('Data is required for caching GitHub popular game reports.')
   }
@@ -458,7 +460,10 @@ const redisCachePopularGameReports = async (data: GameReport[], count: number = 
   }
 }
 
-const redisLookupPopularGameReports = async (count: number = 5, devices: string[] = []): Promise<GameReport[] | null> => {
+const redisLookupPopularGameReports = async (
+  count: number = 5,
+  devices: string[] = []
+): Promise<GameReport[] | null> => {
   const redisKey = `github:game_reports:popular:${count}:${buildDeviceCacheKey(devices)}`
   try {
     const cachedData = await redisLookupExtData(redisKey)
@@ -517,7 +522,7 @@ export const fetchRecentReports = async (
   sort: 'updated' | 'created' = 'updated',
   devices: string[] = [],
   authToken: string | null = null,
-  forceRefresh: boolean = false,
+  forceRefresh: boolean = false
 ): Promise<GameReport[]> => {
   const validatedSort = sort === 'created' ? 'created' : 'updated'
   const parsedDevices = parseDeviceFilters(devices)
@@ -530,31 +535,32 @@ export const fetchRecentReports = async (
       }
     }
 
-    const reports = parsedDevices.length > 0
-      ? await fetchReportsWithIssuesApi(
-        undefined,
-        'open',
-        null,
-        null,
-        validatedSort,
-        'desc',
-        null,
-        true,
-        ['community:duplicate-report'],
-        authToken,
-      )
-      : await fetchReportsWithSearchApi(
-        undefined,
-        'open',
-        null,
-        null,
-        validatedSort,
-        'desc',
-        count,
-        true,
-        ['community:duplicate-report'],
-        authToken,
-      )
+    const reports =
+      parsedDevices.length > 0
+        ? await fetchReportsWithIssuesApi(
+            undefined,
+            'open',
+            null,
+            null,
+            validatedSort,
+            'desc',
+            null,
+            true,
+            ['community:duplicate-report'],
+            authToken
+          )
+        : await fetchReportsWithSearchApi(
+            undefined,
+            'open',
+            null,
+            null,
+            validatedSort,
+            'desc',
+            count,
+            true,
+            ['community:duplicate-report'],
+            authToken
+          )
     if (reports && reports?.items?.length > 0) {
       const parsedReports = await parseGameReport(reports)
       const returnData = filterReportsByDevices(parsedReports, parsedDevices).slice(0, count)
@@ -566,25 +572,25 @@ export const fetchRecentReports = async (
           ;(async () => {
             try {
               logger.info(
-                `(BG TASK) Refreshing game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`,
+                `(BG TASK) Refreshing game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`
               )
               await fetchProjectsByAppIdOrGameName(
                 report.data.app_id ? String(report.data.app_id) : null,
                 report.data.game_name,
                 authToken,
-                true,
+                true
               )
               logger.info(
-                `(BG TASK) Refreshed game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`,
+                `(BG TASK) Refreshed game data in background for app_id: ${report.data.app_id}, game_name: ${report.data.game_name}`
               )
             } catch (err) {
               logger.error(
-                `(BG TASK) Background refresh failed for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`,
+                `(BG TASK) Background refresh failed for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`
               )
             }
           })().catch((err) => {
             logger.error(
-              `(BG TASK) Background refresh task rejected for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`,
+              `(BG TASK) Background refresh task rejected for game with app_id ${report.data.app_id} or game_name ${report.data.game_name}: ${err}`
             )
           })
         }
@@ -609,7 +615,7 @@ export const fetchPopularReports = async (
   count: number = 5,
   devices: string[] = [],
   authToken: string | null = null,
-  forceRefresh: boolean = false,
+  forceRefresh: boolean = false
 ): Promise<GameReport[]> => {
   const parsedDevices = parseDeviceFilters(devices)
   try {
@@ -631,7 +637,7 @@ export const fetchPopularReports = async (
       parsedDevices.length > 0 ? null : count,
       true,
       null,
-      authToken,
+      authToken
     )
     if (reports && reports?.items?.length > 0) {
       const parsedReports = await parseGameReport(reports)
@@ -652,12 +658,25 @@ export const fetchPopularReports = async (
 }
 
 /**
+ * Refreshes the scheduled recent/popular report caches without issuing
+ * overlapping GitHub requests for the smaller five-item views.
+ */
+export const refreshScheduledReportCaches = async (authToken: string | null = null): Promise<void> => {
+  const [recentReports, popularReports] = await Promise.all([
+    fetchRecentReports(20, 'created', [], authToken, true),
+    fetchPopularReports(20, [], authToken, true),
+  ])
+
+  await Promise.all([
+    redisCacheRecentGameReports(recentReports.slice(0, 5), 5, 'created', []),
+    redisCachePopularGameReports(popularReports.slice(0, 5), 5, []),
+  ])
+}
+
+/**
  * Retrieves a count of game reports for a given author.
  */
-export const fetchAuthorReportCount = async (
-  author: string,
-  authToken: string | null = null,
-): Promise<number> => {
+export const fetchAuthorReportCount = async (author: string, authToken: string | null = null): Promise<number> => {
   try {
     const cachedData = await redisLookupAuthorGameReportCount(author)
     if (cachedData) {
@@ -675,7 +694,7 @@ export const fetchAuthorReportCount = async (
       null,
       true,
       null,
-      authToken,
+      authToken
     )
     if (reports && reports?.items?.length > 0) {
       await redisCacheAuthorGameReportCount(reports.items.length, author)

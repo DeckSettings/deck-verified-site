@@ -3,6 +3,7 @@ import logger from '../logger'
 import config from '../config'
 import { githubDataQueue } from './updateGitHubData/queue'
 import { dailyTasksQueue } from './dailyTasks/queue'
+import { DEFAULT_JOB_OPTIONS } from './options'
 
 interface JobScheduleConfig {
   queue: Queue
@@ -33,28 +34,11 @@ export async function initScheduledTasks(): Promise<void> {
 }
 
 async function configureJobScheduler({
-                                       queue,
-                                       schedulerName,
-                                       schedulePattern,
-                                       immediately,
-                                     }: JobScheduleConfig): Promise<void> {
-  try {
-    logger.info(`Cleaning existing job schedulers for '${schedulerName}'.`)
-    const existingSchedulers = await queue.getJobSchedulers(0, 1000, true)
-    let removedCount = 0
-    for (const s of existingSchedulers) {
-      try {
-        const ok = await queue.removeJobScheduler(s.key)
-        if (ok) removedCount += 1
-      } catch (err) {
-        logger.warn(`Failed to remove job scheduler '${s.key}' for '${schedulerName}'`, err)
-      }
-    }
-    logger.info(`Removed ${removedCount} existing job scheduler(s) for '${schedulerName}'.`)
-  } catch (err) {
-    logger.warn(`Failed to enumerate existing job schedulers for '${schedulerName}'. Proceeding.`, err)
-  }
-
+  queue,
+  schedulerName,
+  schedulePattern,
+  immediately,
+}: JobScheduleConfig): Promise<void> {
   try {
     await queue.upsertJobScheduler(
       schedulerName,
@@ -62,6 +46,10 @@ async function configureJobScheduler({
         pattern: schedulePattern,
         immediately,
       },
+      {
+        name: schedulerName,
+        opts: DEFAULT_JOB_OPTIONS,
+      }
     )
     logger.info(`Scheduled repeatable job '${schedulerName}' on pattern '${schedulePattern}'.`)
   } catch (error) {
