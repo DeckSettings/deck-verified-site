@@ -9,7 +9,7 @@ if (process.env.SENTRY_DSN) {
       nodeProfilingIntegration(),
     ],
 
-    _experiments: { enableLogs: true },
+    enableLogs: true,
 
     // Adds request headers and IP for users
     sendDefaultPii: true,
@@ -33,13 +33,11 @@ if (process.env.SENTRY_DSN) {
       : 0.5,
   })
 
-  const scope = Sentry.getCurrentScope()
-  if (scope) {
-    if (process.env.SENTRY_SERVICE_NAME) {
-      scope.setTag('service_name', process.env.SENTRY_SERVICE_NAME)
-    }
-    if (process.env.SENTRY_DOCKER_IMAGE_TAG) {
-      scope.setTag('docker_image_tag', process.env.SENTRY_DOCKER_IMAGE_TAG)
-    }
+  // Set global tags to ensure they apply to all async execution contexts
+  if (process.env.SENTRY_SERVICE_NAME) {
+    Sentry.setTag('service_name', process.env.SENTRY_SERVICE_NAME)
+  }
+  if (process.env.SENTRY_DOCKER_IMAGE_TAG) {
+    Sentry.setTag('docker_image_tag', process.env.SENTRY_DOCKER_IMAGE_TAG)
   }
 }

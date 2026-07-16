@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@sentry/cli": "^2.43.0",
-    "@sentry/node": "^9.10.1",
-    "@sentry/profiling-node": "^9.10.1",
+    "@sentry/node": "^10.65.0",
+    "@sentry/profiling-node": "^10.65.0",
     "bullmq": "^5.58.9",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
