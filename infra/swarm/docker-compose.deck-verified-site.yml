@@ -205,11 +205,14 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 'localhost:24225'
+        fluentd-address: '127.0.0.1:24226'
         fluentd-request-ack: 'true'
-        fluentd-async: 'false'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
         tag: 'deck-verified-tasks'
-        env: 'source_env,source_service,source_project'
+        env: 'source_env,source_service,source_version,source_project'
 
   # --- BACKEND API ---
   api:
@@ -317,9 +320,12 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 'localhost:24225'
+        fluentd-address: '127.0.0.1:24226'
         fluentd-request-ack: 'true'
-        fluentd-async: 'false'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
         tag: 'deck-verified-api'
         env: 'source_env,source_service,source_version,source_project'
 
@@ -372,9 +378,12 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 'localhost:24225'
+        fluentd-address: '127.0.0.1:24226'
         fluentd-request-ack: 'true'
-        fluentd-async: 'false'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
         tag: 'deck-verified-web-ssr'
         env: 'source_env,source_service,source_version,source_project'
 
@@ -410,6 +419,9 @@ services:
 
         #### -- Main Service
         - 'traefik.http.services.deck-verified-web.loadbalancer.server.port=9021'
+        - 'traefik.http.services.deck-verified-web.loadbalancer.healthcheck.path=/deck-verified/health'
+        - 'traefik.http.services.deck-verified-web.loadbalancer.healthcheck.interval=10s'
+        - 'traefik.http.services.deck-verified-web.loadbalancer.healthcheck.timeout=5s'
         - 'traefik.http.routers.deck-verified-web.entrypoints=web'
         # Configure router domain
         - 'traefik.http.routers.deck-verified-web.rule=${TRAEFIK_ROUTE_RULE_WEB}'
@@ -429,11 +441,31 @@ services:
       source_project: deck-verified-site
       source_service: deck-verified-web
       source_version: <GIT_COMMIT_SHORT_SHA>
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--spider',
+          '-q',
+          '-T',
+          '3',
+          '-U',
+          'Swarm-HealthChecker/1.0',
+          'http://127.0.0.1:9021/deck-verified/health',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     logging:
       driver: fluentd
       options:
-        fluentd-address: 'localhost:24225'
+        fluentd-address: '127.0.0.1:24226'
         fluentd-request-ack: 'true'
-        fluentd-async: 'false'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
         tag: 'deck-verified-web'
         env: 'source_env,source_service,source_version,source_project'

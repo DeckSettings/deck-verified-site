@@ -17,3 +17,6 @@ FROM nginx:alpine
 COPY --from=build /app/packages/frontend/dist/spa /usr/share/nginx/html
 
 COPY ./packages/frontend/docker/nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Fail the image build if the runtime DNS/upstream configuration is invalid.
+RUN nginx -t
