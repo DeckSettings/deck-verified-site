@@ -1,24 +1,39 @@
 # ---------------
 # Deck Verified Site
 #
+#   Deploy stack for Deck Verified Site, including web frontend, backend API,
+#   asynchronous task processor, and a Redis cache.
+#
+# ---------------
+# TODO:
+#       -
+#
 # ---------------
 # Config (paste into portainer advance env text input):
 #
 # <config_start>
 #   #@ Placement
-#   #-    Configure a placement constraint to where the container will be run.
-#   #-    Examples:
-#   #-        - node.hostname==<hostname>
-#   #-        - engine.labels.fs-access.<worker-hostname>.mnt==true
-#   #-        - node.role!=manager
+#   #-  - PLACEMENT_CONSTRAINT_CACHE -
+#   #-    Configure a placement constraint for the cache container.
 #   PLACEMENT_CONSTRAINT_CACHE=node.hostname==<hostname>
+#   #-  - PLACEMENT_CONSTRAINT_TASKS -
+#   #-    Configure a placement constraint for the tasks container.
 #   PLACEMENT_CONSTRAINT_TASKS=node.platform.os==linux
+#   #-  - PLACEMENT_CONSTRAINT_API -
+#   #-    Configure a placement constraint for the API container.
 #   PLACEMENT_CONSTRAINT_API=node.role==worker
+#   #-  - PLACEMENT_CONSTRAINT_WEB -
+#   #-    Configure a placement constraint for the web container.
 #   PLACEMENT_CONSTRAINT_WEB=node.platform.os==linux
 #   #@ Replication
-#   #-    Configure the replication of the services
+#   #-  - REPLICAS_API -
+#   #-    Number of replicas for the backend API service.
 #   REPLICAS_API=2
+#   #-  - REPLICAS_WEB -
+#   #-    Number of replicas for the web frontend service.
 #   REPLICAS_WEB=2
+#   #-  - REPLICAS_WEB_SSR -
+#   #-    Number of replicas for the frontend SSR service.
 #   REPLICAS_WEB_SSR=1
 #   #@ Node Config
 #   #-  - NODE_OPTIONS -
@@ -28,38 +43,64 @@
 #   #-    but has no egress, causing long timeouts as Node.js attempts to connect via IPv6 first.
 #   NODE_OPTIONS="--no-network-family-autoselection"
 #   #@ Resource Limits
-#   #-  - Container Memory Limits -
+#   #-  - REDIS_MEMLIMIT -
+#   #-    Memory limit for the Redis service.
 #   REDIS_MEMLIMIT=100M
+#   #-  - TASKS_MEMLIMIT -
+#   #-    Memory limit for the tasks service.
 #   TASKS_MEMLIMIT=200M
+#   #-  - API_MEMLIMIT -
+#   #-    Memory limit for the API service.
 #   API_MEMLIMIT=150M
+#   #-  - WEB_SSR_MEMLIMIT -
+#   #-    Memory limit for the web SSR service.
 #   WEB_SSR_MEMLIMIT=160M
+#   #-  - WEB_MEMLIMIT -
+#   #-    Memory limit for the web frontend service.
 #   WEB_MEMLIMIT=50M
 #   #@ SSR Diagnostics
+#   #-  - SSR_MEMORY_TELEMETRY_INTERVAL_MS -
 #   #-    Emit structured memory telemetry every 30 seconds. Capture one heap snapshot per
 #   #-    process when Node RSS reaches 70% of the container limit, retaining the newest 3.
 #   #-    Set the snapshot percentage to 0 to disable automatic capture.
 #   SSR_MEMORY_TELEMETRY_INTERVAL_MS=30000
+#   #-  - SSR_HEAP_SNAPSHOT_RSS_PERCENT -
+#   #-    Percent of container limit memory at which to capture heap snapshot.
 #   SSR_HEAP_SNAPSHOT_RSS_PERCENT=70
+#   #-  - SSR_HEAP_SNAPSHOT_RETAIN_COUNT -
+#   #-    Number of heap snapshots to retain.
 #   SSR_HEAP_SNAPSHOT_RETAIN_COUNT=3
 #   #@ Traefik Config
+#   #-  - TRAEFIK_ROUTE_RULE_API -
+#   #-    Traefik routing rule for the backend API service.
 #   TRAEFIK_ROUTE_RULE_API=Host(`deckverified.games`) && PathPrefix(`/deck-verified/api`)
+#   #-  - TRAEFIK_ROUTE_RULE_WEB -
+#   #-    Traefik routing rule for the web frontend service.
 #   TRAEFIK_ROUTE_RULE_WEB=Host(`deckverified.games`)
 #   #@ Container Config
 #   #-  - ENVIRONMENT_NAME -
-#   ENVIRONMENT_NAME
+#   #-    Environment name (e.g. production, staging, test).
+#   ENVIRONMENT_NAME=test
 #   #-  - SENTRY_DSN -
-#   SENTRY_DSN
+#   #-    Sentry DSN for error reporting.
+#   SENTRY_DSN=
 #   #-  - SENTRY_ENVIRONMENT -
+#   #-    Sentry environment tag.
 #   SENTRY_ENVIRONMENT=prod
 #   #-  - SENTRY_TRACES_SAMPLE_RATE_TASKS -
+#   #-    Sentry traces sample rate for tasks.
 #   SENTRY_TRACES_SAMPLE_RATE_TASKS=0.1
 #   #-  - SENTRY_PROFILES_SAMPLE_RATE_TASKS -
+#   #-    Sentry profiles sample rate for tasks.
 #   SENTRY_PROFILES_SAMPLE_RATE_TASKS=0.1
 #   #-  - SENTRY_TRACES_SAMPLE_RATE_API -
+#   #-    Sentry traces sample rate for API.
 #   SENTRY_TRACES_SAMPLE_RATE_API=0.1
 #   #-  - SENTRY_PROFILES_SAMPLE_RATE_API -
+#   #-    Sentry profiles sample rate for API.
 #   SENTRY_PROFILES_SAMPLE_RATE_API=0.1
 #   #-  - REDIS_PASSWORD -
+#   #-    Password for the Redis cache.
 #   REDIS_PASSWORD=password
 #   #-  - GITHUB_WORKFLOW_SECRET -
 #   #-    An optional secret used to validate GitHub workflow webhook requests. If not set, workflow updates will be disabled.
@@ -103,13 +144,24 @@
 #   #-  - DV_AUTH_JWT_SECRET -
 #   #-    JWT secret for backend user authentication.
 #   DV_AUTH_JWT_SECRET=XXXXXXXXXXX
+#   #@ Fluentd Logging
+#   #-  - FLUENTD_PORT -
+#   #-    Host Fluentd listener port used by the Docker logging driver.
+#   FLUENTD_PORT=24226
 # <config_end>
+#
+# ---------------
+# Setup Script
+#
+# <script_start>
+#   > echo "Nothing to configure for this stack"
+# <script_end>
 #
 # ---------------
 ---
 networks:
-  # Use a previously created public network "swarm-public", shared with other services.
-  # This network should be available to a Traefik service.
+  # Use an existing network "swarm-public", shared with other services.
+  # This network should be created manually and should be also available to a Traefik service.
   swarm-public:
     external: true
   private-net:
@@ -122,15 +174,20 @@ volumes:
     driver: local
 
 services:
-  # --- REDIS ---
+  # -- Redis --
+  #
+  # Redis cache service.
+  #
   redis:
     image: redis/redis-stack:latest
+
+    # RESOURCES:
     deploy:
       mode: replicated
       replicas: 1
       restart_policy:
         condition: any
-        delay: 5s
+        delay: 10s
       update_config:
         delay: 10s
         order: stop-first
@@ -140,16 +197,49 @@ services:
       placement:
         constraints:
           - ${PLACEMENT_CONSTRAINT_CACHE:?}
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
+        tag: 'deck-verified-redis'
+        env: 'source_env,source_service,source_version,source_project'
+
+    # NETWORK:
     networks:
       - private-net
-    environment:
-      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?} --protected-mode yes
-    volumes:
-      - redis-cache:/data
 
-  # --- BACKEND ASYNC TASKS ---
+    # ENVIRONMENT:
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-redis
+      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Application execution
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?} --protected-mode yes
+
+    # VOLUMES:
+    volumes:
+      - type: volume
+        source: redis-cache
+        target: /data
+
+  # -- Backend Async Tasks --
+  #
+  # Backend service for running asynchronous tasks.
+  #
   tasks:
     image: ghcr.io/decksettings/deck-verified-api:latest
+    user: '1000:1000'
+    command: node dist/backend/src/tasks.js
+
+    # RESOURCES:
     deploy:
       mode: replicated
       replicas: 1
@@ -166,17 +256,36 @@ services:
         constraints:
           - ${PLACEMENT_CONSTRAINT_TASKS:?}
       labels:
-        #### -- Configure Logging labels
-        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        #### -- Configure logging labels
+        # These labels are ignored by Docker Swarm logging. They are retained for non-Swarm tooling.
         - 'source.env=${ENVIRONMENT_NAME:-test}'
         - 'source.project=deck-verified-site'
         - 'source.service=deck-verified-tasks'
         - 'source.version=<GIT_COMMIT_SHORT_SHA>'
-    user: '1000:1000'
-    command: node dist/backend/src/tasks.js
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
+        tag: 'deck-verified-tasks'
+        env: 'source_env,source_service,source_version,source_project'
+
+    # NETWORK:
     networks:
       - private-net
+
+    # ENVIRONMENT:
     environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-tasks
+      source_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       NODE_ENV: production
       NODE_OPTIONS: ${NODE_OPTIONS:-}
@@ -197,32 +306,23 @@ services:
       SENTRY_SERVICE_NAME: deck-verified-tasks
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_TASKS:-0.1}
       SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_TASKS:-0.1}
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-tasks
-      source_version: <GIT_COMMIT_SHORT_SHA>
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:24226'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-tasks'
-        env: 'source_env,source_service,source_version,source_project'
 
-  # --- BACKEND API ---
+  # -- Backend API --
+  #
+  # Backend API service.
+  #
   api:
     image: ghcr.io/decksettings/deck-verified-api:latest
+    user: '1000:1000'
+    command: npm run serve-no-tasks
+
+    # RESOURCES:
     deploy:
       mode: replicated
       replicas: ${REPLICAS_API:-1}
       restart_policy:
         condition: any
-        delay: 5s
+        delay: 10s
       update_config:
         parallelism: 1
         delay: 30s
@@ -234,8 +334,8 @@ services:
         constraints:
           - ${PLACEMENT_CONSTRAINT_API:?}
       labels:
-        #### -- Configure Logging labels
-        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        #### -- Configure logging labels
+        # These labels are ignored by Docker Swarm logging. They are retained for non-Swarm tooling.
         - 'source.env=${ENVIRONMENT_NAME:-test}'
         - 'source.project=deck-verified-site'
         - 'source.service=deck-verified-api'
@@ -258,12 +358,48 @@ services:
         # Enable middlewares:
         #   - Redirect HTTP -> HTTPS
         - 'traefik.http.routers.deck-verified-api.middlewares=https-redirect'
-    user: '1000:1000'
-    command: npm run serve-no-tasks
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
+        tag: 'deck-verified-api'
+        env: 'source_env,source_service,source_version,source_project'
+
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--header=User-Agent: Swarm-HealthChecker/1.0',
+          '--spider',
+          '--no-verbose',
+          '--tries=1',
+          '--timeout=3',
+          'http://127.0.0.1:9022/deck-verified/api/v1/health',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    # NETWORK:
     networks:
       - swarm-public
       - private-net
+
+    # ENVIRONMENT:
     environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-api
+      source_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       NODE_ENV: production
       NODE_OPTIONS: ${NODE_OPTIONS:-}
@@ -296,42 +432,15 @@ services:
       SENTRY_SERVICE_NAME: deck-verified-api
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE_API:-0.1}
       SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE_API:-0.1}
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-api
-      source_version: <GIT_COMMIT_SHORT_SHA>
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-          '--header=User-Agent: Swarm-HealthChecker/1.0',
-          '--spider',
-          '--no-verbose',
-          '--tries=1',
-          '--timeout=3',
-          'http://127.0.0.1:9022/deck-verified/api/v1/health',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:24226'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-api'
-        env: 'source_env,source_service,source_version,source_project'
 
-  # --- FRONTEND SSR ---
+  # -- Frontend SSR --
+  #
+  # Frontend SSR service.
+  #
   web-ssr:
     image: ghcr.io/decksettings/deck-verified-web-ssr:latest
+
+    # RESOURCES:
     deploy:
       mode: replicated
       replicas: ${REPLICAS_WEB_SSR:-1}
@@ -349,8 +458,8 @@ services:
         constraints:
           - ${PLACEMENT_CONSTRAINT_API:?}
       labels:
-        #### -- Configure Logging labels
-        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        #### -- Configure logging labels
+        # These labels are ignored by Docker Swarm logging. They are retained for non-Swarm tooling.
         - 'source.env=${ENVIRONMENT_NAME:-test}'
         - 'source.project=deck-verified-site'
         - 'source.service=deck-verified-web-ssr'
@@ -358,27 +467,11 @@ services:
 
         #### -- Enable traefik router for this service
         - 'traefik.enable=false'
-    networks:
-      - private-net
-    environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-web-ssr
-      source_version: <GIT_COMMIT_SHORT_SHA>
-      # Used by SSR to call the API directly instead of hitting the SSR server
-      SSR_API_ORIGIN: http://api:9022
-      # Emit structured Node memory telemetry and retain a bounded set of heap snapshots.
-      SSR_MEMORY_TELEMETRY_INTERVAL_MS: ${SSR_MEMORY_TELEMETRY_INTERVAL_MS:-30000}
-      SSR_HEAP_SNAPSHOT_RSS_PERCENT: ${SSR_HEAP_SNAPSHOT_RSS_PERCENT:-70}
-      SSR_HEAP_SNAPSHOT_RETAIN_COUNT: ${SSR_HEAP_SNAPSHOT_RETAIN_COUNT:-3}
-      SSR_HEAP_SNAPSHOT_DIR: /diagnostics
-    volumes:
-      - web-ssr-diagnostics:/diagnostics
+
     logging:
       driver: fluentd
       options:
-        fluentd-address: '127.0.0.1:24226'
+        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
         fluentd-request-ack: 'true'
         fluentd-async: 'true'
         fluentd-async-reconnect-interval: '5s'
@@ -387,15 +480,44 @@ services:
         tag: 'deck-verified-web-ssr'
         env: 'source_env,source_service,source_version,source_project'
 
-  # --- FRONTEND ---
+    # NETWORK:
+    networks:
+      - private-net
+
+    # ENVIRONMENT:
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-web-ssr
+      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Application execution
+      SSR_API_ORIGIN: http://api:9022
+      SSR_MEMORY_TELEMETRY_INTERVAL_MS: ${SSR_MEMORY_TELEMETRY_INTERVAL_MS:-30000}
+      SSR_HEAP_SNAPSHOT_RSS_PERCENT: ${SSR_HEAP_SNAPSHOT_RSS_PERCENT:-70}
+      SSR_HEAP_SNAPSHOT_RETAIN_COUNT: ${SSR_HEAP_SNAPSHOT_RETAIN_COUNT:-3}
+      SSR_HEAP_SNAPSHOT_DIR: /diagnostics
+
+    # VOLUMES:
+    volumes:
+      - type: volume
+        source: web-ssr-diagnostics
+        target: /diagnostics
+
+  # -- Frontend --
+  #
+  # Web frontend service.
+  #
   web:
     image: ghcr.io/decksettings/deck-verified-web:latest
+
+    # RESOURCES:
     deploy:
       mode: replicated
       replicas: ${REPLICAS_WEB:-1}
       restart_policy:
         condition: any
-        delay: 5s
+        delay: 10s
       update_config:
         parallelism: 1
         delay: 10s
@@ -407,8 +529,8 @@ services:
         constraints:
           - ${PLACEMENT_CONSTRAINT_WEB:?}
       labels:
-        #### -- Configure Logging labels
-        # Note that these labels do nothing when deployed in a Docker Swarm. They are only here for non Swarm environments
+        #### -- Configure logging labels
+        # These labels are ignored by Docker Swarm logging. They are retained for non-Swarm tooling.
         - 'source.env=${ENVIRONMENT_NAME:-test}'
         - 'source.project=deck-verified-site'
         - 'source.service=deck-verified-web'
@@ -432,15 +554,19 @@ services:
         # Enable middlewares:
         #   - Redirect HTTP -> HTTPS
         - 'traefik.http.routers.deck-verified-web.middlewares=https-redirect'
-    networks:
-      - swarm-public
-      - private-net
-    environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-web
-      source_version: <GIT_COMMIT_SHORT_SHA>
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
+        fluentd-request-ack: 'true'
+        fluentd-async: 'true'
+        fluentd-async-reconnect-interval: '5s'
+        mode: 'non-blocking'
+        max-buffer-size: '4m'
+        tag: 'deck-verified-web'
+        env: 'source_env,source_service,source_version,source_project'
+
     healthcheck:
       test:
         [
@@ -458,14 +584,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:24226'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-web'
-        env: 'source_env,source_service,source_version,source_project'
+
+    # NETWORK:
+    networks:
+      - swarm-public
+      - private-net
+
+    # ENVIRONMENT:
+    environment:
+      # -- Fluentd Log Driver labels
+      source_env: ${ENVIRONMENT_NAME:-test}
+      source_project: deck-verified-site
+      source_service: deck-verified-web
+      source_version: <GIT_COMMIT_SHORT_SHA>
