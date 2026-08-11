@@ -144,10 +144,6 @@
 #   #-  - DV_AUTH_JWT_SECRET -
 #   #-    JWT secret for backend user authentication.
 #   DV_AUTH_JWT_SECRET=XXXXXXXXXXX
-#   #@ Fluentd Logging
-#   #-  - FLUENTD_PORT -
-#   #-    Host Fluentd listener port used by the Docker logging driver.
-#   FLUENTD_PORT=24226
 # <config_end>
 #
 # ---------------
