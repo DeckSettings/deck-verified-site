@@ -198,29 +198,16 @@ services:
         constraints:
           - ${PLACEMENT_CONSTRAINT_CACHE:?}
 
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-redis'
-        env: 'source_env,source_service,source_version,source_project'
-
     # NETWORK:
     networks:
       - private-net
 
     # ENVIRONMENT:
     environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-redis
-      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Service log metadata (forwarded by the host Docker daemon)
+      service_project: deck-verified-site
+      service_name: deck-verified-redis
+      service_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       REDIS_ARGS: --requirepass ${REDIS_PASSWORD:?} --protected-mode yes
 
@@ -263,29 +250,16 @@ services:
         - 'source.service=deck-verified-tasks'
         - 'source.version=<GIT_COMMIT_SHORT_SHA>'
 
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-tasks'
-        env: 'source_env,source_service,source_version,source_project'
-
     # NETWORK:
     networks:
       - private-net
 
     # ENVIRONMENT:
     environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-tasks
-      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Service log metadata (forwarded by the host Docker daemon)
+      service_project: deck-verified-site
+      service_name: deck-verified-tasks
+      service_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       NODE_ENV: production
       NODE_OPTIONS: ${NODE_OPTIONS:-}
@@ -359,18 +333,6 @@ services:
         #   - Redirect HTTP -> HTTPS
         - 'traefik.http.routers.deck-verified-api.middlewares=https-redirect'
 
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-api'
-        env: 'source_env,source_service,source_version,source_project'
-
     healthcheck:
       test:
         [
@@ -395,11 +357,10 @@ services:
 
     # ENVIRONMENT:
     environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-api
-      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Service log metadata (forwarded by the host Docker daemon)
+      service_project: deck-verified-site
+      service_name: deck-verified-api
+      service_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       NODE_ENV: production
       NODE_OPTIONS: ${NODE_OPTIONS:-}
@@ -468,29 +429,16 @@ services:
         #### -- Enable traefik router for this service
         - 'traefik.enable=false'
 
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-web-ssr'
-        env: 'source_env,source_service,source_version,source_project'
-
     # NETWORK:
     networks:
       - private-net
 
     # ENVIRONMENT:
     environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-web-ssr
-      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Service log metadata (forwarded by the host Docker daemon)
+      service_project: deck-verified-site
+      service_name: deck-verified-web-ssr
+      service_version: <GIT_COMMIT_SHORT_SHA>
       # -- Application execution
       SSR_API_ORIGIN: http://api:9022
       SSR_MEMORY_TELEMETRY_INTERVAL_MS: ${SSR_MEMORY_TELEMETRY_INTERVAL_MS:-30000}
@@ -555,18 +503,6 @@ services:
         #   - Redirect HTTP -> HTTPS
         - 'traefik.http.routers.deck-verified-web.middlewares=https-redirect'
 
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: '127.0.0.1:${FLUENTD_PORT:-24226}'
-        fluentd-request-ack: 'true'
-        fluentd-async: 'true'
-        fluentd-async-reconnect-interval: '5s'
-        mode: 'non-blocking'
-        max-buffer-size: '4m'
-        tag: 'deck-verified-web'
-        env: 'source_env,source_service,source_version,source_project'
-
     healthcheck:
       test:
         [
@@ -592,8 +528,7 @@ services:
 
     # ENVIRONMENT:
     environment:
-      # -- Fluentd Log Driver labels
-      source_env: ${ENVIRONMENT_NAME:-test}
-      source_project: deck-verified-site
-      source_service: deck-verified-web
-      source_version: <GIT_COMMIT_SHORT_SHA>
+      # -- Service log metadata (forwarded by the host Docker daemon)
+      service_project: deck-verified-site
+      service_name: deck-verified-web
+      service_version: <GIT_COMMIT_SHORT_SHA>
