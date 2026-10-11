@@ -37,6 +37,7 @@ const deviceImagePatterns: Record<string, RegExp> = {
   'msi-claw': /^(MSI Claw)$/i,
   'msi-claw-a8-plus': /^(MSI Claw A8 Plus)$/i,
   'valve-steam-deck': /^(Valve )?Steam Deck( OLED| LCD.*)?$/i,
+  'valve-steam-machine': /^(Valve )?(Steam )?Machine$/i,
   'zotac-zone': /^(Zotac Zone)$/i,
 }
 
